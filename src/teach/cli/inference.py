@@ -97,8 +97,8 @@ def main():
         inference_output_files = glob.glob(os.path.join(args.output_dir, "inference__*.json"))
         finished_edh_instance_files = [os.path.join(fn.split("__")[1]) for fn in inference_output_files]
         edh_instance_files = [
-            os.path.join(args.data_dir, "edh_instances", args.split, f)
-            for f in os.listdir(os.path.join(args.data_dir, "edh_instances", args.split))
+            os.path.join(args.data_dir, args.split, f)
+            for f in os.listdir(os.path.join(args.data_dir, args.split))
             if f not in finished_edh_instance_files
         ]
         if not edh_instance_files:

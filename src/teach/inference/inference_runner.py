@@ -25,6 +25,7 @@ from teach.utils import (
     load_images,
     save_dict_as_json,
     with_retry,
+    get_state_changes,
 )
 
 definitions = Definitions(version="2.0")
@@ -138,12 +139,12 @@ class InferenceRunner:
     @staticmethod
     def _run_edh_instance(instance_file, config: InferenceRunnerConfig, model: TeachModel, er: EpisodeReplay):
         edh_instance = InferenceRunner._load_edh_instance(instance_file)
-
+        edh_instance["state_changes"] = get_state_changes(edh_instance["tasks"][0]["episodes"][0]['initial_state'], edh_instance["tasks"][0]["episodes"][0]["final_state"])
         edh_check_task = create_task_thor_from_state_diff(edh_instance["state_changes"])
         game_file = InferenceRunner._get_game_file(edh_instance, config)
 
         metrics = create_new_traj_metrics(edh_instance)
-        instance_id = edh_instance["instance_id"]
+        instance_id = edh_instance["game_id"]
         logger.debug(f"Processing instance {instance_id}")
 
         try:
@@ -168,7 +169,7 @@ class InferenceRunner:
 
         metrics["init_success"] = init_success
         if not init_success:
-            return edh_instance["instance_id"], metrics
+            return edh_instance["game_id"], metrics
 
         model_started_success = False
         try:
@@ -249,7 +250,8 @@ class InferenceRunner:
         start_time = time.perf_counter()
         er.set_episode_by_fn_and_idx(game_file, 0, 0)
         edh_interactions = list()
-        for interaction in edh_instance["interactions"][: edh_instance["pred_start_idx"]]:
+        interactions = edh_instance["tasks"][0]["episodes"][0]["interactions"] #[: edh_instance["pred_start_idx"]]
+        for interaction in interactions:
             action = action_id_to_info[interaction["action_id"]]
             edh_interactions.append(Interaction.from_dict(interaction, action["action_type"]))
         er.episode.interactions = edh_interactions
@@ -287,7 +289,6 @@ class InferenceRunner:
     def _get_game_file(edh_instance, config: InferenceRunnerConfig):
         return os.path.join(
             config.data_dir,
-            "games",
             config.split,
             f"{edh_instance['game_id']}.game.json",
         )

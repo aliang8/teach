@@ -47,7 +47,7 @@ def evaluate_traj(success, edh_instance, traj_len, final_gc_total, final_gc_sati
 
 def create_new_traj_metrics(edh_instance):
     return {
-        "instance_id": edh_instance["instance_id"],
+        # "instance_id": edh_instance["instance_id"],
         "game_id": edh_instance["game_id"],
         "completed_goal_conditions": 0,
         "total_goal_conditions": 0,
@@ -138,7 +138,7 @@ def load_traj_metrics(output_file, pred_actions_file, args):
 
     traj_metrics = create_new_traj_metrics(edh_instance)
     traj_metrics["game_id"] = edh_instance["game_id"]
-    traj_metrics["instance_id"] = edh_instance["instance_id"]
+    # traj_metrics["instance_id"] = edh_instance["instance_id"]
     traj_metrics["gt_path_len"] = len(edh_instance["driver_actions_future"])
     traj_metrics.update(
         evaluate_traj(
@@ -146,4 +146,4 @@ def load_traj_metrics(output_file, pred_actions_file, args):
         )
     )
 
-    return edh_instance["instance_id"], traj_metrics
+    return edh_instance["game_id"], traj_metrics

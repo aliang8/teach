@@ -37,7 +37,6 @@ class BaseDataset(TorchDataset):
         self._length = self.load_data(path)
         if self.args.fast_epoch:
             self._length = 16
-
         logger.info("%s dataset size = %d" % (partition, self._length))
 
         # load vocabularies for input language and output actions
@@ -61,7 +60,6 @@ class BaseDataset(TorchDataset):
         if jsons:
             with open(os.path.join(path, self.partition, "jsons.pkl"), "rb") as jsons_file:
                 jsons = pickle.load(jsons_file)
-
             self.jsons_and_keys = []
             for idx in range(len(jsons)):
                 key = "{:06}".format(idx).encode("ascii")

@@ -38,7 +38,13 @@ class Preprocessor(object):
         if self.is_test_split:
             is_test_split = True
 
-        instr_anns = [utterance for (speaker, utterance) in ex["dialog_history"]]
+        instr_anns = []
+
+        for interaction in traj["tasks"][0]["episodes"][0]["interactions"]:
+            if "utterance" in interaction:
+                instr_anns.append(interaction["utterance"])
+
+        # instr_anns = [utterance for (speaker, utterance) in ex["dialog_history"]]
         instr_anns = [revtok.tokenize(data_util.remove_spaces_and_lower(instr_ann)) for instr_ann in instr_anns]
         instr_anns = [[w.strip().lower() for w in instr_ann] for instr_ann in instr_anns]
         traj["ann"] = {
@@ -69,16 +75,12 @@ class Preprocessor(object):
 
     def process_actions(self, ex, traj):
         if "num" not in traj:
-            traj["num"] = {}
-        traj["num"]["driver_actions_low"] = list()
-        traj["num"]["driver_actions_pred_mask"] = list()
-        for action in ex["driver_action_history"]:
-            action_dict_with_idx = copy.deepcopy(action)
-            action_dict_with_idx["action"] = (self.vocab["action_low"].word2index(action["action_name"], train=True),)
-            traj["num"]["driver_actions_low"].append(action_dict_with_idx)
-            traj["num"]["driver_actions_pred_mask"].append(0)
-        for action in ex["driver_actions_future"]:
-            action_dict_with_idx = copy.deepcopy(action)
-            action_dict_with_idx["action"] = (self.vocab["action_low"].word2index(action["action_name"], train=True),)
-            traj["num"]["driver_actions_low"].append(action_dict_with_idx)
-            traj["num"]["driver_actions_pred_mask"].append(1)
+            traj["num"] = {"interactions": traj['tasks'][0]['episodes'][0]['interactions']}
+
+        # traj["num"]["driver_actions_low"] = list()
+        # traj["num"]["driver_actions_pred_mask"] = list()
+        # for action in ex["driver_action_history"]:
+        #     action_dict_with_idx = copy.deepcopy(action)
+        #     action_dict_with_idx["action"] = (self.vocab["action_low"].word2index(action["action_name"], train=True),)
+        #     traj["num"]["driver_actions_low"].append(action_dict_with_idx)
+        #     traj["num"]["driver_actions_pred_mask"].append(1)

@@ -43,7 +43,7 @@ class Definitions:
 
     def to_dict(self):
         info_dict = copy.deepcopy(self.info)
-        info_dict["tasks"] = [x.to_dict() for x in info_dict["tasks"]]
+        info_dict["tasks"] = [x.to_dict() if not isinstance(x, dict) else x for x in info_dict["tasks"]]
         return info_dict
 
     def __create_lookup_actions(self):

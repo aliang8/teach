@@ -53,7 +53,9 @@ class Task_THOR(Task):
             return component
         else:
             component_dict = copy.deepcopy(component)
-            component_dict["task"] = component["task"].to_dict()
+            component_dict["task"] = (
+                component["task"].to_dict() if not isinstance(component["task"], dict) else component["task"]
+            )
             return component_dict
 
     def to_dict(self):

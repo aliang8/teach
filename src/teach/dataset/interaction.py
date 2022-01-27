@@ -34,6 +34,12 @@ class Interaction:
         if self.status is not None:
             _dict["status"] = self.status
 
+        if hasattr(self, "commander_obs"):
+            _dict["commander_obs"] = self.commander_obs
+
+        if hasattr(self, "driver_obs"):
+            _dict["driver_obs"] = self.driver_obs
+
         return _dict
 
     @classmethod

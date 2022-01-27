@@ -64,7 +64,7 @@ class Module(Base):
         '''
         tensorize and pad batch input
         '''
-        device = torch.device('cuda') if self.args.gpu else torch.device('cpu')
+        device = torch.device('cuda') if self.args.device == "cuda" else torch.device('cpu')
         feat = collections.defaultdict(list)
 
         for ex in batch:
@@ -91,7 +91,8 @@ class Module(Base):
             self.serialize_lang_action(ex)
 
             # goal and instr language
-            lang_goal, lang_instr = ex['num']['lang_goal'], ex['num']['lang_instr']
+            # import ipdb; ipdb.set_trace()
+            lang_goal, lang_instr = ex['num']['lang_goal'][0], ex['num']['lang_instr']
 
             # zero inputs if specified
             lang_goal = self.zero_input(lang_goal) if self.args.zero_goal else lang_goal
@@ -127,21 +128,24 @@ class Module(Base):
             # outputs
             #########
 
+            # import ipdb; ipdb.set_trace()
             if not self.test_mode:
                 # low-level action
-                feat['action_low'].append([a['action'] for a in ex['num']['action_low']])
+                feat['action_low'].append(ex['num']['action_low'])
+                
 
                 # low-level action mask
                 if load_mask:
                     feat['action_low_mask'].append([self.decompress_mask(a['mask']) for a in ex['num']['action_low'] if a['mask'] is not None])
 
-                # low-level valid interact
-                feat['action_low_valid_interact'].append([a['valid_interact'] for a in ex['num']['action_low']])
+                # # low-level valid interact
+                # feat['action_low_valid_interact'].append([a['valid_interact'] for a in ex['num']['action_low']])
 
 
         # tensorization and padding
         for k, v in feat.items():
             if k in {'lang_goal_instr'}:
+                # import ipdb; ipdb.set_trace()
                 # language embedding and padding
                 seqs = [torch.tensor(vv, device=device) for vv in v]
                 pad_seq = pad_sequence(seqs, batch_first=True, padding_value=self.pad)
@@ -175,7 +179,7 @@ class Module(Base):
         if not is_serialized:
             feat['num']['lang_instr'] = [word for desc in feat['num']['lang_instr'] for word in desc]
             if not self.test_mode:
-                feat['num']['action_low'] = [a for a_group in feat['num']['action_low'] for a in a_group]
+                feat['num']['action_low'] = [a['action_id'] for a in feat['num']['interactions']]
 
 
     def decompress_mask(self, compressed_mask):

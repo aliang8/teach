@@ -42,8 +42,9 @@ class BaseDataset(TorchDataset):
 
         # load vocabularies for input language and output actions
         vocab = data_util.load_vocab(name, ann_type)
+        self.vocab = vocab
         self.vocab_in = vocab["word"]
-        out_type = "action_low" if args.model == "transformer" else "action_high"
+        out_type = "action_low" if args.model in ["transformer", "seq2seq_im_mask"] else "action_high"
         self.vocab_out = vocab[out_type]
         logger.debug("Loaded vocab_out: %s" % str(self.vocab_out.to_dict()["index2word"]))
         # if several datasets are used, we will translate outputs to this vocab later
@@ -55,7 +56,7 @@ class BaseDataset(TorchDataset):
         """
         # do not open the lmdb database open in the main process, do it in each thread
         if feats:
-            self.feats_lmdb_path = os.path.join(path, self.partition, "feats")
+            self.feats_lmdb_path = os.path.join(path, self.partition, "driver_feats")
 
         # load jsons with pickle and parse them
         if jsons:

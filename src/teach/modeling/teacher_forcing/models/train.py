@@ -118,18 +118,18 @@ def load_only_matching_layers(model, pretrained_model, train_lmdb_name):
 #         model.model = helper_util.DataParallel(model.model)
 #     return model, optimizer, prev_train_info
 
-def create_model(args, emb_ann, vocab_out):
+def create_model(args, emb_ann, vocab_out, vocab):
     # load model
     M = import_module('teacher_forcing.models.model.{}'.format(args.model))
     if args.resume:
         print("Loading: " + args.resume)
         model, optimizer = M.Module.load(args.resume)
     else:
-        model = M.Module(args, vocab_out)
+        model = M.Module(args, vocab)
         optimizer = None
-    import ipdb; ipdb.set_trace()
+
     # to gpu
-    if args.gpu:
+    if args.device == "cuda":
         model = model.to(torch.device('cuda'))
         if not optimizer is None:
             optimizer_to(optimizer, torch.device('cuda'))
@@ -193,6 +193,9 @@ def process_vocabs(datasets, args):
     for dataset in datasets:
         logger.debug("dataset.id = %s, vocab_out = %s" % (dataset.id, str(dataset.vocab_out)))
     vocab_out = sorted(datasets, key=lambda x: len(x.vocab_out))[-1].vocab_out
+
+    vocab = sorted(datasets, key=lambda x: len(x.vocab["word"]))[-1].vocab
+
     # make all datasets to use this vocabulary for outputs translation
     for dataset in datasets:
         dataset.vocab_translate = vocab_out
@@ -200,7 +203,7 @@ def process_vocabs(datasets, args):
     embs_ann = {}
     for dataset in datasets:
         embs_ann[dataset.name] = len(dataset.vocab_in)
-    return embs_ann, vocab_out
+    return embs_ann, vocab_out, vocab
 
 
 @ex.automain
@@ -218,12 +221,14 @@ def main(train, exp):
     for name, ann_type in zip(args.data["valid"], ann_types):
         datasets.extend(load_data(name, args, ann_type, valid_only=True))
     # assign vocabs to datasets and check their sizes for nn.Embeding inits
-    embs_ann, vocab_out = process_vocabs(datasets, args)
+    embs_ann, vocab_out, vocab = process_vocabs(datasets, args)
     logger.debug("In train.main, vocab_out = %s" % str(vocab_out))
 
     # wrap datasets with loaders
     loaders = wrap_datasets(datasets, args)
     # create the model
-    model, optimizer, prev_train_info = create_model(args, embs_ann, vocab_out)
+    model, optimizer, prev_train_info = create_model(args, embs_ann, vocab_out, vocab)
+
+    print(model)
     # start train loop
-    model.run_train(loaders, prev_train_info, optimizer=optimizer)
+    model.run_train(loaders, {"progress": 0}, args=args, optimizer=optimizer)

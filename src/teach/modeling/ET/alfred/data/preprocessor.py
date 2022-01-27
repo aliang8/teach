@@ -44,6 +44,10 @@ class Preprocessor(object):
             if "utterance" in interaction:
                 instr_anns.append(interaction["utterance"])
 
+        goal_desc = traj["tasks"][0]["desc"]
+        goal_desc = revtok.tokenize(data_util.remove_spaces_and_lower(goal_desc))
+        goal_desc = [w.strip().lower() for w in goal_desc]
+
         # instr_anns = [utterance for (speaker, utterance) in ex["dialog_history"]]
         instr_anns = [revtok.tokenize(data_util.remove_spaces_and_lower(instr_ann)) for instr_ann in instr_anns]
         instr_anns = [[w.strip().lower() for w in instr_ann] for instr_ann in instr_anns]
@@ -55,6 +59,9 @@ class Preprocessor(object):
             traj["num"] = {}
         traj["num"]["lang_instr"] = [
             self.numericalize(self.vocab["word"], x, train=not is_test_split) for x in traj["ann"]["instr"]
+        ]
+        traj["num"]["lang_goal"] = [
+            self.numericalize(self.vocab["word"], goal_desc, train=not is_test_split) 
         ]
 
     def tokenize_and_numericalize(self, dialog_history, numericalize=True, train=False):

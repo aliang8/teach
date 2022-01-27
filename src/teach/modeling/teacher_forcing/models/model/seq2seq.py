@@ -3,11 +3,16 @@ import random
 import json
 import torch
 import pprint
+from tqdm import tqdm
 import collections
 import numpy as np
 from torch import nn
 from tensorboardX import SummaryWriter
 from tqdm import trange
+import logging
+from teach.logger import create_logger
+from teacher_forcing.utils import data_util
+logger = create_logger(__name__, level=logging.DEBUG)
 
 class Module(nn.Module):
 
@@ -26,9 +31,10 @@ class Module(nn.Module):
         self.vocab = vocab
 
         # emb modules
-        # self.emb_word = nn.Embedding(len(vocab['word']), args.demb)
-        # self.emb_action_low = nn.Embedding(len(vocab['action_low']), args.demb)
-        self.emb_action_low = nn.Embedding(107, args.demb)
+        import ipdb; ipdb.set_trace()
+        self.emb_word = nn.Embedding(len(vocab['word']), args.demb)
+        self.emb_action_low = nn.Embedding(len(vocab['action_low']), args.demb)
+        # self.emb_action_low = nn.Embedding(107, args.demb)
 
         # # end tokens
         # self.stop_token = self.vocab['action_low'].word2index("<<stop>>", train=False)
@@ -40,7 +46,7 @@ class Module(nn.Module):
         # summary self.writer
         self.summary_writer = None
 
-    def run_train(self, splits, args=None, optimizer=None):
+    def run_train(self, loaders, info, args=None, optimizer=None):
         '''
         training loop
         '''
@@ -49,23 +55,28 @@ class Module(nn.Module):
         args = args or self.args
 
         # splits
-        train = splits['train']
-        valid_seen = splits['valid_seen']
-        valid_unseen = splits['valid_unseen']
+        # train = splits['train']
+        # valid_seen = splits['valid_seen']
+        # valid_unseen = splits['valid_unseen']
 
+        loaders_train = dict(filter(lambda x: "train" in x[0], loaders.items()))
+        assert len(set([len(loader) for loader in loaders_train.values()])) == 1
+        epoch_length = len(next(iter(loaders_train.values())))
+
+        logger.debug("In Seq2seq.run_train, epoch_length = %d" % epoch_length)
         # debugging: chose a small fraction of the dataset
-        if self.args.dataset_fraction > 0:
-            small_train_size = int(self.args.dataset_fraction * 0.7)
-            small_valid_size = int((self.args.dataset_fraction * 0.3) / 2)
-            train = train[:small_train_size]
-            valid_seen = valid_seen[:small_valid_size]
-            valid_unseen = valid_unseen[:small_valid_size]
+        # if self.args.dataset_fraction > 0:
+        #     small_train_size = int(self.args.dataset_fraction * 0.7)
+        #     small_valid_size = int((self.args.dataset_fraction * 0.3) / 2)
+        #     train = train[:small_train_size]
+        #     valid_seen = valid_seen[:small_valid_size]
+        #     valid_unseen = valid_unseen[:small_valid_size]
 
-        # debugging: use to check if training loop works without waiting for full epoch
-        if self.args.fast_epoch:
-            train = train[:16]
-            valid_seen = valid_seen[:16]
-            valid_unseen = valid_unseen[:16]
+        # # debugging: use to check if training loop works without waiting for full epoch
+        # if self.args.fast_epoch:
+        #     train = train[:16]
+        #     valid_seen = valid_seen[:16]
+        #     valid_unseen = valid_unseen[:16]
 
         # initialize summary writer for tensorboardX
         self.summary_writer = SummaryWriter(log_dir=args.dout)
@@ -76,39 +87,53 @@ class Module(nn.Module):
             json.dump(vars(args), f, indent=2)
 
         # optimizer
-        optimizer = optimizer or torch.optim.Adam(self.parameters(), lr=args.lr)
+        optimizer = optimizer or torch.optim.Adam(self.parameters(), lr=args.lr['init'])
 
         # display dout
         print("Saving to: %s" % self.args.dout)
         best_loss = {'train': 1e10, 'valid_seen': 1e10, 'valid_unseen': 1e10}
-        train_iter, valid_seen_iter, valid_unseen_iter = 0, 0, 0
-        for epoch in trange(0, args.epoch, desc='epoch'):
-            m_train = collections.defaultdict(list)
+        # train_iter, valid_seen_iter, valid_unseen_iter = 0, 0, 0
+        # for epoch in trange(0, args.epoch, desc='epoch'):
+        logger.info("Saving to: %s" % args.dout)
+        for epoch in range(info["progress"], args.epochs):
+            logger.info("Epoch {}/{}".format(epoch, args.epochs))
             self.train()
-            self.adjust_lr(optimizer, args.lr, epoch, decay_epoch=args.decay_epoch)
-            # p_train = {}
-            total_train_loss = list()
-            random.shuffle(train) # shuffle every epoch
-            for batch, feat in self.iterate(train, args.batch):
-                out = self.forward(feat)
-                preds = self.extract_preds(out, batch, feat)
-                # p_train.update(preds)
-                loss = self.compute_loss(out, batch, feat)
-                for k, v in loss.items():
-                    ln = 'loss_' + k
-                    m_train[ln].append(v.item())
-                    self.summary_writer.add_scalar('train/' + ln, v.item(), train_iter)
 
-                # optimizer backward pass
-                optimizer.zero_grad()
-                sum_loss = sum(loss.values())
-                sum_loss.backward()
-                optimizer.step()
+            train_iterators = {key: iter(loader) for key, loader in loaders_train.items()}
 
-                self.summary_writer.add_scalar('train/loss', sum_loss, train_iter)
-                sum_loss = sum_loss.detach().cpu()
-                total_train_loss.append(float(sum_loss))
-                train_iter += self.args.batch
+            for _ in tqdm(range(epoch_length), desc="train"):
+                # sample batches
+                batches = data_util.sample_batches(train_iterators, self.args.device, self.pad, self.args)
+                # gt.stamp("data fetching", unique=False)
+
+                # m_train = collections.defaultdict(list)
+                # self.adjust_lr(optimizer, args.lr, epoch, decay_epoch=args.decay_epoch)
+                # total_train_loss = list()
+                model_outs, losses_train = {}, {}
+                for batch_name, (traj_data, input_dict, gt_dict) in batches.items():
+                    feat = self.featurize(traj_data, load_mask=False, load_frames=False)
+                    feat['frames'] = input_dict['frames']
+                    import ipdb; ipdb.set_trace()
+
+                    model_outs = self.forward(feat)
+                    preds = self.extract_preds(out, batch, feat)
+                    # p_train.update(preds)
+                    loss = self.compute_loss(out, batch, feat)
+                    for k, v in loss.items():
+                        ln = 'loss_' + k
+                        m_train[ln].append(v.item())
+                        self.summary_writer.add_scalar('train/' + ln, v.item(), train_iter)
+
+                    # optimizer backward pass
+                    optimizer.zero_grad()
+                    sum_loss = sum(loss.values())
+                    sum_loss.backward()
+                    optimizer.step()
+
+                    self.summary_writer.add_scalar('train/loss', sum_loss, train_iter)
+                    sum_loss = sum_loss.detach().cpu()
+                    total_train_loss.append(float(sum_loss))
+                    train_iter += self.args.batch
 
             ## compute metrics for train (too memory heavy!)
             # m_train = {k: sum(v) / len(v) for k, v in m_train.items()}

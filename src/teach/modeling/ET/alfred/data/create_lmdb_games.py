@@ -143,7 +143,7 @@ def get_traj_paths(input_path, processed_files_path, fast_epoch):
         traj_paths_all = sorted([str(path) for path in input_path.glob("*/*.json")])
         traj_paths = traj_paths_all
     if fast_epoch:
-        traj_paths = traj_paths[::20]
+        traj_paths = traj_paths[::50]
     num_files = len(traj_paths)
     if processed_files_path is not None and processed_files_path.exists():
         if str(processed_files_path).endswith(constants.VOCAB_FILENAME):
@@ -208,7 +208,7 @@ def gather_data(output_path, num_workers):
             driver_feats_files = output_path.glob("driver_feats/{}:*.pt".format(partition))
             driver_feats_files = sorted([str(path) for path in driver_feats_files])
 
-            jsons_files = [p.replace("/feats/", "/jsons/").replace(".pt", ".pkl") for p in driver_feats_files]
+            jsons_files = [p.replace("/driver_feats/", "/jsons/").replace(".pt", ".pkl") for p in driver_feats_files]
             (output_path / partition).mkdir(exist_ok=True)
             data_util.gather_feats(commander_feats_files, output_path / partition / "commander_feats")
             data_util.gather_feats(driver_feats_files, output_path / partition / "driver_feats")
@@ -258,6 +258,7 @@ def main(args):
     if len(trajs_list) > 0:
         lock = threading.Lock()
         preprocessor = data_util.get_preprocessor(Preprocessor, args.subgoal_ann, lock, args.vocab_path, args.task_type)
+
         run_in_parallel(
             process_jsons,
             args.num_workers,

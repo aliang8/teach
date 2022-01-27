@@ -171,6 +171,8 @@ def cfg_train():
     input_dropout=0
     lang_dropout=0
     dec_teacher_forcing=True
+    zero_goal=False
+    zero_instr=False
     
 
     # TRANSFORMER settings

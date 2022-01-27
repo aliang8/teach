@@ -31,14 +31,14 @@ class Module(nn.Module):
         self.vocab = vocab
 
         # emb modules
-        import ipdb; ipdb.set_trace()
         self.emb_word = nn.Embedding(len(vocab['word']), args.demb)
         self.emb_action_low = nn.Embedding(len(vocab['action_low']), args.demb)
         # self.emb_action_low = nn.Embedding(107, args.demb)
 
-        # # end tokens
-        # self.stop_token = self.vocab['action_low'].word2index("<<stop>>", train=False)
-        # self.seg_token = self.vocab['action_low'].word2index("<<seg>>", train=False)
+        # end tokens
+        # TODO: word or action_low??
+        self.stop_token = self.vocab['word'].word2index("<<stop>>", train=False)
+        self.seg_token = self.vocab['word'].word2index("<<seg>>", train=False)
 
         # set random seed (Note: this is not the seed used to initialize THOR object locations)
         random.seed(a=args.seed)
@@ -92,7 +92,7 @@ class Module(nn.Module):
         # display dout
         print("Saving to: %s" % self.args.dout)
         best_loss = {'train': 1e10, 'valid_seen': 1e10, 'valid_unseen': 1e10}
-        # train_iter, valid_seen_iter, valid_unseen_iter = 0, 0, 0
+        train_iter, valid_seen_iter, valid_unseen_iter = 0, 0, 0
         # for epoch in trange(0, args.epoch, desc='epoch'):
         logger.info("Saving to: %s" % args.dout)
         for epoch in range(info["progress"], args.epochs):
@@ -106,19 +106,19 @@ class Module(nn.Module):
                 batches = data_util.sample_batches(train_iterators, self.args.device, self.pad, self.args)
                 # gt.stamp("data fetching", unique=False)
 
-                # m_train = collections.defaultdict(list)
+                m_train = collections.defaultdict(list)
                 # self.adjust_lr(optimizer, args.lr, epoch, decay_epoch=args.decay_epoch)
                 # total_train_loss = list()
-                model_outs, losses_train = {}, {}
+                model_outs, model_preds, losses_train = {}, {}, {}
                 for batch_name, (traj_data, input_dict, gt_dict) in batches.items():
                     feat = self.featurize(traj_data, load_mask=False, load_frames=False)
                     feat['frames'] = input_dict['frames']
-                    import ipdb; ipdb.set_trace()
 
-                    model_outs = self.forward(feat)
-                    preds = self.extract_preds(out, batch, feat)
+                    model_outs[batch_name] = self.forward(feat)
+                    model_preds[batch_name] = self.extract_preds(model_outs[batch_name], traj_data, feat)
                     # p_train.update(preds)
-                    loss = self.compute_loss(out, batch, feat)
+                    loss = self.compute_loss(model_outs[batch_name], traj_data, feat)
+
                     for k, v in loss.items():
                         ln = 'loss_' + k
                         m_train[ln].append(v.item())
@@ -134,7 +134,7 @@ class Module(nn.Module):
                     sum_loss = sum_loss.detach().cpu()
                     total_train_loss.append(float(sum_loss))
                     train_iter += self.args.batch
-
+            import ipdb; ipdb.set_trace()
             ## compute metrics for train (too memory heavy!)
             # m_train = {k: sum(v) / len(v) for k, v in m_train.items()}
             # m_train.update(self.compute_metric(p_train, train))
@@ -270,7 +270,7 @@ class Module(nn.Module):
         '''
         single string for task_id and annotation repeat idx
         '''
-        return "%s_%s" % (ex['task_id'], str(ex['repeat_idx']))
+        return "%s_%s" % (ex['tasks'][0]['task_id'], str(ex['repeat_idx']))
 
     def make_debug(self, preds, data):
         '''

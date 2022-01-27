@@ -314,6 +314,7 @@ class Module(Base):
 
         # action loss
         pad_valid = (l_alow != self.pad)
+        import ipdb; ipdb.set_trace()
         alow_loss = F.cross_entropy(p_alow, l_alow, reduction='none')
         alow_loss *= pad_valid.float()
         alow_loss = alow_loss.mean()

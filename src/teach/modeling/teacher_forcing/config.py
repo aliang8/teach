@@ -170,7 +170,7 @@ def cfg_train():
     vis_dropout=0.3
     input_dropout=0
     lang_dropout=0
-    dec_teacher_forcing=True
+    dec_teacher_forcing=False
     zero_goal=False
     zero_instr=False
     

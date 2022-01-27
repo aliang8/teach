@@ -1,5 +1,6 @@
 import copy
 
+import json
 import revtok
 from alfred.utils import data_util
 from vocab import Vocab
@@ -84,10 +85,27 @@ class Preprocessor(object):
         if "num" not in traj:
             traj["num"] = {"interactions": traj['tasks'][0]['episodes'][0]['interactions']}
 
-        # traj["num"]["driver_actions_low"] = list()
-        # traj["num"]["driver_actions_pred_mask"] = list()
-        # for action in ex["driver_action_history"]:
-        #     action_dict_with_idx = copy.deepcopy(action)
-        #     action_dict_with_idx["action"] = (self.vocab["action_low"].word2index(action["action_name"], train=True),)
-        #     traj["num"]["driver_actions_low"].append(action_dict_with_idx)
-        #     traj["num"]["driver_actions_pred_mask"].append(1)
+        traj["num"]["driver_actions_low"] = list()
+        traj["num"]["commander_actions_low"] = list()
+
+        idx_to_name_f = "/home/anthony/teach/src/teach/meta_data_files/ai2thor_resources/action_idx_to_action_name.json"
+        with open(idx_to_name_f) as f:
+            idx_to_name = json.load(f)
+
+        a_to_a_f = "/home/anthony/teach/src/teach/meta_data_files/ai2thor_resources/action_to_action_idx.json"
+        with open(a_to_a_f) as f:
+            action_to_action_idx = json.load(f)
+        
+        for action in traj['tasks'][0]['episodes'][0]['interactions']:
+            action_dict_with_idx = copy.deepcopy(action)
+
+            action_idx = action_to_action_idx[str(action_dict_with_idx['action_id'])]
+            action_name = idx_to_name[str(action_idx)]
+
+            action_dict_with_idx["action"] = (self.vocab["action_low"].word2index(action_name, train=True),)
+            action_dict_with_idx["action_name"] = action_name
+
+            if action_dict_with_idx['agent_id'] == 0:
+                traj["num"]["commander_actions_low"].append(action_dict_with_idx)
+            else:
+                traj["num"]["driver_actions_low"].append(action_dict_with_idx)

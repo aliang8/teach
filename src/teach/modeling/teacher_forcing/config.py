@@ -44,6 +44,7 @@ def cfg_exp():
     }
 
     lang_pretrain_over_history_subgoals = False
+    save_every_epoch = False
 
 
 @eval_ingredient.config

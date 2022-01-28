@@ -7,13 +7,16 @@ from torch import nn
 from torch.nn import functional as F
 from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence, pad_packed_sequence
 from teacher_forcing.models.model.seq2seq import Module as Base
+from alfred.nn.enc_visual import FeatureFlat
+from alfred.nn.dec_object import ObjectClassifier
+from teacher_forcing.utils import data_util
 # from models.utils.metric import compute_f1, compute_exact
 # from gen.utils.image_util import decompress_mask
 
 
 class Module(Base):
 
-    def __init__(self, args, vocab):
+    def __init__(self, args, vocab, for_inference=False):
         '''
         Seq2Seq agent
         '''
@@ -36,10 +39,22 @@ class Module(Base):
                            input_dropout=args.input_dropout,
                            teacher_forcing=args.dec_teacher_forcing)
 
+        # self.dec_object = ObjectClassifier(args.demb)
+
         # dropouts
         self.vis_dropout = nn.Dropout(args.vis_dropout)
         self.lang_dropout = nn.Dropout(args.lang_dropout, inplace=True)
         self.input_dropout = nn.Dropout(args.input_dropout)
+
+        # if for_inference:
+        #     model_dir = args["model_dir"]
+        #     dataset_info = data_util.read_dataset_info_for_inference(model_dir)
+        # else:
+        #     dataset_info = data_util.read_dataset_info(args.data["train"][0])
+        # self.visual_tensor_shape = dataset_info["feat_shape"][1:]
+
+        # self.vis_feat = FeatureFlat(input_shape=self.visual_tensor_shape, output_size=args.demb)
+        # self.object_feat = FeatureFlat(input_shape=self.visual_tensor_shape, output_size=args.demb)
 
         # internal states
         self.state_t = None
@@ -128,18 +143,21 @@ class Module(Base):
             # outputs
             #########
 
-            # import ipdb; ipdb.set_trace()
             if not self.test_mode:
                 # low-level action
-                feat['action_low'].append(ex['num']['action_low'])
-                
+                feat['action_low'].append([a['action'][0] for a in ex['num']['driver_actions_low']])
 
                 # low-level action mask
                 if load_mask:
                     feat['action_low_mask'].append([self.decompress_mask(a['mask']) for a in ex['num']['action_low'] if a['mask'] is not None])
+                
+                # import ipdb; ipdb.set_trace()
 
-                # # low-level valid interact
-                # feat['action_low_valid_interact'].append([a['valid_interact'] for a in ex['num']['action_low']])
+                feat['action_low_coord'].append([[a['x'], a['y']] for a in ex['num']['interactions'] if 'x' in a if a['success']])
+
+                # low-level valid interact
+                # TODO: i think this is only interact actions
+                feat['action_low_valid_interact'].append([a['success'] for a in ex['num']['driver_actions_low'] if 'x' in a])
 
 
         # tensorization and padding
@@ -153,7 +171,7 @@ class Module(Base):
                 embed_seq = self.emb_word(pad_seq)
                 packed_input = pack_padded_sequence(embed_seq, seq_lengths, batch_first=True, enforce_sorted=False)
                 feat[k] = packed_input
-            elif k in {'action_low_mask'}:
+            elif k in {'action_low_mask', 'action_low_coord'}:
                 # mask padding
                 seqs = [torch.tensor(vv, device=device, dtype=torch.float) for vv in v]
                 feat[k] = seqs
@@ -167,7 +185,6 @@ class Module(Base):
                 seqs = [torch.tensor(vv, device=device, dtype=torch.float if ('frames' in k) else torch.long) for vv in v]
                 pad_seq = pad_sequence(seqs, batch_first=True, padding_value=self.pad)
                 feat[k] = pad_seq
-
         return feat
 
 
@@ -196,6 +213,16 @@ class Module(Base):
         state_0 = cont_lang, torch.zeros_like(cont_lang)
         frames = self.vis_dropout(feat['frames'])
         res = self.dec(enc_lang, frames, max_decode=max_decode, gold=feat['action_low'], state_0=state_0)
+
+
+        # get the output objects
+        # emb_frames, emb_object = self.embed_frames(feat["frames"])
+        # emb_object_flat = emb_object.view(-1, self.args.demb)
+        # # decoder_input = decoder_input + emb_object_flat
+        # object_flat = self.dec_object(emb_object_flat)
+        # # objects = object_flat.view(*encoder_out_visual.shape[:2], *object_flat.shape[1:])
+
+        # feat.update(objects)
         feat.update(res)
         return feat
 
@@ -260,7 +287,7 @@ class Module(Base):
         output processing
         '''
         pred = {}
-        for ex, alow, alow_mask in zip(batch, feat['out_action_low'].max(2)[1].tolist(), feat['out_action_low_mask']):
+        for ex, alow, alow_mask, alow_coord in zip(batch, feat['out_action_low'].max(2)[1].tolist(), feat['out_action_low_mask'], feat['out_action_low_coord']):
             # remove padding tokens
             if self.pad in alow:
                 pad_start_idx = alow.index(self.pad)
@@ -285,10 +312,20 @@ class Module(Base):
             pred[task_id_ann] = {
                 'action_low': ' '.join(words),
                 'action_low_mask': p_mask,
+                'action_coord': alow_coord,
             }
 
         return pred
 
+    def embed_frames(self, frames_pad):
+        """
+        take a list of frames tensors, pad it, apply dropout and extract embeddings
+        """
+        self.vis_dropout(frames_pad)
+        frames_4d = frames_pad.view(-1, *frames_pad.shape[2:])
+        frames_pad_emb = self.vis_feat(frames_4d).view(*frames_pad.shape[:2], -1)
+        frames_pad_emb_skip = self.object_feat(frames_4d).view(*frames_pad.shape[:2], -1)
+        return frames_pad_emb, frames_pad_emb_skip
 
     def embed_action(self, action):
         '''
@@ -314,7 +351,6 @@ class Module(Base):
 
         # action loss
         pad_valid = (l_alow != self.pad)
-        import ipdb; ipdb.set_trace()
         alow_loss = F.cross_entropy(p_alow, l_alow, reduction='none')
         alow_loss *= pad_valid.float()
         alow_loss = alow_loss.mean()
@@ -322,11 +358,19 @@ class Module(Base):
 
         # mask loss
         valid_idxs = valid.view(-1).nonzero().view(-1)
-        flat_p_alow_mask = p_alow_mask.view(p_alow_mask.shape[0]*p_alow_mask.shape[1], *p_alow_mask.shape[2:])[valid_idxs]
-        flat_alow_mask = torch.cat(feat['action_low_mask'], dim=0)
-        alow_mask_loss = self.weighted_mask_loss(flat_p_alow_mask, flat_alow_mask)
-        losses['action_low_mask'] = alow_mask_loss * self.args.mask_loss_wt
+        # flat_p_alow_mask = p_alow_mask.view(p_alow_mask.shape[0]*p_alow_mask.shape[1], *p_alow_mask.shape[2:])[valid_idxs]
 
+        # point regression
+        flat_p_alow_coord = out['out_action_low_coord'].view(-1, 2)[valid_idxs]
+        flat_alow_coord = torch.cat(feat['action_low_coord'], dim=0)
+        alow_coord_loss = self.mse_loss(flat_p_alow_coord, flat_alow_coord).mean()
+        losses['action_low_coord'] = alow_coord_loss * self.args.mask_loss_wt 
+
+        # flat_alow_mask = torch.cat(feat['action_low_mask'], dim=0)
+        # alow_mask_loss = self.weighted_mask_loss(flat_p_alow_mask, flat_alow_mask)
+        # losses['action_low_mask'] = alow_mask_loss * self.args.mask_loss_wt
+
+    
         # subgoal completion loss
         if self.args.subgoal_aux_loss_wt > 0:
             p_subgoal = feat['out_subgoal'].squeeze(2)

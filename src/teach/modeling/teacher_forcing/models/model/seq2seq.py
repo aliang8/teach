@@ -60,6 +60,9 @@ class Module(nn.Module):
         # valid_unseen = splits['valid_unseen']
 
         loaders_train = dict(filter(lambda x: "train" in x[0], loaders.items()))
+        loaders_valid_seen = dict(filter(lambda x: "valid_seen" in x[0], loaders.items()))
+        loaders_valid_unseen = dict(filter(lambda x: "valid_unseen" in x[0], loaders.items()))
+
         assert len(set([len(loader) for loader in loaders_train.values()])) == 1
         epoch_length = len(next(iter(loaders_train.values())))
 
@@ -108,7 +111,7 @@ class Module(nn.Module):
 
                 m_train = collections.defaultdict(list)
                 # self.adjust_lr(optimizer, args.lr, epoch, decay_epoch=args.decay_epoch)
-                # total_train_loss = list()
+                total_train_loss = list()
                 model_outs, model_preds, losses_train = {}, {}, {}
                 for batch_name, (traj_data, input_dict, gt_dict) in batches.items():
                     feat = self.featurize(traj_data, load_mask=False, load_frames=False)
@@ -134,7 +137,7 @@ class Module(nn.Module):
                     sum_loss = sum_loss.detach().cpu()
                     total_train_loss.append(float(sum_loss))
                     train_iter += self.args.batch
-            import ipdb; ipdb.set_trace()
+
             ## compute metrics for train (too memory heavy!)
             # m_train = {k: sum(v) / len(v) for k, v in m_train.items()}
             # m_train.update(self.compute_metric(p_train, train))
@@ -142,14 +145,14 @@ class Module(nn.Module):
             # self.summary_writer.add_scalar('train/total_loss', m_train['total_loss'], train_iter)
 
             # compute metrics for valid_seen
-            p_valid_seen, valid_seen_iter, total_valid_seen_loss, m_valid_seen = self.run_pred(valid_seen, args=args, name='valid_seen', iter=valid_seen_iter)
-            m_valid_seen.update(self.compute_metric(p_valid_seen, valid_seen))
+            p_valid_seen, valid_seen_iter, total_valid_seen_loss, m_valid_seen = self.run_pred(loaders_valid_seen, args=args, name='valid_seen', iteration=valid_seen_iter)
+            # m_valid_seen.update(self.compute_metric(p_valid_seen, valid_seen))
             m_valid_seen['total_loss'] = float(total_valid_seen_loss)
             self.summary_writer.add_scalar('valid_seen/total_loss', m_valid_seen['total_loss'], valid_seen_iter)
 
             # compute metrics for valid_unseen
-            p_valid_unseen, valid_unseen_iter, total_valid_unseen_loss, m_valid_unseen = self.run_pred(valid_unseen, args=args, name='valid_unseen', iter=valid_unseen_iter)
-            m_valid_unseen.update(self.compute_metric(p_valid_unseen, valid_unseen))
+            p_valid_unseen, valid_unseen_iter, total_valid_unseen_loss, m_valid_unseen = self.run_pred(loaders_valid_unseen, args=args, name='valid_unseen', iteration=valid_unseen_iter)
+            # m_valid_unseen.update(self.compute_metric(p_valid_unseen, valid_unseen))
             m_valid_unseen['total_loss'] = float(total_valid_unseen_loss)
             self.summary_writer.add_scalar('valid_unseen/total_loss', m_valid_unseen['total_loss'], valid_unseen_iter)
 
@@ -173,8 +176,8 @@ class Module(nn.Module):
                     json.dump(stats, f, indent=2)
 
                 fpred = os.path.join(args.dout, 'valid_seen.debug.preds.json')
-                with open(fpred, 'wt') as f:
-                    json.dump(self.make_debug(p_valid_seen, valid_seen), f, indent=2)
+                # with open(fpred, 'wt') as f:
+                #     json.dump(self.make_debug(p_valid_seen, valid_seen), f, indent=2)
                 best_loss['valid_seen'] = total_valid_seen_loss
 
             # new best valid_unseen loss
@@ -192,9 +195,9 @@ class Module(nn.Module):
                 with open(fbest, 'wt') as f:
                     json.dump(stats, f, indent=2)
 
-                fpred = os.path.join(args.dout, 'valid_unseen.debug.preds.json')
-                with open(fpred, 'wt') as f:
-                    json.dump(self.make_debug(p_valid_unseen, valid_unseen), f, indent=2)
+                # fpred = os.path.join(args.dout, 'valid_unseen.debug.preds.json')
+                # with open(fpred, 'wt') as f:
+                #     json.dump(self.make_debug(p_valid_unseen, valid_unseen), f, indent=2)
 
                 best_loss['valid_unseen'] = total_valid_unseen_loss
 
@@ -223,7 +226,7 @@ class Module(nn.Module):
                         self.summary_writer.add_scalar(split + '/' + k, v, train_iter)
             pprint.pprint(stats)
 
-    def run_pred(self, dev, args=None, name='dev', iter=0):
+    def run_pred(self, dev, args=None, name='dev', iteration=0):
         '''
         validation loop
         '''
@@ -232,20 +235,29 @@ class Module(nn.Module):
         p_dev = {}
         self.eval()
         total_loss = list()
-        dev_iter = iter
-        for batch, feat in self.iterate(dev, args.batch):
-            out = self.forward(feat)
-            preds = self.extract_preds(out, batch, feat)
-            p_dev.update(preds)
-            loss = self.compute_loss(out, batch, feat)
-            for k, v in loss.items():
-                ln = 'loss_' + k
-                m_dev[ln].append(v.item())
-                self.summary_writer.add_scalar("%s/%s" % (name, ln), v.item(), dev_iter)
-            sum_loss = sum(loss.values())
-            self.summary_writer.add_scalar("%s/loss" % (name), sum_loss, dev_iter)
-            total_loss.append(float(sum_loss.detach().cpu()))
-            dev_iter += len(batch)
+        dev_iter = iteration
+        # for batch, feat in self.iterate(dev, args.batch):
+        data_iter = {key: iter(loader) for key, loader in dev.items()}
+        for _ in tqdm(range(1), desc=name):
+            # sample batches
+            batches = data_util.sample_batches(data_iter, self.args.device, self.pad, self.args)
+
+            for batch_name, (traj_data, input_dict, gt_dict) in batches.items():
+                feat = self.featurize(traj_data, load_mask=False, load_frames=False)
+                feat['frames'] = input_dict['frames']
+
+                out = self.forward(feat)
+                preds = self.extract_preds(out, traj_data, feat)
+                p_dev.update(preds)
+                loss = self.compute_loss(out, traj_data, feat)
+                for k, v in loss.items():
+                    ln = 'loss_' + k
+                    m_dev[ln].append(v.item())
+                    self.summary_writer.add_scalar("%s/%s" % (name, ln), v.item(), dev_iter)
+                sum_loss = sum(loss.values())
+                self.summary_writer.add_scalar("%s/loss" % (name), sum_loss, dev_iter)
+                total_loss.append(float(sum_loss.detach().cpu()))
+                dev_iter += len(traj_data)
 
         m_dev = {k: sum(v) / len(v) for k, v in m_dev.items()}
         total_loss = sum(total_loss) / len(total_loss)

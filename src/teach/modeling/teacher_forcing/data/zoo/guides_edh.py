@@ -79,9 +79,9 @@ class GuidesEdhDataset(BaseDataset):
         """
         if action_type == "action_low":
             # load low actions
-            # lang_action = [[vocab_orig.word2index(a["action_name"]) for a in task_json["num"]["driver_actions_low"]]]
-            lang_action = [a['action_id'] for a in task_json["tasks"][0]["episodes"][0]["interactions"]]
-            # lang_action = sum(lang_action, [])
+            lang_action = [[vocab_orig.word2index(a["action_name"]) for a in task_json["num"]["driver_actions_low"]]]
+            # lang_action = [a['action_id'] for a in task_json["tasks"][0]["episodes"][0]["interactions"]]
+            lang_action = sum(lang_action, [])
         elif action_type == "action_high_future":
             if "future_subgoals" in task_json:
                 lang_action = [vocab_orig.word2index(w) for w in task_json["future_subgoals"]]

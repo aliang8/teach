@@ -123,6 +123,7 @@ class ConvFrameMaskDecoder(nn.Module):
         self.go = nn.Parameter(torch.Tensor(demb))
         self.actor = nn.Linear(dhid+dhid+dframe+demb, demb)
         self.mask_dec = MaskDecoder(dhid=dhid+dhid+dframe+demb, pframe=self.pframe)
+        self.coord_pred = nn.Linear(dhid+dhid+dframe+demb, 2)
         self.teacher_forcing = teacher_forcing
         self.h_tm1_fc = nn.Linear(dhid, dhid)
 
@@ -153,11 +154,13 @@ class ConvFrameMaskDecoder(nn.Module):
         action_emb_t = self.actor(self.actor_dropout(cont_t))
         action_t = action_emb_t.mm(self.emb.weight.t())
         mask_t = self.mask_dec(cont_t)
+        coord_t = self.coord_pred(cont_t)
 
-        return action_t, mask_t, state_t, lang_attn_t
+        return action_t, mask_t, coord_t, state_t, lang_attn_t
 
     def forward(self, enc, frames, gold=None, max_decode=150, state_0=None):
-        max_t = gold.size(1) if self.training else min(max_decode, frames.shape[1])
+        # max_t = gold.size(1) if self.training else min(max_decode, frames.shape[1])
+        max_t = gold.size(1)
         batch = enc.size(0)
         e_t = self.go.repeat(batch, 1)
         state_t = state_0
@@ -165,11 +168,13 @@ class ConvFrameMaskDecoder(nn.Module):
         actions = []
         masks = []
         attn_scores = []
+        coords = []
         for t in range(max_t):
-            action_t, mask_t, state_t, attn_score_t = self.step(enc, frames[:, t], e_t, state_t)
+            action_t, mask_t, coord_t, state_t, attn_score_t = self.step(enc, frames[:, t], e_t, state_t)
             masks.append(mask_t)
             actions.append(action_t)
             attn_scores.append(attn_score_t)
+            coords.append(coord_t)
             if self.teacher_forcing and self.training:
                 w_t = gold[:, t]
             else:
@@ -179,6 +184,7 @@ class ConvFrameMaskDecoder(nn.Module):
         results = {
             'out_action_low': torch.stack(actions, dim=1),
             'out_action_low_mask': torch.stack(masks, dim=1),
+            'out_action_low_coord': torch.stack(coords, dim=1),
             'out_attn_scores': torch.stack(attn_scores, dim=1),
             'state_t': state_t
         }

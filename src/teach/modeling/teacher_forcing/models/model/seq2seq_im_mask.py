@@ -114,8 +114,26 @@ class Module(Base):
             lang_instr = self.zero_input(lang_instr) if self.args.zero_instr else lang_instr
 
             # append goal + instr
-            lang_goal_instr = lang_goal + lang_instr
-            feat['lang_goal_instr'].append(lang_goal_instr)
+            utter=[]
+            max_t=150 #len(ex['tasks'][0]['episodes'][0]['interactions'])
+            instr_len = [len(i) for i in ex["ann"]["instr"]]
+            for t in range(len(ex["ann"]["utter_t"])+1):
+                lang_instr_upto_t = lang_instr[:sum(instr_len[:t])]
+                lang_goal_instr = lang_goal + lang_instr_upto_t
+                if t==0:
+                    repeat = ex["ann"]["utter_t"][0]
+                elif t==len(ex["ann"]["utter_t"]):
+                    repeat = max_t-ex["ann"]["utter_t"][-1]
+                    if repeat<0:
+                        continue
+                else:
+                    repeat = ex["ann"]["utter_t"][t]-ex["ann"]["utter_t"][t-1] 
+                # print(t, ex["ann"]["utter_t"], repeat, max_t)
+                seq = list(torch.tensor(lang_goal_instr, device=device).repeat(repeat, 1))
+                utter+=seq
+            
+            # pad_seq = pad_sequence(utter, batch_first=True, padding_value=self.pad)
+            feat['lang_goal_instr'].extend(utter[:150])
 
             # load Resnet features from disk
             if load_frames and not self.test_mode:
@@ -151,7 +169,7 @@ class Module(Base):
                 if load_mask:
                     feat['action_low_mask'].append([self.decompress_mask(a['mask']) for a in ex['num']['action_low'] if a['mask'] is not None])
                 
-                # import ipdb; ipdb.set_trace()
+                
 
                 feat['action_low_coord'].append([[a['x'], a['y']] for a in ex['num']['interactions'] if 'x' in a if a['success']])
 
@@ -163,14 +181,18 @@ class Module(Base):
         # tensorization and padding
         for k, v in feat.items():
             if k in {'lang_goal_instr'}:
-                # import ipdb; ipdb.set_trace()
+                
                 # language embedding and padding
-                seqs = [torch.tensor(vv, device=device) for vv in v]
-                pad_seq = pad_sequence(seqs, batch_first=True, padding_value=self.pad)
+                # seqs = [torch.tensor(vv, device=device) for vv in v]
+                pad_seq = pad_sequence(v, batch_first=True, padding_value=self.pad)
+
+                # for i in 
                 seq_lengths = np.array(list(map(len, v)))
                 embed_seq = self.emb_word(pad_seq)
                 packed_input = pack_padded_sequence(embed_seq, seq_lengths, batch_first=True, enforce_sorted=False)
+                
                 feat[k] = packed_input
+                
             elif k in {'action_low_mask', 'action_low_coord'}:
                 # mask padding
                 seqs = [torch.tensor(vv, device=device, dtype=torch.float) for vv in v]
@@ -210,10 +232,12 @@ class Module(Base):
 
     def forward(self, feat, max_decode=300):
         cont_lang, enc_lang = self.encode_lang(feat)
-        state_0 = cont_lang, torch.zeros_like(cont_lang)
+        state_0 = cont_lang[:, 0], torch.zeros_like(cont_lang[:, 0])
         frames = self.vis_dropout(feat['frames'])
-        res = self.dec(enc_lang, frames, max_decode=max_decode, gold=feat['action_low'], state_0=state_0)
 
+        # import ipdb; ipdb.set_trace()
+        res = self.dec(enc_lang, frames, max_decode=max_decode, gold=feat['action_low'], state_0=state_0)
+        
 
         # get the output objects
         # emb_frames, emb_object = self.embed_frames(feat["frames"])
@@ -233,11 +257,17 @@ class Module(Base):
         '''
         emb_lang_goal_instr = feat['lang_goal_instr']
         self.lang_dropout(emb_lang_goal_instr.data)
+        
         enc_lang_goal_instr, _ = self.enc(emb_lang_goal_instr)
+        
         enc_lang_goal_instr, _ = pad_packed_sequence(enc_lang_goal_instr, batch_first=True)
         self.lang_dropout(enc_lang_goal_instr)
         cont_lang_goal_instr = self.enc_att(enc_lang_goal_instr)
 
+        # cont_lang_goal_instr
+        cont_lang_goal_instr = cont_lang_goal_instr.view(-1, 150,  *cont_lang_goal_instr.shape[1:])
+        enc_lang_goal_instr = enc_lang_goal_instr.view(-1, 150, *enc_lang_goal_instr.shape[1:])
+        # 
         return cont_lang_goal_instr, enc_lang_goal_instr
 
 

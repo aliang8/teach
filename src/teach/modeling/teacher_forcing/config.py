@@ -159,7 +159,7 @@ def cfg_train():
     # Seq2Seq 
     demb = 768 
     dhid = 512
-    pm_aux_loss_wt = 0 
+    pm_aux_loss_wt = 0
     subgoal_aux_loss_wt = 0
     action_loss_wt = 1
     mask_loss_wt = 1
@@ -171,7 +171,7 @@ def cfg_train():
     vis_dropout=0.3
     input_dropout=0
     lang_dropout=0
-    dec_teacher_forcing=False
+    dec_teacher_forcing=True
     zero_goal=False
     zero_instr=False
     

@@ -14,7 +14,7 @@ from teacher_forcing.utils import data_util
 # from gen.utils.image_util import decompress_mask
 
 
-class Module(Base):
+class Seq2SeqFollowerAgent(Base):
 
     def __init__(self, args, vocab, for_inference=False):
         '''

@@ -12,12 +12,12 @@ from torch.utils.data import Dataset as TorchDataset
 
 from teach.logger import create_logger
 
-logger = create_logger(__name__, level=logging.INFO)
+# logger = create_logger(__name__, level=logging.INFO)
 
 
 class BaseDataset(TorchDataset):
     def __init__(self, name, partition, args, ann_type):
-        logger.debug("Dataset __init__ with args %s" % str(args))
+        # logger.debug("Dataset __init__ with args %s" % str(args))
         path = os.path.join(constants.ET_DATA, name)
         self.partition = partition
         self.name = name
@@ -30,21 +30,22 @@ class BaseDataset(TorchDataset):
 
         # read information about the dataset
         self.dataset_info = data_util.read_dataset_info(name)
-        if self.dataset_info["visual_checkpoint"]:
-            logger.info("Visual checkpoint for data preprocessing: %s" % str(self.dataset_info["visual_checkpoint"]))
+        # if self.dataset_info["visual_checkpoint"]:
+        #     logger.info("Visual checkpoint for data preprocessing: %s" % str(self.dataset_info["visual_checkpoint"]))
 
         # load data
         self._length = self.load_data(path)
-        if self.args.fast_epoch:
-            self._length = 16
-        logger.info("%s dataset size = %d" % (partition, self._length))
+        # if self.args.fast_epoch:
+        #     self._length = 16
+        # logger.info("%s dataset size = %d" % (partition, self._length))
 
         # load vocabularies for input language and output actions
         vocab = data_util.load_vocab(name, ann_type)
+        self.vocab = vocab
         self.vocab_in = vocab["word"]
         out_type = "action_low" if args.model == "transformer" else "action_high"
         self.vocab_out = vocab[out_type]
-        logger.debug("Loaded vocab_out: %s" % str(self.vocab_out.to_dict()["index2word"]))
+        # logger.debug("Loaded vocab_out: %s" % str(self.vocab_out.to_dict()["index2word"]))
         # if several datasets are used, we will translate outputs to this vocab later
         self.vocab_translate = None
 

@@ -3,14 +3,13 @@ import os
 
 import torch
 from alfred import constants
-from alfred.data.zoo.base import BaseDataset
+from teacher_forcing.data.zoo.base import BaseDataset
 
 from teach.logger import create_logger
 
-logger = create_logger(__name__, level=logging.INFO)
+# logger = create_logger(__name__, level=logging.INFO)
 
-
-class GuidesEdhDataset(BaseDataset):
+class TATCDataset(BaseDataset):
     def __init__(self, name, partition, args, ann_type):
         super().__init__(name, partition, args, ann_type)
         # preset values
@@ -18,7 +17,7 @@ class GuidesEdhDataset(BaseDataset):
         self._load_frames = True
         # load the vocabulary for object classes
         vocab_obj_file = os.path.join(constants.ET_ROOT, constants.OBJ_CLS_VOCAB)
-        logger.info("Loading object vocab from %s" % vocab_obj_file)
+        # logger.info("Loading object vocab from %s" % vocab_obj_file)
         self.vocab_obj = torch.load(vocab_obj_file)
 
     def load_data(self, path):
@@ -51,12 +50,12 @@ class GuidesEdhDataset(BaseDataset):
         """
         feat = dict()
         # language inputs
-        feat["lang"] = GuidesEdhDataset.load_lang(task_json)
+        feat["lang"] = TATCDataset.load_lang(task_json)
 
         # action outputs
         if not self.test_mode:
             # low-level action
-            feat["action"] = GuidesEdhDataset.load_action(task_json, self.vocab_out)
+            feat["action"] = TATCDataset.load_action(task_json, self.vocab_out)
             # feat["obj_interaction_action"] = [
             #     a["obj_interaction_action"] for a in task_json["num"]["driver_actions_low"]
             # ]

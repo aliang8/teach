@@ -1,6 +1,9 @@
 import torch
 from torch import nn
 from torch.nn import functional as F
+# from transformers import AutoModelForCausalLM, AutoTokenizer
+# tokenizer = AutoTokenizer.from_pretrained("microsoft/DialoGPT-medium")
+# model = AutoModelForCausalLM.from_pretrained("microsoft/DialoGPT-medium")
 
 
 class SelfAttn(nn.Module):
@@ -132,7 +135,7 @@ class ConvFrameMaskDecoder(nn.Module):
     def step(self, enc, frame, e_t, state_tm1):
         # previous decoder hidden state
         h_tm1 = state_tm1[0]
-
+        # import ipdb; ipdb.set_trace()
         # encode vision and lang feat
         vis_feat_t = self.vis_encoder(frame)
         lang_feat_t = enc # language is encoded once at the start
@@ -170,7 +173,8 @@ class ConvFrameMaskDecoder(nn.Module):
         attn_scores = []
         coords = []
         for t in range(max_t):
-            action_t, mask_t, coord_t, state_t, attn_score_t = self.step(enc, frames[:, t], e_t, state_t)
+            # enc[:, min(t, enc.shape[1])].squeeze()
+            action_t, mask_t, coord_t, state_t, attn_score_t = self.step(enc[:, min(t, enc.shape[1]-1)], frames[:, t], e_t, state_t)
             masks.append(mask_t)
             actions.append(action_t)
             attn_scores.append(attn_score_t)

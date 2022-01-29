@@ -34,6 +34,7 @@ class TATCDataset(BaseDataset):
         # Add a stop action and duplicate the last frame
         feat_dict["action"].append(self.vocab_out.word2index("Stop"))
         feat_dict["frames"] = torch.cat((feat_dict["frames"], torch.unsqueeze(feat_dict["frames"][-1, :], 0)), 0)
+        # import ipdb; ipdb.set_trace()
         # feat_dict["obj_interaction_action"].append(0)
         # feat_dict["driver_actions_pred_mask"].append(0)
 
@@ -70,6 +71,7 @@ class TATCDataset(BaseDataset):
         load numericalized language from task_json
         """
         return sum(task_json["num"]["lang_instr"], [])
+        # return task_json["num"]["lang_instr"]
 
     @staticmethod
     def load_action(task_json, vocab_orig, action_type="action_low"):

@@ -110,10 +110,12 @@ class Module(nn.Module):
                 # gt.stamp("data fetching", unique=False)
 
                 m_train = collections.defaultdict(list)
+                
                 # self.adjust_lr(optimizer, args.lr, epoch, decay_epoch=args.decay_epoch)
                 total_train_loss = list()
                 model_outs, model_preds, losses_train = {}, {}, {}
                 for batch_name, (traj_data, input_dict, gt_dict) in batches.items():
+                    max_t = input_dict['frames'].shape[1]
                     feat = self.featurize(traj_data, load_mask=False, load_frames=False)
                     feat['frames'] = input_dict['frames']
 

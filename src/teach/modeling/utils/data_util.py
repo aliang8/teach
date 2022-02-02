@@ -9,8 +9,8 @@ from copy import deepcopy
 
 import lmdb
 import torch
-from alfred import constants
-from alfred.utils import helper_util
+from modeling import constants
+from modeling.utils import helper_util
 from PIL import Image
 from torch.nn.utils.rnn import pad_sequence
 from tqdm import tqdm
@@ -35,25 +35,15 @@ def read_traj_images(json_path, image_folder):
 
     images_dir = json_path.parents[2] / image_folder / json_path.parts[-2] / json_path.parts[-1].split(".")[0]
 
-    interactions = json_dict["tasks"][0]["episodes"][0]["interactions"]
-    commander_images = [interactions[i]["commander_obs"] for i in range(len(interactions))]
-    driver_images = [interactions[i]["driver_obs"] for i in range(len(interactions))]
-
-    # fimages = [images_dir / im for im in json_dict["driver_image_history"] + json_dict["driver_images_future"]]
+    fimages = [images_dir / im for im in json_dict["driver_image_history"] + json_dict["driver_images_future"]]
     logger.debug("Loading images from %s" % images_dir)
-    logger.debug("Expected commander image files: %s" % "\n\t".join([str(x) for x in commander_images]))
-    logger.debug("Expected driver image files: %s" % "\n\t".join([str(x) for x in driver_images]))
+    logger.debug("Expected image files: %s" % "\n\t".join([str(x) for x in fimages]))
 
-    if not all([os.path.exists(path) for path in commander_images]):
+    if not all([os.path.exists(path) for path in fimages]):
         return None
-    if not all([os.path.exists(path) for path in driver_images]):
-        return None
-
-    # assert len(fimages) > 0
-    commander_images = read_images(commander_images)
-    driver_images = read_images(driver_images)
-
-    return commander_images, driver_images
+    assert len(fimages) > 0
+    images = read_images(fimages)
+    return images
 
 
 def extract_features(images, extractor):

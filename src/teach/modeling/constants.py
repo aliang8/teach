@@ -3,9 +3,9 @@ import os
 ########################################################################################################################
 # General Settings
 
-ET_ROOT = os.environ["ET_ROOT"]
-ET_DATA = os.environ["ET_DATA"] if "ET_DATA" in os.environ else None
-ET_LOGS = os.environ["ET_LOGS"] if "ET_LOGS" in os.environ else None
+MODEL_ROOT = os.environ["MODEL_ROOT"]
+TEACH_DATA = os.environ["TEACH_DATA"] if "TEACH_DATA" in os.environ else None
+LOGS = os.environ["LOGS"] if "LOGS" in os.environ else None
 
 PAD = 0
 
@@ -17,7 +17,7 @@ NUM_EVAL_WORKERS_PER_GPU = 3
 # vocabulary file name
 VOCAB_FILENAME = "data.vocab"
 # vocabulary with object classes
-OBJ_CLS_VOCAB = "files/obj_cls.vocab"
+OBJ_CLS_VOCAB = "vocabs/obj_cls.vocab"
 
 #############################
 

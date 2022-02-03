@@ -9,8 +9,8 @@ from copy import deepcopy
 
 import lmdb
 import torch
-from modeling import constants
-from modeling.utils import helper_util
+from alfred import constants
+from alfred.utils import helper_util
 from PIL import Image
 from torch.nn.utils.rnn import pad_sequence
 from tqdm import tqdm
@@ -29,23 +29,6 @@ def read_images(image_path_list):
     return images
 
 
-# def read_traj_images(json_path, image_folder):
-#     with open(json_path) as json_file:
-#         json_dict = json.load(json_file)
-    
-#     # import ipdb; ipdb.set_trace()
-#     images_dir = json_path.parents[2] / image_folder / json_path.parts[-2] / json_path.parts[-1].split(".")[0]
-
-#     fimages = [images_dir / im for im in json_dict["driver_image_history"] + json_dict["driver_images_future"]]
-#     logger.debug("Loading images from %s" % images_dir)
-#     logger.debug("Expected image files: %s" % "\n\t".join([str(x) for x in fimages]))
-
-#     if not all([os.path.exists(path) for path in fimages]):
-#         return None
-#     assert len(fimages) > 0
-#     images = read_images(fimages)
-#     return images
-
 def read_traj_images(json_path, image_folder):
     with open(json_path) as json_file:
         json_dict = json.load(json_file)
@@ -56,6 +39,7 @@ def read_traj_images(json_path, image_folder):
     commander_images = [interactions[i]["commander_obs"] for i in range(len(interactions))]
     driver_images = [interactions[i]["driver_obs"] for i in range(len(interactions))]
 
+    # fimages = [images_dir / im for im in json_dict["driver_image_history"] + json_dict["driver_images_future"]]
     logger.debug("Loading images from %s" % images_dir)
     logger.debug("Expected commander image files: %s" % "\n\t".join([str(x) for x in commander_images]))
     logger.debug("Expected driver image files: %s" % "\n\t".join([str(x) for x in driver_images]))
@@ -120,17 +104,15 @@ def gather_jsons(files, output_path):
         pickle.dump(jsons, f)
 
 
-def get_preprocessor(PreprocessorClass, subgoal_ann, lock, vocab_path=None):
+def get_preprocessor(PreprocessorClass, subgoal_ann, lock, vocab_path=None, task_type="edh"):
     if vocab_path is None:
         init_words = ["<<pad>>", "<<seg>>", "<<goal>>", "<<mask>>"]
     else:
         init_words = []
-        
     vocabs_with_lock = {
         "word": helper_util.VocabWithLock(deepcopy(init_words), lock),
-        "driver_action_low": helper_util.VocabWithLock(deepcopy(init_words), lock),
-        "driver_action_high": helper_util.VocabWithLock(deepcopy(init_words), lock),
-        "commander_action_low": helper_util.VocabWithLock(deepcopy(init_words), lock),
+        "action_low": helper_util.VocabWithLock(deepcopy(init_words), lock),
+        "action_high": helper_util.VocabWithLock(deepcopy(init_words), lock),
     }
     if vocab_path is not None:
         vocabs_loaded = torch.load(vocab_path)
@@ -140,7 +122,7 @@ def get_preprocessor(PreprocessorClass, subgoal_ann, lock, vocab_path=None):
                 vocab.word2index(w, train=True)
                 vocab.counts[w] = loaded_dict["counts"][w]
 
-    driver_actions_high_init_words = [
+    actions_high_init_words = [
         "Navigate",
         "Pickup",
         "Place",
@@ -151,11 +133,10 @@ def get_preprocessor(PreprocessorClass, subgoal_ann, lock, vocab_path=None):
         "Slice",
         "Pour",
         "object",
-        "NoOp"
     ]
 
     # Reset low actions vocab to empty because Simbot vocab is different
-    driver_actions_low_init_words = [
+    actions_low_init_words = [
         "Stop",
         "Forward",
         "Backward",
@@ -174,28 +155,17 @@ def get_preprocessor(PreprocessorClass, subgoal_ann, lock, vocab_path=None):
         "ToggleOff",
         "Slice",
         "Pour",
-        "Text",
-        "NoOp"
     ]
+    if task_type == "tfd":
+        actions_low_init_words.append("Text")
 
-    commander_action_low_init_words = [
-        "OpenProgressCheck",
-        "SelectOid",
-        "SearchObject",
-        "Text",
-        "NoOp"
-    ]
-
-    vocabs_with_lock["driver_action_low"] = helper_util.VocabWithLock(driver_actions_high_init_words, lock)
-    vocabs_with_lock["driver_action_high"] = helper_util.VocabWithLock(driver_actions_high_init_words, lock)
-    vocabs_with_lock["commander_action_low"] = helper_util.VocabWithLock(commander_action_low_init_words, lock)
-
-    vocab_obj = torch.load(os.path.join(constants.MODEL_ROOT, constants.OBJ_CLS_VOCAB)).to_dict()
-
+    vocabs_with_lock["action_low"] = helper_util.VocabWithLock(actions_low_init_words, lock)
+    vocabs_with_lock["action_high"] = helper_util.VocabWithLock(actions_high_init_words, lock)
+    vocab_obj = torch.load(os.path.join(constants.ET_ROOT, constants.OBJ_CLS_VOCAB)).to_dict()
     logger.debug("In get_preprocessor, vocab_obj = %s" % vocab_obj["index2word"])
     for _i, w in enumerate(vocab_obj["index2word"]):
-        vocabs_with_lock["driver_action_high"].word2index(w, train=True)
-        vocabs_with_lock["driver_action_high"].counts[w] = vocab_obj["counts"][w]
+        vocabs_with_lock["action_high"].word2index(w, train=True)
+        vocabs_with_lock["action_high"].counts[w] = vocab_obj["counts"][w]
 
     preprocessor = PreprocessorClass(vocabs_with_lock, subgoal_ann)
     return preprocessor
@@ -266,7 +236,7 @@ def load_vocab(name, ann_type="lang"):
     """
     load a vocabulary from the dataset
     """
-    path = os.path.join(constants.TEACH_DATA, name, constants.VOCAB_FILENAME)
+    path = os.path.join(constants.ET_DATA, name, constants.VOCAB_FILENAME)
     logger.info("In load_vocab, loading vocab from %s" % path)
     vocab_dict = torch.load(path)
     # set name and annotation types
@@ -331,7 +301,7 @@ def read_dataset_info(data_name):
     """
     Read dataset a feature shape and a feature extractor checkpoint path
     """
-    path = os.path.join(constants.TEACH_DATA, data_name, "params.json")
+    path = os.path.join(constants.ET_DATA, data_name, "params.json")
     with open(path, "r") as f_params:
         params = json.load(f_params)
     return params

@@ -226,7 +226,7 @@ def load_vocab(name, ann_type="lang"):
     """
     load a vocabulary from the dataset
     """
-    path = os.path.join(constants.ET_DATA, name, constants.VOCAB_FILENAME)
+    path = os.path.join(constants.TEACH_DATA, name, constants.VOCAB_FILENAME)
     logger.info("In load_vocab, loading vocab from %s" % path)
     vocab_dict = torch.load(path)
     # set name and annotation types
@@ -291,7 +291,7 @@ def read_dataset_info(data_name):
     """
     Read dataset a feature shape and a feature extractor checkpoint path
     """
-    path = os.path.join(constants.ET_DATA, data_name, "params.json")
+    path = os.path.join(constants.TEACH_DATA, data_name, "params.json")
     with open(path, "r") as f_params:
         params = json.load(f_params)
     return params

@@ -44,7 +44,7 @@ class BaseDataset(TorchDataset):
 
         self.vocab = vocab
         self.vocab_in = vocab["word"]
-        out_type = "action_low" if args.model == ["transformer", "seq2seq_attn"] else "action_high"
+        out_type = "action_low" if args.model in ["transformer", "seq2seq_attn"] else "action_high"
         self.vocab_out = vocab[out_type]
         logger.debug("Loaded vocab_out: %s" % str(self.vocab_out.to_dict()["index2word"]))
         # if several datasets are used, we will translate outputs to this vocab later

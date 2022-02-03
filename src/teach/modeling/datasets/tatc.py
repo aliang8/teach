@@ -100,7 +100,8 @@ class TATCDataset(BaseDataset):
         """
         object_classes = []
         for idx, action in enumerate(task_json["num"]["driver_actions_low"]):
-            if self.args.compute_train_loss_over_history or task_json["num"]["driver_actions_pred_mask"][idx] == 1:
+            # if self.args.compute_train_loss_over_history or task_json["num"]["driver_actions_pred_mask"][idx] == 1:
+            if self.args.compute_train_loss_over_history:
                 if action["oid"] is not None:
                     object_class = action["oid"].split("|")[0]
                     object_classes.append(object_class if vocab is None else vocab.word2index(object_class))

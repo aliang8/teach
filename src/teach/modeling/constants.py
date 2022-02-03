@@ -5,7 +5,7 @@ import os
 
 MODEL_ROOT = os.environ["MODEL_ROOT"]
 TEACH_DATA = os.environ["TEACH_DATA"] if "TEACH_DATA" in os.environ else None
-LOGS = os.environ["LOGS"] if "LOGS" in os.environ else None
+TEACH_LOGS = os.environ["TEACH_LOGS"] if "TEACH_LOGS" in os.environ else None
 
 PAD = 0
 

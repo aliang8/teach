@@ -131,6 +131,7 @@ def get_preprocessor(PreprocessorClass, subgoal_ann, lock, vocab_path=None):
         "driver_action_low": helper_util.VocabWithLock(deepcopy(init_words), lock),
         "driver_action_high": helper_util.VocabWithLock(deepcopy(init_words), lock),
         "commander_action_low": helper_util.VocabWithLock(deepcopy(init_words), lock),
+        "object_cls": helper_util.VocabWithLock(deepcopy(init_words), lock),
     }
     if vocab_path is not None:
         vocabs_loaded = torch.load(vocab_path)
@@ -196,6 +197,7 @@ def get_preprocessor(PreprocessorClass, subgoal_ann, lock, vocab_path=None):
     for _i, w in enumerate(vocab_obj["index2word"]):
         vocabs_with_lock["driver_action_high"].word2index(w, train=True)
         vocabs_with_lock["driver_action_high"].counts[w] = vocab_obj["counts"][w]
+        vocabs_with_lock['object_cls'].word2index(w, train=True)
 
     preprocessor = PreprocessorClass(vocabs_with_lock, subgoal_ann)
     return preprocessor

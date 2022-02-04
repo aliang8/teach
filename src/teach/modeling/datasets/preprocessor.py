@@ -23,6 +23,8 @@ class Preprocessor(object):
             self.vocab = vocab
 
         self.word_seg = self.vocab["word"].word2index("<<seg>>", train=False)
+        self.commander_mark = self.vocab["word"].word2index("<<commander>>", train=True)
+        self.driver_mark = self.vocab["word"].word2index("<<driver>>", train=True)
 
     @staticmethod
     def numericalize(vocab, words, train=True):
@@ -68,21 +70,39 @@ class Preprocessor(object):
             self.numericalize(self.vocab["word"], goal_desc, train=not is_test_split) 
         ]
 
-        commander_utterances_tok = self.process_sentences(commander_utterances)
-        driver_utterances_tok = self.process_sentences(driver_utterances)
+        c_toks = self.process_sentences(commander_utterances)
+        d_toks = self.process_sentences(driver_utterances)
+        
+        commander_utts_tok, driver_utts_tok, combined_utts_tok = [], [], []
 
-        commander_utterances_tok = [utter + ["<<sent>>"] for utter in commander_utterances_tok] + [["<<stop>>"]]
-        driver_utterances_tok = [utter + ["<<sent>>"] for utter in driver_utterances_tok] + [["<<stop>>"]]
+        for (commander_utt, driver_utt) in zip(c_toks, d_toks):
+            # Add an end sentence token if the utterance_t isn't an empty sentence
+            if commander_utt:
+                commander_utts_tok.append(["<<commander>>"] + commander_utt + ["<<sent>>"])
+                combined_utts_tok.append(["<<commander>>"] + commander_utt + ["<<sent>>"])
 
-        traj["commander_utterance_tok"] = commander_utterances_tok
-        traj["driver_utterances_tok"] = driver_utterances_tok
+            if driver_utt:
+                driver_utts_tok.append(["<<driver>>"] + driver_utt + ["<<sent>>"])
+                combined_utts_tok.append(["<<driver>>"] + driver_utt + ["<<sent>>"])
+
+        commander_utts_tok.append(["<<stop>>"])
+        driver_utts_tok.append(["<<stop>>"])
+        combined_utts_tok.append(["<<stop>>"])
+
+        traj["commander_utterances_tok"] = commander_utts_tok
+        traj["driver_utterances_tok"] = driver_utts_tok
+        traj["combined_utts_tok"] = combined_utts_tok
 
         traj["commander_utterances"] = [
-            self.numericalize(self.vocab["word"], x, train=not is_test_split) for x in commander_utterances_tok
+            self.numericalize(self.vocab["word"], x, train=not is_test_split) for x in commander_utts_tok
         ]
 
         traj["driver_utterances"] = [
-            self.numericalize(self.vocab["word"], x, train=not is_test_split) for x in driver_utterances_tok
+            self.numericalize(self.vocab["word"], x, train=not is_test_split) for x in driver_utts_tok
+        ]
+
+        traj["combined_utterances"] = [
+            self.numericalize(self.vocab["word"], x, train=not is_test_split) for x in combined_utts_tok
         ]
 
     def process_actions(self, ex, traj):

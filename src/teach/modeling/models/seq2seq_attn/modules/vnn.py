@@ -98,14 +98,14 @@ class ResnetVisualEncoder(nn.Module):
 #         return x
 
 
-class ConvFrameCoordDecoder(nn.Module):
+class ConvFrameDecoder(nn.Module):
     '''
     action decoder
     '''
 
-    def __init__(self, emb, dframe, dhid, pframe=300,
+    def __init__(self, emb, dframe, dhid, num_obj_classes=0,
                  attn_dropout=0., hstate_dropout=0., actor_dropout=0., input_dropout=0.,
-                 teacher_forcing=False):
+                 teacher_forcing=False, pred="coord"):
         super().__init__()
         demb = emb.weight.size(1)
 
@@ -120,7 +120,9 @@ class ConvFrameCoordDecoder(nn.Module):
         self.actor_dropout = nn.Dropout(actor_dropout)
         self.go = nn.Parameter(torch.Tensor(demb))
         self.actor = nn.Linear(dhid+dhid+dframe+demb, demb)
-        self.coord_pred = nn.Linear(dhid+dhid+dframe+demb, 2)
+        self.aux_pred_type = pred
+        aux_output_size = 2 if pred == "coord" else num_obj_classes
+        self.aux_pred = nn.Linear(dhid+dhid+dframe+demb, aux_output_size)
         self.teacher_forcing = teacher_forcing
         self.h_tm1_fc = nn.Linear(dhid, dhid)
 
@@ -150,9 +152,9 @@ class ConvFrameCoordDecoder(nn.Module):
         cont_t = torch.cat([h_t, inp_t], dim=1)
         action_emb_t = self.actor(self.actor_dropout(cont_t))
         action_t = action_emb_t.mm(self.emb.weight.t())
-        coord_t = self.coord_pred(cont_t)
+        aux_t = self.aux_pred(cont_t)
 
-        return action_t, coord_t, state_t, lang_attn_t
+        return action_t, aux_t, state_t, lang_attn_t
 
     def forward(self, enc, frames, gold=None, max_decode=150, state_0=None):
         # max_t = gold.size(1) if self.training else min(max_decode, frames.shape[1])
@@ -163,12 +165,12 @@ class ConvFrameCoordDecoder(nn.Module):
 
         actions = []
         attn_scores = []
-        coords = []
+        aux_output = []
         for t in range(max_t):
-            action_t, coord_t, state_t, attn_score_t = self.step(enc[:, min(t, enc.shape[1]-1)], frames[:, t], e_t, state_t)
+            action_t, aux_t, state_t, attn_score_t = self.step(enc[:, min(t, enc.shape[1]-1)], frames[:, t], e_t, state_t)
             actions.append(action_t)
             attn_scores.append(attn_score_t)
-            coords.append(coord_t)
+            aux_output.append(aux_t)
             if self.teacher_forcing and self.training:
                 w_t = gold[:, t]
             else:
@@ -177,7 +179,7 @@ class ConvFrameCoordDecoder(nn.Module):
 
         results = {
             'out_action_low': torch.stack(actions, dim=1),
-            'out_action_low_coord': torch.stack(coords, dim=1),
+            f'out_action_low_{self.aux_pred_type}': torch.stack(aux_output, dim=1),
             'out_attn_scores': torch.stack(attn_scores, dim=1),
             'state_t': state_t
         }

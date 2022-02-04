@@ -33,7 +33,9 @@ class TATCDataset(BaseDataset):
             feat_dict["frames"] = self.load_frames(key)
 
         # Add a stop action and duplicate the last frame
-        feat_dict["action"].append(self.vocab_out.word2index("Stop"))
+        feat_dict["driver_action"].append(self.driver_vocab_out.word2index("Stop"))
+        # TODO: commander need a stop?
+
         feat_dict["frames"] = torch.cat((feat_dict["frames"], torch.unsqueeze(feat_dict["frames"][-1, :], 0)), 0)
         # feat_dict["obj_interaction_action"].append(0)
         # feat_dict["driver_actions_pred_mask"].append(0)
@@ -51,12 +53,14 @@ class TATCDataset(BaseDataset):
         """
         feat = dict()
         # language inputs
-        feat["lang"] = TATCDataset.load_lang(task_json)
+        feat["commander_lang"], feat["driver_lang"] = TATCDataset.load_lang(task_json)
 
         # action outputs
         if not self.test_mode:
             # low-level action
-            feat["action"] = TATCDataset.load_action(task_json, self.vocab_out)
+            feat["commander_action"] = TATCDataset.load_action(task_json, self.commander_vocab_out, agent="commander")
+            feat["driver_action"] = TATCDataset.load_action(task_json, self.driver_vocab_out, agent="driver")
+
             # feat["obj_interaction_action"] = [
             #     a["obj_interaction_action"] for a in task_json["num"]["driver_actions_low"]
             # ]
@@ -70,23 +74,26 @@ class TATCDataset(BaseDataset):
         """
         load numericalized language from task_json
         """
-        return sum(task_json["num"]["lang_instr"], [])
+        return sum(task_json["commander_utterances"], []), sum(task_json["driver_utterances"], [])
 
     @staticmethod
-    def load_action(task_json, vocab_orig, action_type="action_low"):
+    def load_action(task_json, vocab_orig, agent="driver", action_type="action_low"):
         """
         load action as a list of tokens from task_json
         """
         if action_type == "action_low":
             # load low actions
-            lang_action = [[vocab_orig.word2index(a["action_name"]) for a in task_json["num"]["driver_actions_low"]]]
+            idx = 0 if agent == "commander" else 1
+            lang_action = [[vocab_orig.word2index(a[idx]["action_name"]) for a in task_json["actions_low"]]]
             lang_action = sum(lang_action, [])
         elif action_type == "action_high_future":
+            import ipdb; ipdb.set_trace()
             if "future_subgoals" in task_json:
                 lang_action = [vocab_orig.word2index(w) for w in task_json["future_subgoals"]]
             else:
                 lang_action = [0]
         elif action_type == "action_high_all":
+            import ipdb; ipdb.set_trace()
             lang_action = [
                 vocab_orig.word2index(w) for w in task_json["history_subgoals"] + task_json["future_subgoals"]
             ]
@@ -99,10 +106,10 @@ class TATCDataset(BaseDataset):
         load object classes for interactive actions
         """
         object_classes = []
-        for idx, action in enumerate(task_json["num"]["driver_actions_low"]):
+        for idx, (commander_action, driver_action) in enumerate(task_json["actions_low"]):
             # if self.args.compute_train_loss_over_history or task_json["num"]["driver_actions_pred_mask"][idx] == 1:
             if self.args.compute_train_loss_over_history:
-                if action["oid"] is not None:
-                    object_class = action["oid"].split("|")[0]
+                if driver_action["oid"] is not None:
+                    object_class = driver_action["oid"].split("|")[0]
                     object_classes.append(object_class if vocab is None else vocab.word2index(object_class))
         return object_classes

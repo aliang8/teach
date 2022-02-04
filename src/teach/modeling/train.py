@@ -172,18 +172,21 @@ def process_vocabs(datasets, args):
     """
     # find the longest vocabulary for outputs among all datasets
     for dataset in datasets:
-        logger.debug("dataset.id = %s, vocab_out = %s" % (dataset.id, str(dataset.vocab_out)))
-    vocab_out = sorted(datasets, key=lambda x: len(x.vocab_out))[-1].vocab_out
+        logger.debug("dataset.id = %s, driver_vocab_out = %s, commander_vocab_out = %s" % (dataset.id, str(dataset.driver_vocab_out), str(dataset.commander_vocab_out)))
+    driver_vocab_out = sorted(datasets, key=lambda x: len(x.driver_vocab_out))[-1].driver_vocab_out
+    commander_vocab_out = sorted(datasets, key=lambda x: len(x.commander_vocab_out))[-1].commander_vocab_out
+
     # make all datasets to use this vocabulary for outputs translation
     for dataset in datasets:
-        dataset.vocab_translate = vocab_out
+        dataset.driver_vocab_translate = driver_vocab_out
+        dataset.commander_vocab_translate = commander_vocab_out
     # prepare a dictionary for embeddings initialization: vocab names and their sizes
     embs_ann = {}
     for dataset in datasets:
         embs_ann[dataset.name] = len(dataset.vocab_in)
     
     vocab = sorted(datasets, key=lambda x: len(x.vocab))[-1].vocab
-    return embs_ann, vocab_out, vocab
+    return embs_ann, driver_vocab_out, commander_vocab_out, vocab
 
 
 @ex.automain
@@ -202,8 +205,7 @@ def main(exp, seq2seq):
         datasets.extend(load_data(name, args, ann_type, valid_only=True))
 
     # assign vocabs to datasets and check their sizes for nn.Embeding inits
-    embs_ann, vocab_out, vocab = process_vocabs(datasets, args)
-    logger.debug("In train.main, vocab_out = %s" % str(vocab_out))
+    embs_ann, driver_vocab_out, commander_vocab_out, vocab = process_vocabs(datasets, args)
     # wrap datasets with loaders
     loaders = wrap_datasets(datasets, args)
     # create the model

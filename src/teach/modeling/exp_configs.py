@@ -13,6 +13,8 @@ def cfg_exp():
     name = "default"
     # model to use
     model = "transformer"
+    # which agent is training
+    agent = "driver"
     # which device to use
     device = "cuda"
     # number of data loading workers or evaluation processes (0 for main thread)

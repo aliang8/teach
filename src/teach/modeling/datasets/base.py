@@ -44,11 +44,22 @@ class BaseDataset(TorchDataset):
 
         self.vocab = vocab
         self.vocab_in = vocab["word"]
-        out_type = "action_low" if args.model in ["transformer", "seq2seq_attn"] else "action_high"
-        self.vocab_out = vocab[out_type]
-        logger.debug("Loaded vocab_out: %s" % str(self.vocab_out.to_dict()["index2word"]))
+
+        if args.model in ["transformer", "seq2seq_attn"]:
+            driver_out_type = "driver_action_low"
+        else:
+            driver_out_type = "driver_action_high"
+
+        commander_out_type = "commander_action_low"
+        self.driver_vocab_out = vocab[driver_out_type]
+        self.commander_vocab_out = vocab[commander_out_type]
+
+        logger.debug("Loaded driver vocab_out: %s" % str(self.driver_vocab_out.to_dict()["index2word"]))
+        logger.debug("Loaded commander vocab_out: %s" % str(self.commander_vocab_out.to_dict()["index2word"]))
+
         # if several datasets are used, we will translate outputs to this vocab later
-        self.vocab_translate = None
+        self.driver_vocab_translate = None
+        self.commander_vocab_translate = None
 
     def load_data(self, path, feats=True, jsons=True):
         """
@@ -77,8 +88,8 @@ class BaseDataset(TorchDataset):
                         json["dataset_name"] = self.name
                         self.jsons_and_keys.append((json, key))
                         # if the dataset has script annotations, do not add identical data
-                        if len(set([str(j["ann"]["instr"]) for j in task_jsons])) == 1:
-                            break
+                        # if len(set([str(j["ann"]["instr"]) for j in task_jsons])) == 1:
+                        #     break
 
         # return the true length of the loaded data
         return len(self.jsons_and_keys) if jsons else None

@@ -186,7 +186,7 @@ def get_preprocessor(PreprocessorClass, subgoal_ann, lock, vocab_path=None):
         "NoOp"
     ]
 
-    vocabs_with_lock["driver_action_low"] = helper_util.VocabWithLock(driver_actions_high_init_words, lock)
+    vocabs_with_lock["driver_action_low"] = helper_util.VocabWithLock(driver_actions_low_init_words, lock)
     vocabs_with_lock["driver_action_high"] = helper_util.VocabWithLock(driver_actions_high_init_words, lock)
     vocabs_with_lock["commander_action_low"] = helper_util.VocabWithLock(commander_action_low_init_words, lock)
 

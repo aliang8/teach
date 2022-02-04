@@ -71,8 +71,11 @@ class Preprocessor(object):
         commander_utterances_tok = self.process_sentences(commander_utterances)
         driver_utterances_tok = self.process_sentences(driver_utterances)
 
-        commander_utterances_tok = [utter + ["<<sent>>"] for utter in commander_utterances_tok]
-        driver_utterances_tok = [utter + ["<<sent>>"] for utter in driver_utterances_tok]
+        commander_utterances_tok = [utter + ["<<sent>>"] for utter in commander_utterances_tok] + [["<<stop>>"]]
+        driver_utterances_tok = [utter + ["<<sent>>"] for utter in driver_utterances_tok] + [["<<stop>>"]]
+
+        traj["commander_utterance_tok"] = commander_utterances_tok
+        traj["driver_utterances_tok"] = driver_utterances_tok
 
         traj["commander_utterances"] = [
             self.numericalize(self.vocab["word"], x, train=not is_test_split) for x in commander_utterances_tok
@@ -96,21 +99,10 @@ class Preprocessor(object):
         with open(os.path.join(TEACH_SRC, action_to_idx_json)) as f:
             action_to_idx = json.load(f)
 
-        all_interactions = traj['tasks'][0]['episodes'][0]['interactions']
+        all_interactions = ex['tasks'][0]['episodes'][0]['interactions']
         
-        num_interactions = len(all_interactions)
+        # num_interactions = len(all_interactions)
 
-        # Add the ID and action names
-        processed_interactions = []
-        for action in all_interactions:
-            action_dict = action.copy()
-            idx = action["action_id"]
-            action_idx = action_to_idx[str(idx)] # get the actual index
-            action_name = action_dict["action_name"] = idx_to_action_name[str(action_idx)] # get the action name
-            key = "driver_action_low" if action_dict["agent_id"] == 1 else "commander_action_low"
-            action_dict["action"] = self.vocab[key].word2index(action_name, train=True)
-            processed_interactions.append(action_dict)
-        
         no_op_commander = dict(
             agent_id=0,
             action=self.vocab["commander_action_low"].word2index("NoOp", train=True),
@@ -125,34 +117,50 @@ class Preprocessor(object):
         no_op_driver = no_op_commander.copy()
         no_op_driver['agent_id'] = 1
 
-        ctr = 0
-        while ctr < len(processed_interactions) - 1:
-            action_dict = processed_interactions[ctr].copy()
-            next_action_dict = processed_interactions[ctr+1]
-            if action_dict["agent_id"] == 0:
-                if next_action_dict["agent_id"] == 1:
-                    traj["actions_low"].append([action_dict, next_action_dict]) # C, F
-                    ctr += 2
-                else:
-                    no_op_driver = no_op_driver.copy()
-                    no_op_driver['time_start'] = action_dict['time_start']
-                    traj["actions_low"].append([action_dict, no_op_driver])
-                    ctr += 1
-            elif action_dict["agent_id"] == 1:
-                if next_action_dict["agent_id"] == 0:
-                    traj["actions_low"].append([next_action_dict, action_dict]) # C, F
-                    ctr += 2
-                else:
-                    no_op_commander = no_op_commander.copy()
-                    no_op_commander['time_start'] = action_dict['time_start']
-                    traj["actions_low"].append([no_op_commander, action_dict])
-                    ctr += 1
-
-        if traj["actions_low"][-1][0]["action"] == "NoOp" or traj["actions_low"][-1][1]["action"] == "NoOp":
-            action_dict = processed_interactions[-1].copy()
+        # Add the ID and action names
+        # processed_interactions = []
+        for i, action in enumerate(all_interactions):
+            action_dict = action.copy()
+            idx = action["action_id"]
+            action_idx = action_to_idx[str(idx)] # get the actual index
+            action_name = action_dict["action_name"] = idx_to_action_name[str(action_idx)] # get the action name
+            key = "driver_action_low" if action_dict["agent_id"] == 1 else "commander_action_low"
+            action_dict["action"] = self.vocab[key].word2index(action_name, train=True)
             if action_dict["agent_id"] == 0:
                 no_op_driver['time_start'] = action_dict['time_start']
                 traj["actions_low"].append([action_dict, no_op_driver])
             else:
                 no_op_commander['time_start'] = action_dict['time_start']
                 traj["actions_low"].append([no_op_commander, action_dict])
+
+        # ctr = 0
+        # while ctr < len(processed_interactions) - 1:
+        #     action_dict = processed_interactions[ctr].copy()
+        #     next_action_dict = processed_interactions[ctr+1]
+        #     if action_dict["agent_id"] == 0:
+        #         if next_action_dict["agent_id"] == 1:
+        #             traj["actions_low"].append([action_dict, next_action_dict]) # C, F
+        #             ctr += 2
+        #         else:
+        #             no_op_driver = no_op_driver.copy()
+        #             no_op_driver['time_start'] = action_dict['time_start']
+        #             traj["actions_low"].append([action_dict, no_op_driver])
+        #             ctr += 1
+        #     elif action_dict["agent_id"] == 1:
+        #         if next_action_dict["agent_id"] == 0:
+        #             traj["actions_low"].append([next_action_dict, action_dict]) # C, F
+        #             ctr += 2
+        #         else:
+        #             no_op_commander = no_op_commander.copy()
+        #             no_op_commander['time_start'] = action_dict['time_start']
+        #             traj["actions_low"].append([no_op_commander, action_dict])
+        #             ctr += 1
+
+        # if traj["actions_low"][-1][0]["action"] == "NoOp" or traj["actions_low"][-1][1]["action"] == "NoOp":
+        #     action_dict = processed_interactions[-1].copy()
+        #     if action_dict["agent_id"] == 0:
+        #         no_op_driver['time_start'] = action_dict['time_start']
+        #         traj["actions_low"].append([action_dict, no_op_driver])
+        #     else:
+        #         no_op_commander['time_start'] = action_dict['time_start']
+        #         traj["actions_low"].append([no_op_commander, action_dict])

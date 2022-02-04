@@ -82,24 +82,23 @@ class Module(Base):
             #########
             # inputs
             #########
-
             # serialize segments
-            self.serialize_lang_action(ex)
+            self.serialize_lang_action(ex, agent=self.args.agent)
 
             # goal and instr language
-            lang_goal, lang_instr = ex['num']['lang_goal'][0], ex['num']['lang_instr']
+            lang_goal, lang_utt = ex['lang_goal'][0], ex[f'{self.args.agent}_utterances']
 
             # zero inputs if specified
             lang_goal = self.zero_input(lang_goal) if self.args.zero_goal else lang_goal
-            lang_instr = self.zero_input(lang_instr) if self.args.zero_instr else lang_instr
+            lang_utt = self.zero_input(lang_utt) if self.args.zero_instr else lang_utt
 
             # append goal + instr
             # utter = []
             # max_t = 150 
             # instr_len = [len(i) for i in ex["ann"]["instr"]]
             # for t in range(len(ex["ann"]["utter_t"])+1):
-            #     lang_instr_upto_t = lang_instr[:sum(instr_len[:t])]
-            #     lang_goal_instr = lang_goal + lang_instr_upto_t
+            #     lang_utt_upto_t = lang_utt[:sum(instr_len[:t])]
+            #     lang_goal_instr = lang_goal + lang_utt_upto_t
             #     if t==0:
             #         repeat = ex["ann"]["utter_t"][0]
             #     elif t==len(ex["ann"]["utter_t"]):
@@ -112,6 +111,9 @@ class Module(Base):
             #     utter+=seq
             
             # feat['lang_goal_instr'].extend(utter[:150])
+            feat["lang_goal_instr"] = [lang_goal]
+            # import ipdb; ipdb.set_trace()
+
 
             # load Resnet features from disk
             if load_frames and not self.test_mode:
@@ -138,27 +140,26 @@ class Module(Base):
             #########
             # outputs
             #########
-
             if not self.test_mode:
-                # low-level action
-                feat['action_low'].append([a['action'][0] for a in ex['num']['driver_actions_low']])                
+                feat["action_low"].append(ex["action_low"])
 
-                feat['action_low_coord'].append([[a['x'], a['y']] for a in ex['num']['interactions'] if 'x' in a if a['success']])
-
-                # low-level valid interact
-                # TODO: i think this is only interact actions
-                feat['action_low_valid_interact'].append([a['success'] for a in ex['num']['driver_actions_low'] if 'x' in a])
-
+                action_low_coord, action_low_valid_interact = [], []
+                for (commander_action, driver_action) in ex['actions_low']:
+                    if driver_action["success"] and "x" in driver_action:
+                        action_low_coord.append([driver_action["x"], driver_action["y"]])
+                        action_low_valid_interact.append(1)
+                    else:
+                        action_low_valid_interact.append(0)
+                
+                feat["action_low_coord"].append(action_low_coord)
+                feat["action_low_valid_interact"].append(action_low_valid_interact)
 
         # tensorization and padding
         for k, v in feat.items():
             if k in {'lang_goal_instr'}:
-                
                 # language embedding and padding
-                # seqs = [torch.tensor(vv, device=device) for vv in v]
-                pad_seq = pad_sequence(v, batch_first=True, padding_value=self.pad)
-
-                # for i in 
+                seqs = [torch.tensor(vv, device=device) for vv in v]
+                pad_seq = pad_sequence(seqs, batch_first=True, padding_value=self.pad)
                 seq_lengths = np.array(list(map(len, v)))
                 embed_seq = self.emb_word(pad_seq)
                 packed_input = pack_padded_sequence(embed_seq, seq_lengths, batch_first=True, enforce_sorted=False)
@@ -181,15 +182,17 @@ class Module(Base):
         return feat
 
 
-    def serialize_lang_action(self, feat):
+    def serialize_lang_action(self, feat, agent=""):
         '''
         append segmented instr language and low-level actions into single sequences
         '''
-        is_serialized = not isinstance(feat['num']['lang_instr'][0], list)
+        key = f"{agent}_utterances"
+        idx = 0 if agent == "commander" else 1
+        is_serialized = not isinstance(feat[key][0], list)
         if not is_serialized:
-            feat['num']['lang_instr'] = [word for desc in feat['num']['lang_instr'] for word in desc]
+            feat[key] = [word for desc in feat[key] for word in desc]
             if not self.test_mode:
-                feat['num']['action_low'] = [a['action_id'] for a in feat['num']['interactions']]
+                feat['action_low'] = [a[idx]['action'] for a in feat['actions_low']]
 
     def forward(self, feat, max_decode=300):
         cont_lang, enc_lang = self.encode_lang(feat)

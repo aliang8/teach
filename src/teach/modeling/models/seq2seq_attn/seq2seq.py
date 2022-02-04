@@ -33,8 +33,11 @@ class Module(nn.Module):
 
         # emb modules
         self.emb_word = nn.Embedding(len(vocab['word']), args.demb)
-        self.emb_action_low = nn.Embedding(len(vocab['action_low']), args.demb)
-        # self.emb_action_low = nn.Embedding(107, args.demb)
+
+        if args.agent == "driver":
+            self.emb_action_low = nn.Embedding(len(vocab['driver_action_low']), args.demb)
+        elif args.agent == "commander":
+            self.emb_action_low = nn.Embedding(len(vocab['commander_action_low']), args.demb)
 
         # end tokens
         # TODO: word or action_low??

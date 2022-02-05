@@ -51,12 +51,12 @@ class InferenceRunnerConfig:
 
 
 class InferenceRunner:
-    def __init__(self, edh_instance_files, config: InferenceRunnerConfig):
-        self._edh_instance_files = edh_instance_files
+    def __init__(self, game_files, config: InferenceRunnerConfig):
+        self._game_files = game_files
         self._config = config
 
     def run(self):
-        self._launch_processes(self._edh_instance_files, self._config)
+        self._launch_processes(self._game_files, self._config)
         return self._load_metrics()
 
     def _load_metrics(self):
@@ -76,14 +76,14 @@ class InferenceRunner:
         ]
 
     @staticmethod
-    def _launch_processes(edh_instance_files, config: InferenceRunnerConfig):
+    def _launch_processes(game_files, config: InferenceRunnerConfig):
         processes = []
         ers = []
         try:
             for process_index in range(config.num_processes):
                 er = EpisodeReplay("thor", ["ego", "allo", "targetobject"])
                 ers.append(er)
-                process = InferenceRunner._launch_process(process_index, edh_instance_files, config, er)
+                process = InferenceRunner._launch_process(process_index, game_files, config, er)
                 processes.append(process)
         finally:
             InferenceRunner._join_processes(processes)
@@ -91,8 +91,8 @@ class InferenceRunner:
                 er.simulator.shutdown_simulator()
 
     @staticmethod
-    def _launch_process(process_index, edh_instance_files, config: InferenceRunnerConfig, er: EpisodeReplay):
-        num_files = len(edh_instance_files)
+    def _launch_process(process_index, game_files, config: InferenceRunnerConfig, er: EpisodeReplay):
+        num_files = len(game_files)
         num_files_per_process = InferenceRunner._get_num_files_per_process(
             num_files=num_files, num_processes=config.num_processes
         )
@@ -102,7 +102,7 @@ class InferenceRunner:
             num_files=num_files,
         )
 
-        files_to_process = edh_instance_files[start_index:end_index]
+        files_to_process = game_files[start_index:end_index]
 
         process = mp.Process(target=InferenceRunner._run, args=(process_index, files_to_process, config, er))
 
@@ -119,7 +119,7 @@ class InferenceRunner:
 
         for file_index, instance_file in enumerate(files_to_process):
             try:
-                instance_id, instance_metrics = InferenceRunner._run_edh_instance(instance_file, config, model, er)
+                instance_id, instance_metrics = InferenceRunner._run_game(instance_file, config, model, er)
                 metrics[instance_id] = instance_metrics
                 save_dict_as_json(metrics, metrics_file)
 
@@ -129,28 +129,22 @@ class InferenceRunner:
                 err_msg = f"exception happened for instance={instance_file}, continue with the rest"
                 logger.error(err_msg, exc_info=True)
                 continue
-
+                
     @staticmethod
-    def _load_edh_history_images(edh_instance, config: InferenceRunnerConfig):
-        image_file_names = edh_instance["driver_image_history"]
-        image_dir = os.path.join(config.data_dir, "images", config.split, edh_instance["game_id"])
-        return load_images(image_dir, image_file_names)
+    def _run_game(instance_file, config: InferenceRunnerConfig, model: TeachModel, er: EpisodeReplay):
+        game = InferenceRunner._load_game(instance_file)
+        game["state_changes"] = get_state_changes(game["tasks"][0]["episodes"][0]['initial_state'], game["tasks"][0]["episodes"][0]["final_state"])
+        game_check_task = create_task_thor_from_state_diff(game["state_changes"])
+        game_file = InferenceRunner._get_game_file(game, config)
 
-    @staticmethod
-    def _run_edh_instance(instance_file, config: InferenceRunnerConfig, model: TeachModel, er: EpisodeReplay):
-        edh_instance = InferenceRunner._load_edh_instance(instance_file)
-        edh_instance["state_changes"] = get_state_changes(edh_instance["tasks"][0]["episodes"][0]['initial_state'], edh_instance["tasks"][0]["episodes"][0]["final_state"])
-        edh_check_task = create_task_thor_from_state_diff(edh_instance["state_changes"])
-        game_file = InferenceRunner._get_game_file(edh_instance, config)
-
-        metrics = create_new_traj_metrics(edh_instance)
-        instance_id = edh_instance["game_id"]
+        metrics = create_new_traj_metrics(game)
+        instance_id = game["game_id"]
         logger.debug(f"Processing instance {instance_id}")
 
         try:
             init_success, er = with_retry(
                 fn=lambda: InferenceRunner._initialize_episode_replay(
-                    edh_instance, game_file, edh_check_task, config.replay_timeout, er
+                    game, game_file, game_check_task, config.replay_timeout, er
                 ),
                 retries=config.max_init_tries - 1,
                 check_first_return_value=True,
@@ -159,25 +153,17 @@ class InferenceRunner:
             init_success = False
             logger.error(f"Failed to initialize episode replay for instance={instance_id}", exc_info=True)
 
-        edh_history_images = None
-        try:
-            if not config.use_img_file:
-                edh_history_images = InferenceRunner._load_edh_history_images(edh_instance, config)
-        except Exception:
-            init_success = False
-            logger.error(f"Failed to load_edh_history_images for {instance_id}", exc_info=True)
-
         metrics["init_success"] = init_success
         if not init_success:
-            return edh_instance["game_id"], metrics
+            return game["game_id"], metrics
 
         model_started_success = False
         try:
-            model_started_success = model.start_new_edh_instance(edh_instance, edh_history_images, instance_file)
+            model_started_success = model.start_new_game(game, edh_history_images, instance_file)
         except Exception:
             model_started_success = False
             metrics["error"] = 1
-            logger.error(f"Failed to start_new_edh_instance for {instance_id}", exc_info=True)
+            logger.error(f"Failed to start_new_game for {instance_id}", exc_info=True)
 
         if model_started_success:
             prev_action = None
@@ -189,9 +175,9 @@ class InferenceRunner:
                 traj_steps_taken += 1
                 try:
                     img = InferenceRunner._get_latest_ego_image(er)
-                    image_name = InferenceRunner._save_image(config, edh_instance, img, traj_steps_taken)
+                    image_name = InferenceRunner._save_image(config, game, img, traj_steps_taken)
                     action, obj_relative_coord = model.get_next_action(
-                        img, edh_instance, prev_action, image_name, instance_file
+                        img, game, prev_action, image_name, instance_file
                     )
                     step_success = InferenceRunner._execute_action(er.simulator, action, obj_relative_coord)
                     InferenceRunner._update_metrics(metrics, action, obj_relative_coord, step_success)
@@ -199,7 +185,7 @@ class InferenceRunner:
                     pred_actions.append(prev_action)
                 except Exception as e:
                     logger.error(
-                        f"_run_edh_instance Exception: {str(e)} for instance_id={instance_id}, "
+                        f"_run_game Exception: {str(e)} for instance_id={instance_id}, "
                         f"traj_steps_taken={traj_steps_taken}",
                         exc_info=True,
                     )
@@ -212,11 +198,11 @@ class InferenceRunner:
             success,
             final_goal_conditions_total,
             final_goal_conditions_satisfied,
-        ) = InferenceRunner._check_episode_progress(er, edh_check_task)
+        ) = InferenceRunner._check_episode_progress(er, game_check_task)
 
         metrics_diff = evaluate_traj(
             success,
-            edh_instance,
+            game,
             traj_steps_taken,
             final_goal_conditions_total,
             final_goal_conditions_satisfied,
@@ -246,15 +232,15 @@ class InferenceRunner:
         return success, final_goal_conditions_total, final_goal_conditions_satisfied
 
     @staticmethod
-    def _initialize_episode_replay(edh_instance, game_file, task, replay_timeout, er: EpisodeReplay):
+    def _initialize_episode_replay(game, game_file, task, replay_timeout, er: EpisodeReplay):
         start_time = time.perf_counter()
         er.set_episode_by_fn_and_idx(game_file, 0, 0)
-        edh_interactions = list()
-        interactions = edh_instance["tasks"][0]["episodes"][0]["interactions"] #[: edh_instance["pred_start_idx"]]
+        interactions = list()
+        interactions = game["tasks"][0]["episodes"][0]["interactions"] #[: game["pred_start_idx"]]
         for interaction in interactions:
             action = action_id_to_info[interaction["action_id"]]
-            edh_interactions.append(Interaction.from_dict(interaction, action["action_type"]))
-        er.episode.interactions = edh_interactions
+            interactions.append(Interaction.from_dict(interaction, action["action_type"]))
+        er.episode.interactions = interactions
 
         init_success = False
         with ThreadPoolExecutor() as tp:
@@ -286,11 +272,11 @@ class InferenceRunner:
         return step_success
 
     @staticmethod
-    def _get_game_file(edh_instance, config: InferenceRunnerConfig):
+    def _get_game_file(game, config: InferenceRunnerConfig):
         return os.path.join(
             config.data_dir,
             config.split,
-            f"{edh_instance['game_id']}.game.json",
+            f"{game['game_id']}.game.json",
         )
 
     @staticmethod
@@ -312,10 +298,10 @@ class InferenceRunner:
         return action == "Stop" or metrics["num_api_fails"] >= max_api_fails
 
     @staticmethod
-    def _load_edh_instance(instance_file):
+    def _load_game(instance_file):
         with open(instance_file) as handle:
-            edh_instance = json.load(handle)
-        return edh_instance
+            game = json.load(handle)
+        return game
 
     @staticmethod
     def _get_range_to_process(process_index, num_files_per_process, num_files):
@@ -333,8 +319,8 @@ class InferenceRunner:
             process.join()
 
     @staticmethod
-    def _save_image(config, edh_instance, img, traj_steps_taken):
-        image_name = f"img__{edh_instance['instance_id']}_{traj_steps_taken}.jpeg"
+    def _save_image(config, game, img, traj_steps_taken):
+        image_name = f"img__{game['instance_id']}_{traj_steps_taken}.jpeg"
         if config.use_img_file:
             InferenceRunner._save_image_sync(img, image_name, config)
         else:

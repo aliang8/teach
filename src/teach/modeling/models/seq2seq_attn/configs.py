@@ -52,7 +52,7 @@ def cfg_seq2seq():
     # weight of action loss
     action_loss_wt = 1.0
     # weight of object loss
-    action_coord_loss_wt = 1.0
+    action_aux_loss_wt = 1.0
     # weight of subgoal completion predictor
     subgoal_aux_loss_wt = 0
     # weight of progress monitor

@@ -24,13 +24,23 @@ class Module(Base):
         # subgoal monitoring
         self.subgoal_monitoring = (self.args.progress_aux_loss_wt > 0 or self.args.subgoal_aux_loss_wt > 0)
 
-        decoder = vnn.ConvFrameCoordDecoderProgressMonitor if self.subgoal_monitoring else vnn.ConvFrameCoordDecoder
+        if self.args.agent == "driver":
+            decoder = vnn.ConvFrameCoordDecoderProgressMonitor if self.subgoal_monitoring else vnn.ConvFrameDecoder
+            self.aux_pred_type = "coord"
+        elif self.args.agent == "commander":
+            decoder = vnn.ConvFrameDecoder
+            self.aux_pred_type = "obj_cls"
+        
+        self.num_obj_classes = len(vocab['object_cls'])
+
         self.dec = decoder(self.emb_action_low, args.dframe, 2*args.dhid,
+                           num_obj_classes=self.num_obj_classes,
                            attn_dropout=args.attn_dropout,
                            hstate_dropout=args.hstate_dropout,
                            actor_dropout=args.actor_dropout,
                            input_dropout=args.input_dropout,
-                           teacher_forcing=args.dec_teacher_forcing)
+                           teacher_forcing=args.dec_teacher_forcing,
+                           pred=self.aux_pred_type)
 
         # dropouts
         self.vis_dropout = nn.Dropout(args.vis_dropout)
@@ -43,7 +53,8 @@ class Module(Base):
         self.test_mode = False
 
         # bce reconstruction loss
-        self.bce_with_logits = torch.nn.BCEWithLogitsLoss(reduction='none')
+        # self.bce_with_logits = torch.nn.BCEWithLogitsLoss(reduction='none')
+        self.cross_entropy = torch.nn.CrossEntropyLoss(reduction='none')
         self.mse_loss = torch.nn.MSELoss(reduction='none')
 
         # paths
@@ -55,6 +66,8 @@ class Module(Base):
 
         # reset model
         self.reset()
+
+        self.embs_ann = embs_ann
 
     def featurize(self, batch, load_frames=True):
         '''
@@ -82,90 +95,93 @@ class Module(Base):
             #########
             # inputs
             #########
-
             # serialize segments
             self.serialize_lang_action(ex)
 
             # goal and instr language
-            lang_goal, lang_instr = ex['num']['lang_goal'][0], ex['num']['lang_instr']
+            lang_goal, combined_utts = ex['lang_goal'][0], ex['combined_utterances']
 
             # zero inputs if specified
             lang_goal = self.zero_input(lang_goal) if self.args.zero_goal else lang_goal
-            lang_instr = self.zero_input(lang_instr) if self.args.zero_instr else lang_instr
+            combined_utts = self.zero_input(combined_utts) if self.args.zero_instr else combined_utts
 
             # append goal + instr
-            # utter = []
-            # max_t = 150 
-            # instr_len = [len(i) for i in ex["ann"]["instr"]]
-            # for t in range(len(ex["ann"]["utter_t"])+1):
-            #     lang_instr_upto_t = lang_instr[:sum(instr_len[:t])]
-            #     lang_goal_instr = lang_goal + lang_instr_upto_t
-            #     if t==0:
-            #         repeat = ex["ann"]["utter_t"][0]
-            #     elif t==len(ex["ann"]["utter_t"]):
-            #         repeat = max_t-ex["ann"]["utter_t"][-1]
-            #         if repeat<0:
-            #             continue
-            #     else:
-            #         repeat = ex["ann"]["utter_t"][t]-ex["ann"]["utter_t"][t-1] 
-            #     seq = list(torch.tensor(lang_goal_instr, device=device).repeat(repeat, 1))
-            #     utter+=seq
-            
-            # feat['lang_goal_instr'].extend(utter[:150])
+            max_len = 150 
+            for t in range(max_len):
+                combined_utts_to_t = combined_utts[:t] 
+                combined_utts_to_t = sum(combined_utts_to_t, [])
+                lang_goal_instr = lang_goal + combined_utts_to_t
+                feat['lang_goal_instr'].append(lang_goal_instr)
 
             # load Resnet features from disk
-            if load_frames and not self.test_mode:
-                root = self.get_task_root(ex)
-                im = torch.load(os.path.join(root, self.feat_pt))
+            # if load_frames and not self.test_mode:
+            #     root = self.get_task_root(ex)
+            #     im = torch.load(os.path.join(root, self.feat_pt))
 
-                num_low_actions = len(ex['plan']['low_actions']) + 1  # +1 for additional stop action
-                num_feat_frames = im.shape[0]
+            #     num_low_actions = len(ex['plan']['low_actions']) + 1  # +1 for additional stop action
+            #     num_feat_frames = im.shape[0]
 
-                # Modeling Quickstart (without filler frames)
-                if num_low_actions == num_feat_frames:
-                    feat['frames'].append(im)
+            #     # Modeling Quickstart (without filler frames)
+            #     if num_low_actions == num_feat_frames:
+            #         feat['frames'].append(im)
 
-                # Full Dataset (contains filler frames)
-                else:
-                    keep = [None] * num_low_actions
-                    for i, d in enumerate(ex['images']):
-                        # only add frames linked with low-level actions (i.e. skip filler frames like smooth rotations and dish washing)
-                        if keep[d['low_idx']] is None:
-                            keep[d['low_idx']] = im[i]
-                    keep[-1] = im[-1]  # stop frame
-                    feat['frames'].append(torch.stack(keep, dim=0))
+            #     # Full Dataset (contains filler frames)
+            #     else:
+            #         keep = [None] * num_low_actions
+            #         for i, d in enumerate(ex['images']):
+            #             # only add frames linked with low-level actions (i.e. skip filler frames like smooth rotations and dish washing)
+            #             if keep[d['low_idx']] is None:
+            #                 keep[d['low_idx']] = im[i]
+            #         keep[-1] = im[-1]  # stop frame
+            #         feat['frames'].append(torch.stack(keep, dim=0))
 
             #########
             # outputs
             #########
-
             if not self.test_mode:
-                # low-level action
-                feat['action_low'].append([a['action'][0] for a in ex['num']['driver_actions_low']])                
+                feat["action_low"].append(ex[f"{self.args.agent}_action_low"])
 
-                feat['action_low_coord'].append([[a['x'], a['y']] for a in ex['num']['interactions'] if 'x' in a if a['success']])
+                action_low_aux, action_low_valid_interact = [], []
+                for (commander_action, driver_action) in ex['actions_low']:
+                    if self.args.agent == "driver":
+                        if driver_action["success"] and "x" in driver_action:
+                            action_low_aux.append([driver_action["x"], driver_action["y"]])
+                            action_low_valid_interact.append(1)
+                        else:
+                            action_low_valid_interact.append(0)
+                    elif self.args.agent == "commander":
+                        if commander_action["success"] and commander_action["action_name"] in ["SearchObject", "SelectOid"]:
+                            if commander_action["action_name"] == "SearchObject":
+                                obj = commander_action["query"].capitalize()
+                            else:
+                                obj = commander_action["query"].split('|')[0].capitalize()
 
-                # low-level valid interact
-                # TODO: i think this is only interact actions
-                feat['action_low_valid_interact'].append([a['success'] for a in ex['num']['driver_actions_low'] if 'x' in a])
+                            if obj not in self.vocab['object_cls']._word2index.keys():
+                                action_low_valid_interact.append(0)
+                                continue
 
+                            obj = self.vocab['object_cls'].word2index(obj)
+                            action_low_aux.append(obj)
+                            action_low_valid_interact.append(1)
+                        else:
+                            action_low_valid_interact.append(0)
 
+                feat[f"action_low_{self.aux_pred_type}"].append(action_low_aux)
+                feat["action_low_valid_interact"].append(action_low_valid_interact)
+                    
         # tensorization and padding
         for k, v in feat.items():
             if k in {'lang_goal_instr'}:
-                
                 # language embedding and padding
-                # seqs = [torch.tensor(vv, device=device) for vv in v]
-                pad_seq = pad_sequence(v, batch_first=True, padding_value=self.pad)
-
-                # for i in 
+                seqs = [torch.tensor(vv, device=device) for vv in v]
+                pad_seq = pad_sequence(seqs, batch_first=True, padding_value=self.pad)
                 seq_lengths = np.array(list(map(len, v)))
                 embed_seq = self.emb_word(pad_seq)
                 packed_input = pack_padded_sequence(embed_seq, seq_lengths, batch_first=True, enforce_sorted=False)
                 
                 feat[k] = packed_input
                 
-            elif k in {'action_low_coord'}:
+            elif k in {'action_low_coord', 'action_low_obj_cls'}:
                 seqs = [torch.tensor(vv, device=device, dtype=torch.float) for vv in v]
                 feat[k] = seqs
             elif k in {'subgoal_progress', 'subgoals_completed'}:
@@ -185,11 +201,13 @@ class Module(Base):
         '''
         append segmented instr language and low-level actions into single sequences
         '''
-        is_serialized = not isinstance(feat['num']['lang_instr'][0], list)
+        is_serialized = not isinstance(feat["commander_utterances"][0], list)
         if not is_serialized:
-            feat['num']['lang_instr'] = [word for desc in feat['num']['lang_instr'] for word in desc]
+            # feat["combined_utts"] = [word for desc in feat["commander_utterances"] for word in desc]
+
             if not self.test_mode:
-                feat['num']['action_low'] = [a['action_id'] for a in feat['num']['interactions']]
+                feat['commander_action_low'] = [a[0]['action'] for a in feat['actions_low']]
+                feat['driver_action_low'] = [a[1]['action'] for a in feat['actions_low']]
 
     def forward(self, feat, max_decode=300):
         cont_lang, enc_lang = self.encode_lang(feat)
@@ -197,8 +215,7 @@ class Module(Base):
         frames = self.vis_dropout(feat['frames'])
 
         res = self.dec(enc_lang, frames, max_decode=max_decode, gold=feat['action_low'], state_0=state_0)
-        feat.update(res)
-        return feat
+        return res
 
 
     def encode_lang(self, feat):
@@ -261,12 +278,12 @@ class Module(Base):
         return feat
 
 
-    def extract_preds(self, out, batch, feat, clean_special_tokens=True):
+    def extract_preds(self, out, batch, clean_special_tokens=True):
         '''
         output processing
         '''
         pred = {}
-        for ex, alow, alow_coord in zip(batch, feat['out_action_low'].max(2)[1].tolist(), feat['out_action_low_coord']):
+        for ex, alow, alow_aux in zip(batch, out['out_action_low'].max(2)[1].tolist(), out[f'out_action_low_{self.aux_pred_type}']):
             # remove padding tokens
             if self.pad in alow:
                 pad_start_idx = alow.index(self.pad)
@@ -279,12 +296,12 @@ class Module(Base):
                     alow = alow[:stop_start_idx]
 
             # index to API actions
-            words = self.vocab['action_low'].index2word(alow)
+            words = self.vocab[f'{self.args.agent}_action_low'].index2word(alow)
 
             task_id_ann = self.get_task_and_ann_id(ex)
             pred[task_id_ann] = {
                 'action_low': ' '.join(words),
-                'action_coord': alow_coord,
+                f'action_{self.aux_pred_type}': alow_aux,
             }
 
         return pred
@@ -304,7 +321,7 @@ class Module(Base):
         embed low-level action
         '''
         device = torch.device('cuda') if self.args.gpu else torch.device('cpu')
-        action_num = torch.tensor(self.vocab['action_low'].word2index(action), device=device)
+        action_num = torch.tensor(self.vocab[f'{self.args.agent}_action_low'].word2index(action), device=device)
         action_emb = self.dec.emb(action_num).unsqueeze(0)
         return action_emb
 
@@ -316,7 +333,7 @@ class Module(Base):
         losses = dict()
 
         # GT and predictions
-        p_alow = out['out_action_low'].view(-1, len(self.vocab['action_low']))
+        p_alow = out['out_action_low'].view(-1, len(self.vocab[f'{self.args.agent}_action_low']))
         l_alow = feat['action_low'].view(-1)
         valid = feat['action_low_valid_interact']
 
@@ -329,11 +346,19 @@ class Module(Base):
 
         valid_idxs = valid.view(-1).nonzero().view(-1)
 
-        # point regression
-        flat_p_alow_coord = out['out_action_low_coord'].view(-1, 2)[valid_idxs]
-        flat_alow_coord = torch.cat(feat['action_low_coord'], dim=0)
-        alow_coord_loss = self.mse_loss(flat_p_alow_coord, flat_alow_coord).mean()
-        losses['action_low_coord'] = alow_coord_loss * self.args.action_coord_loss_wt 
+        # aux loss 
+        output_size = 2 if self.aux_pred_type == "coord" else self.num_obj_classes
+        flat_p_alow_aux = out[f'out_action_low_{self.aux_pred_type}'].view(-1, output_size)[valid_idxs]
+
+        flat_alow_aux = torch.cat(feat[f'action_low_{self.aux_pred_type}'], dim=0)
+        if self.aux_pred_type == "coord":
+            loss = self.mse_loss
+        elif self.aux_pred_type == "obj_cls":
+            loss = self.cross_entropy 
+            flat_alow_aux = flat_alow_aux.long()
+
+        alow_aux_loss = loss(flat_p_alow_aux, flat_alow_aux).mean()
+        losses[f'action_low_{self.aux_pred_type}'] = alow_aux_loss * self.args.action_aux_loss_wt 
 
         # subgoal completion loss
         if self.args.subgoal_aux_loss_wt > 0:

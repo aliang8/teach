@@ -33,8 +33,11 @@ class Module(nn.Module):
 
         # emb modules
         self.emb_word = nn.Embedding(len(vocab['word']), args.demb)
-        self.emb_action_low = nn.Embedding(len(vocab['action_low']), args.demb)
-        # self.emb_action_low = nn.Embedding(107, args.demb)
+
+        if args.agent == "driver":
+            self.emb_action_low = nn.Embedding(len(vocab['driver_action_low']), args.demb)
+        elif args.agent == "commander":
+            self.emb_action_low = nn.Embedding(len(vocab['commander_action_low']), args.demb)
 
         # end tokens
         # TODO: word or action_low??
@@ -140,6 +143,9 @@ class Module(nn.Module):
                     total_train_loss.append(float(sum_loss))
                     train_iter += self.args.batch
 
+                    del feat, model_outs, loss, model_preds
+                    torch.cuda.empty_cache()
+
             ## compute metrics for train (too memory heavy!)
             # m_train = {k: sum(v) / len(v) for k, v in m_train.items()}
             # m_train.update(self.compute_metric(p_train, train))
@@ -171,7 +177,8 @@ class Module(nn.Module):
                     'model': self.state_dict(),
                     'optim': optimizer.state_dict(),
                     'args': self.args,
-                    'vocab': self.vocab,
+                    'embs_ann': self.embs_ann,
+                    'vocab_out': self.vocab,
                 }, fsave)
                 fbest = os.path.join(args.dout, 'best_seen.json')
                 with open(fbest, 'wt') as f:
@@ -249,7 +256,7 @@ class Module(nn.Module):
                 feat['frames'] = input_dict['frames']
 
                 out = self.forward(feat)
-                preds = self.extract_preds(out, traj_data, feat)
+                preds = self.extract_preds(out, traj_data)
                 p_dev.update(preds)
                 loss = self.compute_loss(out, traj_data, feat)
                 for k, v in loss.items():

@@ -24,7 +24,7 @@ def main():
         "--data_dir",
         type=str,
         required=True,
-        help='Base data directory containing subfolders "games" and "edh_instances',
+        help='Base data directory containing subfolders "games" and "games',
     )
     arg_parser.add_argument(
         "--inference_output_dir",
@@ -50,21 +50,21 @@ def main():
     arg_parser.add_argument("--metrics_file", type=str, required=True, help="File used to store metrics")
     args = arg_parser.parse_args()
 
-    edh_instance_files = set(os.listdir(os.path.join(args.data_dir, "edh_instances", args.split)))
+    game_files = set(os.listdir(os.path.join(args.data_dir, "games", args.split)))
     output_files = [
         os.path.join(args.inference_output_dir, f)
         for f in os.listdir(args.inference_output_dir)
-        if re.sub("inference__", "", f) in edh_instance_files
+        if re.sub("inference__", "", f) in game_files
     ]
     pred_action_files = [re.sub("inference__", "pred_actions__", f) for f in output_files]
 
-    edh_instance_files_missing_output = list(
-        set(edh_instance_files).difference([os.path.basename(f).split("__")[1] for f in output_files])
+    game_files_missing_output = list(
+        set(game_files).difference([os.path.basename(f).split("__")[1] for f in output_files])
     )
-    logger.info("Evaluating split %s requiring %d files" % (args.split, len(edh_instance_files)))
+    logger.info("Evaluating split %s requiring %d files" % (args.split, len(game_files)))
     logger.info(
         "Found output files for %d instances; treating remaining %d as failed..."
-        % (len(output_files), len(edh_instance_files_missing_output))
+        % (len(output_files), len(game_files_missing_output))
     )
 
     traj_stats = dict()
@@ -75,11 +75,11 @@ def main():
                 "Skipping EDH instance %s with output file %s due to missing predicted actions file %s"
                 % (os.path.basename(output_file).split("__")[1], output_file, pred_actions_file)
             )
-            edh_instance_files_missing_output.append(os.path.basename(output_file).split("__")[1])
+            game_files_missing_output.append(os.path.basename(output_file).split("__")[1])
         instance_id, traj_metrics = load_traj_metrics(output_file, pred_actions_file, args)
         traj_stats[instance_id] = traj_metrics
 
-    for instance_file in edh_instance_files_missing_output:
+    for instance_file in game_files_missing_output:
         instance_id = re.sub(".json", "", os.path.basename(instance_file))
         game_id = instance_id.split(".")[0]
         traj_metrics = create_new_traj_metrics({"instance_id": instance_id, "game_id": game_id})

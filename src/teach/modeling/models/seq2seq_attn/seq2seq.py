@@ -143,6 +143,9 @@ class Module(nn.Module):
                     total_train_loss.append(float(sum_loss))
                     train_iter += self.args.batch
 
+                    del feat, model_outs, loss, model_preds
+                    torch.cuda.empty_cache()
+
             ## compute metrics for train (too memory heavy!)
             # m_train = {k: sum(v) / len(v) for k, v in m_train.items()}
             # m_train.update(self.compute_metric(p_train, train))
@@ -252,7 +255,7 @@ class Module(nn.Module):
                 feat['frames'] = input_dict['frames']
 
                 out = self.forward(feat)
-                preds = self.extract_preds(out, traj_data, feat)
+                preds = self.extract_preds(out, traj_data)
                 p_dev.update(preds)
                 loss = self.compute_loss(out, traj_data, feat)
                 for k, v in loss.items():

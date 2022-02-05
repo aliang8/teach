@@ -213,8 +213,7 @@ class Module(Base):
         frames = self.vis_dropout(feat['frames'])
 
         res = self.dec(enc_lang, frames, max_decode=max_decode, gold=feat['action_low'], state_0=state_0)
-        feat.update(res)
-        return feat
+        return res
 
 
     def encode_lang(self, feat):
@@ -277,12 +276,12 @@ class Module(Base):
         return feat
 
 
-    def extract_preds(self, out, batch, feat, clean_special_tokens=True):
+    def extract_preds(self, out, batch, clean_special_tokens=True):
         '''
         output processing
         '''
         pred = {}
-        for ex, alow, alow_coord in zip(batch, feat['out_action_low'].max(2)[1].tolist(), feat['out_action_low_coord']):
+        for ex, alow, alow_aux in zip(batch, out['out_action_low'].max(2)[1].tolist(), out[f'out_action_low_{self.aux_pred_type}']):
             # remove padding tokens
             if self.pad in alow:
                 pad_start_idx = alow.index(self.pad)
@@ -300,7 +299,7 @@ class Module(Base):
             task_id_ann = self.get_task_and_ann_id(ex)
             pred[task_id_ann] = {
                 'action_low': ' '.join(words),
-                'action_coord': alow_coord,
+                f'action_{self.aux_pred_type}': alow_aux,
             }
 
         return pred

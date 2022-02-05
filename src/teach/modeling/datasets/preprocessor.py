@@ -47,6 +47,7 @@ class Preprocessor(object):
         if self.is_test_split:
             is_test_split = True
 
+        # Process agent dialogue
         commander_utterances = []
         driver_utterances = []
         interactions = traj["tasks"][0]["episodes"][0]["interactions"]
@@ -104,6 +105,31 @@ class Preprocessor(object):
         traj["combined_utterances"] = [
             self.numericalize(self.vocab["word"], x, train=not is_test_split) for x in combined_utts_tok
         ]
+
+        # Process progress check vocabulary
+        for (commander_action, _) in traj["actions_low"]:
+            if commander_action["action_name"] == "OpenProgressCheck":
+                json_f = commander_action["pc_json"]
+
+                all_words = ""
+                with open(json_f) as f:
+                    pc_output = json.load(f)
+
+                    # Get all the strings and add to vocabulary
+                    all_words += pc_output["task_desc"] + " "
+                    subgoals = pc_output["subgoals"]
+
+                    for subgoal in subgoals:
+                        all_words += subgoal["description"] + " "
+
+                        for steps in subgoal["steps"]:
+                            all_words += steps["desc"] + " "
+
+                all_words = revtok.tokenize(data_util.remove_spaces_and_lower(all_words))
+                all_words = [w.strip().lower() for w in all_words]
+                [self.vocab["word"].word2index(w, train=not is_test_split) for w in all_words]
+
+
 
     def process_actions(self, ex, traj):
         # Action at each timestep is a tuple of [Commander, Follower]

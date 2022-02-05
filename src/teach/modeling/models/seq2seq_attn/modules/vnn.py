@@ -181,7 +181,8 @@ class ConvFrameDecoder(nn.Module):
             'out_action_low': torch.stack(actions, dim=1),
             f'out_action_low_{self.aux_pred_type}': torch.stack(aux_output, dim=1),
             'out_attn_scores': torch.stack(attn_scores, dim=1),
-            'state_t': state_t
+            'state_t': state_t,
+            'out_text': ""
         }
         return results
 

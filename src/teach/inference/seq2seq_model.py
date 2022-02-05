@@ -77,18 +77,18 @@ class Seq2SeqModel(TeachModel):
             device = f"cuda:{process_index % gpu_count}" if self.args.device == "cuda" else self.args.device
             self.args.device = device
             logger.info(f"Loading model agent using device: {device}")
-            self.model, self.extractor = eval_util.load_agent(model_path, dataset_info, self.args, for_inference=True)
+            self.model, self.extractor = eval_util.load_agent("seq2seq", model_path, dataset_info, self.args, for_inference=True)
 
         self.vocab = {"word": train_vocab["word"], "action_low": self.model.vocab_out}
         self.preprocessor = Preprocessor(vocab=self.vocab)
 
-    def start_new_tatc_instance(self, tatc_instance, tatc_history_images, tatc_name=None):
+    def start_new_tatc_instance(self, tatc_instance):
         self.model.reset()
 
         self.cur_tatc_instance = data_util.process_traj(
             tatc_instance, Path(os.path.join("test", tatc_instance["instance_id"])), 0, self.preprocessor
         )
-        feat_numpy = {"lang": GuidestatcDataset.load_lang(self.cur_tatc_instance)}
+        feat_numpy = {"lang": TATCDataset.load_lang(self.cur_tatc_instance)}
         _, self.input_dict, _ = data_util.tensorize_and_pad(
             [(self.cur_tatc_instance, feat_numpy)], self.args.device, constants.PAD
         )
@@ -108,8 +108,6 @@ class Seq2SeqModel(TeachModel):
 
     def get_next_action(self, img, tatc_instance, prev_action, img_name=None, tatc_name=None):
         """
-        Sample function producing random actions at every time step. When running model inference, a model should be
-        called in this function instead.
         :param img: PIL Image containing agent's egocentric image
         :param tatc_instance: tatc instance
         :param prev_action: One of None or a dict with keys 'action' and 'obj_relative_coord' containing returned values

@@ -67,6 +67,8 @@ class Module(Base):
         # reset model
         self.reset()
 
+        self.embs_ann = embs_ann
+
     def featurize(self, batch, load_frames=True):
         '''
         tensorize and pad batch input

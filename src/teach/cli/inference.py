@@ -23,7 +23,7 @@ def main():
         "--data_dir",
         type=str,
         required=True,
-        help='Base data directory containing subfolders "games" and "edh_instances',
+        help='Base data directory containing subfolders "games",
     )
     arg_parser.add_argument(
         "--images_dir",
@@ -41,7 +41,7 @@ def main():
         "--output_dir",
         type=str,
         required=True,
-        help="Directory to store output files from playing EDH instances",
+        help="Directory to store output files from playing game instances",
     )
     arg_parser.add_argument(
         "--split",
@@ -51,9 +51,9 @@ def main():
         help="One of train, valid_seen, valid_unseen, test_seen, test_unseen",
     )
     arg_parser.add_argument(
-        "--edh_instance_file",
+        "--game_file",
         type=str,
-        help="Run only on this EDH instance. Split must be set appropriately to find corresponding game file.",
+        help="Run only on this game instance. Split must be set appropriately to find corresponding game file.",
     )
     arg_parser.add_argument("--num_processes", type=int, default=1, help="Number of processes to use")
     arg_parser.add_argument(
@@ -91,19 +91,19 @@ def main():
     start_time = datetime.now()
     args, model_args = arg_parser.parse_known_args()
 
-    if args.edh_instance_file:
-        edh_instance_files = [args.edh_instance_file]
+    if args.game_file:
+        game_files = [args.game_file]
     else:
         inference_output_files = glob.glob(os.path.join(args.output_dir, "inference__*.json"))
-        finished_edh_instance_files = [os.path.join(fn.split("__")[1]) for fn in inference_output_files]
-        edh_instance_files = [
+        finished_game_files = [os.path.join(fn.split("__")[1]) for fn in inference_output_files]
+        game_files = [
             os.path.join(args.data_dir, args.split, f)
             for f in os.listdir(os.path.join(args.data_dir, args.split))
-            if f not in finished_edh_instance_files
+            if f not in finished_game_files
         ]
-        if not edh_instance_files:
+        if not game_files:
             print(
-                f"all the edh instances have been ran for input_dir={os.path.join(args.data_dir, 'edh_instances', args.split)}"
+                f"all the game instances have been ran for input_dir={os.path.join(args.data_dir, 'game', args.split)}"
             )
             exit(1)
 
@@ -123,7 +123,7 @@ def main():
         use_img_file=args.use_img_file,
     )
 
-    runner = InferenceRunner(edh_instance_files, runner_config)
+    runner = InferenceRunner(game_files, runner_config)
     metrics = runner.run()
     inference_end_time = datetime.now()
     logger.info("Time for inference: %s" % str(inference_end_time - start_time))

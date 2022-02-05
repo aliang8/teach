@@ -177,7 +177,8 @@ class Module(nn.Module):
                     'model': self.state_dict(),
                     'optim': optimizer.state_dict(),
                     'args': self.args,
-                    'vocab': self.vocab,
+                    'embs_ann': self.embs_ann,
+                    'vocab_out': self.vocab,
                 }, fsave)
                 fbest = os.path.join(args.dout, 'best_seen.json')
                 with open(fbest, 'wt') as f:

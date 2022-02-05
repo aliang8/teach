@@ -83,15 +83,23 @@ def create_optimizer_and_schedulers(first_epoch, args, parameters, optimizer=Non
     return optimizer, {"base": lr_scheduler, "warmup": warmup_scheduler}
 
 
-def load_model(fsave, device, check_epoch=None, for_inference=False):
+def load_model(model_name, fsave, device, check_epoch=None, for_inference=False):
     """
     load pth model from disk
     """
     logger.info("Loading from {} to {}".format(fsave, device))
     save = torch.load(fsave, map_location=device)
-    LearnedModel = import_module("alfred.model.learned").LearnedModel
     save["args"]["model_dir"] = os.path.dirname(fsave)
-    model = LearnedModel(save["args"], save["embs_ann"], save["vocab_out"], for_inference)
+    
+    if model_name == "seq2seq":
+        model_cls = import_module("modeling.models.seq2seq_attn.seq2seq_attn").Module
+    else:
+        model_cls = import_module("alfred.model.learned").LearnedModel
+
+    # model = model_cls(save["args"], save["embs_ann"], save["vocab_out"], for_inference)
+    print(save["vocab"].keys())
+    model = model_cls(save["args"], {}, save["vocab"], for_inference)
+
     model.load_state_dict(save["model"])
     OptimizerClass = torch.optim.Adam if save["args"].optimizer == "adam" else torch.optim.AdamW
     optimizer = OptimizerClass(model.parameters(), lr=1e-3, weight_decay=save["args"].weight_decay)

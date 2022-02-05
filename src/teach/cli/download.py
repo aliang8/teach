@@ -16,10 +16,8 @@ DEFAULT_DATASET_BUCKET_NAME = "teach-dataset"
 DEFAULT_DIRECTORY = "/tmp/teach-dataset"
 FILE_LIST = [
     "all_games.tar.gz",
-    "edh_instances.tar.gz",
     "experiment_games.tar.gz",
     "images_and_states.tar.gz",
-    "tfd_instances.tar.gz",
     "baseline_models.tar.gz",
     "et_pretrained_models.tar.gz",
 ]

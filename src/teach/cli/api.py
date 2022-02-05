@@ -23,7 +23,7 @@ def parse_args():
         "--data_dir",
         type=str,
         required=True,
-        help='Base data directory containing subfolders "games" and "edh_instances',
+        help='Base data directory containing subfolders "games" and "games',
     )
     arg_parser.add_argument(
         "--images_dir",
@@ -48,7 +48,7 @@ def parse_args():
         "--model_class", type=str, default="SampleModel", help="Name of the TeachModel class to use during inference."
     )
     arg_parser.add_argument(
-        "--use_edh_file", dest="use_edh_file", action="store_true", help="Use edh file instead of request json."
+        "--use_game_file", dest="use_game_file", action="store_true", help="Use game file instead of request json."
     )
     arg_parser.add_argument(
         "--use_img_file", dest="use_img_file", action="store_true", help="Use img file instead of request bytes."
@@ -62,18 +62,18 @@ process_index, num_processes = 1, 1
 model = model_class(process_index, num_processes, model_args=model_args)
 
 
-def _get_edh_instance(req_args):
-    if teach_args.use_edh_file:
-        if not req_args.edh_name:
-            return None, "request parameter edh_name does not have a value"
-        edh_instance_path = os.path.join(teach_args.data_dir, "edh_instances", teach_args.split, req_args.edh_name)
-        if not isfile(edh_instance_path):
-            return None, f"edh file={edh_instance_path} does not exist"
-        with open(edh_instance_path) as handle:
-            edh_instance = json.load(handle)
+def _get_game_instance(req_args):
+    if teach_args.use_game_file:
+        if not req_args.game_name:
+            return None, "request parameter game_name does not have a value"
+        game_instance_path = os.path.join(teach_args.data_dir, "games", teach_args.split, req_args.game_name)
+        if not isfile(game_instance_path):
+            return None, f"game file={game_instance_path} does not exist"
+        with open(game_instance_path) as handle:
+            game_instance = json.load(handle)
     else:
-        edh_instance = json.loads(req_args.edh_instance)
-    return edh_instance, None
+        game_instance = json.loads(req_args.game_instance)
+    return game_instance, None
 
 
 def _get_img(req_args):
@@ -92,40 +92,40 @@ def _get_img(req_args):
     return img, None
 
 
-def _get_edh_history_images(edh_name, edh_instance):
-    edh_history_images = []
-    history_file_names = edh_instance["driver_image_history"]
-    if not history_file_names:
-        return edh_history_images, None
+# def _get_edh_history_images(game_name, game_instance):
+#     edh_history_images = []
+#     history_file_names = game_instance["driver_image_history"]
+#     if not history_file_names:
+#         return edh_history_images, None
 
-    try:
-        if not teach_args.use_img_file:
-            images = request.files.getlist("edh_history_images")
-            if images:
-                for img in images:
-                    edh_history_images.append(Image.open(img))
+#     try:
+#         if not teach_args.use_img_file:
+#             images = request.files.getlist("edh_history_images")
+#             if images:
+#                 for img in images:
+#                     edh_history_images.append(Image.open(img))
 
-        if not edh_history_images:
-            image_dir = os.path.join(teach_args.data_dir, "images", teach_args.split, edh_instance["game_id"])
-            edh_history_images = load_images(image_dir, history_file_names)
+#         if not edh_history_images:
+#             image_dir = os.path.join(teach_args.data_dir, "images", teach_args.split, game_instance["game_id"])
+#             edh_history_images = load_images(image_dir, history_file_names)
 
-    except Exception:
-        err_msg = f"failed to load history images edh_name={edh_name}"
-        app.logger.error(err_msg, exc_info=True)
-        return None, err_msg
+#     except Exception:
+#         err_msg = f"failed to load history images game_name={game_name}"
+#         app.logger.error(err_msg, exc_info=True)
+#         return None, err_msg
 
-    if not edh_history_images:
-        err_msg = f"history images are empty for edh_name={edh_name} for history_file_names={history_file_names}"
-        app.logger.error(err_msg)
-        return None, err_msg
+#     if not edh_history_images:
+#         err_msg = f"history images are empty for game_name={game_name} for history_file_names={history_file_names}"
+#         app.logger.error(err_msg)
+#         return None, err_msg
 
-    return edh_history_images, None
+#     return edh_history_images, None
 
 
 @app.route("/get_next_action", methods=["POST"])
 def get_next_action():
     req_args = get_next_action_parse_args()
-    edh_instance, err_msg = _get_edh_instance(req_args)
+    game_instance, err_msg = _get_game_instance(req_args)
     if err_msg:
         return err_msg, 500
     img, err_msg = _get_img(req_args)
@@ -133,9 +133,9 @@ def get_next_action():
         return err_msg, 500
     prev_action = json.loads(req_args.prev_action) if req_args.prev_action else None
     try:
-        action, obj_relative_coord = model.get_next_action(img, edh_instance, prev_action)
+        action, obj_relative_coord = model.get_next_action(img, game_instance, prev_action)
     except Exception as e:
-        err_msg = f"failed to get_next_action with edh_name={req_args.edh_name}"
+        err_msg = f"failed to get_next_action with game_name={req_args.game_name}"
         app.logger.error(err_msg, exc_info=True)
         return err_msg, 500
     app.logger.debug(f"model.get_next_action returns action={action}, obj_relative_coord={obj_relative_coord}")
@@ -143,20 +143,20 @@ def get_next_action():
     return resp, 200
 
 
-@app.route("/start_new_edh_instance", methods=["POST"])
-def start_new_edh_instance():
-    req_args = start_new_edh_instance_parse_args()
-    app.logger.info(f"start_new_edh_instance with edh_name={req_args.edh_name}")
-    edh_instance, err_msg = _get_edh_instance(req_args)
+@app.route("/start_new_game_instance", methods=["POST"])
+def start_new_game_instance():
+    req_args = start_new_game_instance_parse_args()
+    app.logger.info(f"start_new_game_instance with game_name={req_args.game_name}")
+    game_instance, err_msg = _get_game_instance(req_args)
     if err_msg:
         return err_msg, 500
-    edh_history_images, err_msg = _get_edh_history_images(req_args.edh_name, edh_instance)
+    edh_history_images, err_msg = _get_edh_history_images(req_args.game_name, game_instance)
     if err_msg:
         return err_msg, 500
     try:
-        model.start_new_edh_instance(edh_instance, edh_history_images)
+        model.start_new_game_instance(game_instance, edh_history_images)
     except Exception as e:
-        err_msg = f"failed to start_new_edh_instance with edh_name={req_args.edh_name}"
+        err_msg = f"failed to start_new_game_instance with game_name={req_args.game_name}"
         app.logger.error(err_msg, exc_info=True)
         return err_msg, 500
     return "success", 200
@@ -178,7 +178,7 @@ def get_next_action_parse_args():
         help="Image name for PIL Image containing agent's egocentric image.",
     )
     parser.add_argument(
-        "edh_name",
+        "game_name",
         type=str,
         help="EDH instance file name.",
     )
@@ -188,7 +188,7 @@ def get_next_action_parse_args():
         help="One of None or a dict with keys 'action' and 'obj_relative_coord' containing returned values.",
     )
     parser.add_argument(
-        "edh_instance",
+        "game_instance",
         type=str,
         help="One of None or a dict with keys 'action' and 'obj_relative_coord' containing returned values.",
     )
@@ -196,15 +196,15 @@ def get_next_action_parse_args():
     return args
 
 
-def start_new_edh_instance_parse_args():
+def start_new_game_instance_parse_args():
     parser = reqparse.RequestParser()
     parser.add_argument(
-        "edh_name",
+        "game_name",
         type=str,
         help="EDH instance file name.",
     )
     parser.add_argument(
-        "edh_instance",
+        "game_instance",
         type=str,
         help="One of None or a dict with keys 'action' and 'obj_relative_coord' containing returned values.",
     )

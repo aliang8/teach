@@ -23,7 +23,7 @@ def main():
         "--data_dir",
         type=str,
         required=True,
-        help='Base data directory containing subfolders "games",
+        help='Base data directory containing subfolders "games"',
     )
     arg_parser.add_argument(
         "--images_dir",

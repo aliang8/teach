@@ -11,7 +11,7 @@ from modeling.utils import data_util
 
 class Module(Base):
 
-    def __init__(self, args, embs_ann, vocab, for_inference=False):
+    def __init__(self, args, embs_ann, vocab, test_mode=False):
         '''
             Seq2Seq Follower agent
         '''
@@ -50,7 +50,7 @@ class Module(Base):
         # internal states
         self.state_t = None
         self.e_t = None
-        self.test_mode = False
+        self.test_mode = test_mode
 
         # bce reconstruction loss
         # self.bce_with_logits = torch.nn.BCEWithLogitsLoss(reduction='none')
@@ -227,13 +227,16 @@ class Module(Base):
         
         enc_lang_goal_instr, _ = self.enc(emb_lang_goal_instr)
         
-        enc_lang_goal_instr, _ = pad_packed_sequence(enc_lang_goal_instr, batch_first=True)
+        if not self.test_mode:
+            enc_lang_goal_instr, _ = pad_packed_sequence(enc_lang_goal_instr, batch_first=True)
+
         self.lang_dropout(enc_lang_goal_instr)
         cont_lang_goal_instr = self.enc_att(enc_lang_goal_instr)
 
         # cont_lang_goal_instr
-        cont_lang_goal_instr = cont_lang_goal_instr.view(-1, 150,  *cont_lang_goal_instr.shape[1:])
-        enc_lang_goal_instr = enc_lang_goal_instr.view(-1, 150, *enc_lang_goal_instr.shape[1:])
+        if not self.test_mode:
+            cont_lang_goal_instr = cont_lang_goal_instr.view(-1, 150,  *cont_lang_goal_instr.shape[1:])
+            enc_lang_goal_instr = enc_lang_goal_instr.view(-1, 150, *enc_lang_goal_instr.shape[1:])
         return cont_lang_goal_instr, enc_lang_goal_instr
 
 
@@ -248,7 +251,7 @@ class Module(Base):
             'enc_lang': None
         }
 
-    def step(self, feat, prev_action=None):
+    def step(self, feat, vocab, prev_action=None):
         '''
         forward the model for a single time-step (used for real-time execution during eval)
         '''
@@ -266,7 +269,7 @@ class Module(Base):
         e_t = self.embed_action(prev_action) if prev_action is not None else self.r_state['e_t']
 
         # decode and save embedding and hidden states
-        out_action_low, out_action_low_coord, state_t, *_ = self.dec.step(self.r_state['enc_lang'], feat['frames'][:, 0], e_t=e_t, state_tm1=self.r_state['state_t'])
+        out_action_low, out_action_low_aux, state_t, *_ = self.dec.step(self.r_state['enc_lang'], feat['frames'][:, 0], e_t=e_t, state_tm1=self.r_state['state_t'])
 
         # save states
         self.r_state['state_t'] = state_t
@@ -274,7 +277,7 @@ class Module(Base):
 
         # output formatting
         feat['out_action_low'] = out_action_low.unsqueeze(0)
-        feat['out_action_low_coord'] = out_action_low_coord.unsqueeze(0)
+        feat[f'out_action_{self.aux_pred_type}'] = out_action_low_aux.unsqueeze(0)
         return feat
 
 
@@ -320,7 +323,7 @@ class Module(Base):
         '''
         embed low-level action
         '''
-        device = torch.device('cuda') if self.args.gpu else torch.device('cpu')
+        device = torch.device('cuda') if self.args.device == "cuda" else torch.device('cpu')
         action_num = torch.tensor(self.vocab[f'{self.args.agent}_action_low'].word2index(action), device=device)
         action_emb = self.dec.emb(action_num).unsqueeze(0)
         return action_emb

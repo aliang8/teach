@@ -36,8 +36,10 @@ class Module(nn.Module):
 
         if args.agent == "driver":
             self.emb_action_low = nn.Embedding(len(vocab['driver_action_low']), args.demb)
+            self.vocab_out = vocab['driver_action_low']
         elif args.agent == "commander":
             self.emb_action_low = nn.Embedding(len(vocab['commander_action_low']), args.demb)
+            self.vocab_out = vocab['commander_action_low']
 
         # end tokens
         # TODO: word or action_low??

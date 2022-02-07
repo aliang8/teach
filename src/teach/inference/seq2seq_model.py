@@ -87,7 +87,7 @@ class Seq2SeqModel(TeachModel):
             device = f"cuda:{process_index % gpu_count}" if self.args.device == "cuda" else self.args.device
             self.args.device = device
             logger.info(f"Loading {agent} model agent using device: {device}")
-            model, self.extractor = eval_util.load_agent("seq2seq", model_path, dataset_info, self.args, for_inference=True)
+            model, self.extractor = eval_util.load_agent("seq2seq", model_path, dataset_info, self.args, test_mode=True)
 
         # self.vocab = {"word": train_vocab["word"], "action_low": self.model.vocab_out}
 
@@ -96,6 +96,13 @@ class Seq2SeqModel(TeachModel):
     def start_new_tatc_instance(self, tatc_instance, tatc_name=None):
         self.commander_model.reset()
         self.driver_model.reset()
+
+        self.input_dict = {}
+        tatc_instance = self.preprocessor.process_goal_instr(tatc_instance)
+        lang_goal = torch.tensor(tatc_instance["lang_goal"], dtype=torch.long).to(self.args.device)
+        lang_goal = self.commander_model.emb_word(lang_goal)
+        self.input_dict["lang_goal_instr"] = lang_goal
+
         return True
 
     #     self.cur_tatc_instance = data_util.process_traj(
@@ -124,18 +131,29 @@ class Seq2SeqModel(TeachModel):
 
     def get_next_action_commander(self, img, tatc_instance, prev_action, img_name=None, tatc_name=None):
         img_feat = self.extractor.featurize([img], batch=1)
-        self.input_dict = {}
-        self.input_dict["frames"] = img_feat
+
+        # Input dict should have `lang_goal_instr` and `frames`
+        self.input_dict["frames"] = img_feat.unsqueeze(0)
 
         with torch.no_grad():
             prev_api_action = None
-            if prev_action is not None and "action" in prev_action:
-                prev_api_action = prev_action["action"]
-            import ipdb; ipdb.set_trace()
+            if prev_action is not None and "commander_action" in prev_action:
+                prev_api_action = prev_action["commander_action"]
+
             m_out = self.commander_model.step(self.input_dict, self.vocab, prev_action=prev_api_action)
+        
+        # Predicts action and obj cls
+        m_pred = model_util.extract_action_preds_commander(
+            m_out, self.commander_model.pad, self.commander_model.vocab["commander_action_low"], clean_special_tokens=False
+        )[0]
 
+        # Assume previous action succeeded if no better info available
+        prev_success = True
+        if prev_action is not None and "success" in prev_action:
+            prev_success = prev_action["success"]
 
-        return action
+        action, obj_cls = m_pred["action"], m_pred["obj_cls"]
+        return action, obj_cls
 
     def get_next_action_driver(self, img, tatc_instance, prev_action, img_name=None, tatc_name=None):
         """
@@ -154,27 +172,29 @@ class Seq2SeqModel(TeachModel):
         """
         # import ipdb; ipdb.set_trace()
         img_feat = self.extractor.featurize([img], batch=1)
-        self.input_dict["frames"] = img_feat
+        self.input_dict["frames"] = img_feat.unsqueeze(0)
 
         with torch.no_grad():
             prev_api_action = None
-            if prev_action is not None and "action" in prev_action:
-                prev_api_action = prev_action["action"]
+            if prev_action is not None and "driver_action" in prev_action:
+                prev_api_action = prev_action["driver_action"]
             m_out = self.driver_model.step(self.input_dict, self.vocab, prev_action=prev_api_action)
 
-        m_pred = model_util.extract_action_preds(
-            m_out, self.driver_model.pad, self.vocab["driver_action_low"], clean_special_tokens=False
+        m_pred = model_util.extract_action_preds_driver(
+            m_out, self.driver_model.pad, self.driver_model.vocab["driver_action_low"], clean_special_tokens=False
         )[0]
-        action = m_pred["action"]
 
-        obj = None
-        if action in obj_interaction_actions and len(m_pred["object"]) > 0 and len(m_pred["object"][0]) > 0:
-            obj = m_pred["object"][0][0]
+        action, predicted_click = m_pred["action"], m_pred['coord']
 
-        predicted_click = None
-        if obj is not None:
-            predicted_click = self.get_obj_click(obj, img)
-        logger.debug("Predicted action: %s, obj = %s, click = %s" % (str(action), str(obj), str(predicted_click)))
+        # obj = None
+        # if action in obj_interaction_actions and len(m_pred["object"]) > 0 and len(m_pred["object"][0]) > 0:
+        if action in obj_interaction_actions:
+            # obj = m_pred["object"][0][0]
+            pass
+        else:
+            predicted_click = None
+
+        logger.debug("Predicted action: %s, click = %s" % (str(action), str(predicted_click)))
 
         # Assume previous action succeeded if no better info available
         prev_success = True

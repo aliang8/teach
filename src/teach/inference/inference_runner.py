@@ -27,6 +27,7 @@ from teach.utils import (
     with_retry,
     get_state_changes,
 )
+from teach.dataset.task_THOR import Task_THOR
 
 definitions = Definitions(version="2.0")
 action_id_to_info = definitions.map_actions_id2info
@@ -144,8 +145,17 @@ class InferenceRunner:
         game = InferenceRunner._load_game(instance_file)
         game['instance_id'] = instance_id
 
-        game["state_changes"] = get_state_changes(game["tasks"][0]["episodes"][0]['initial_state'], game["tasks"][0]["episodes"][0]["final_state"])
-        game_check_task = create_task_thor_from_state_diff(game["state_changes"])
+        # game["state_changes"] = get_state_changes(game["tasks"][0]["episodes"][0]['initial_state'], game["tasks"][0]["episodes"][0]["final_state"])
+        game_check_task = Task_THOR(
+            task_id=0,
+            task_name=game["tasks"][0]["task_name"],
+            task_nparams=0,
+            task_params=[],
+            task_anchor_object=None,
+            desc=game["tasks"][0]["desc"],
+            components=game["tasks"][0]["components"],
+            relations=[],
+        )
         game_file = InferenceRunner._get_game_file(game, config)
 
         metrics = create_new_traj_metrics(game)
@@ -190,22 +200,22 @@ class InferenceRunner:
                     img = InferenceRunner._get_latest_ego_image(er)
                     image_name = InferenceRunner._save_image(config, game, img, traj_steps_taken)
 
-                    # Get next driver action
-                    commander_action = model.get_next_action_commander(
+                    # Get next commander action
+                    commander_action, obj_cls = model.get_next_action_commander(
                         img, game, prev_action, image_name, instance_file
                     )
 
-                    # Get next commander action
+                    # Get next driver action
                     driver_action, obj_relative_coord = model.get_next_action_driver(
                         img, game, prev_action, image_name, instance_file
                     )
 
                     # Execute actions in simulator
-                    commander_step_success = InferenceRunner._execute_driver_action(er.simulator, commander_action)
+                    commander_step_success = InferenceRunner._execute_commander_action(er.simulator, commander_action, obj_cls)
                     driver_step_success = InferenceRunner._execute_driver_action(er.simulator, driver_action, obj_relative_coord)
-
-                    InferenceRunner._update_metrics(metrics, action, obj_relative_coord, step_success)
-                    prev_action = {"action": action, "obj_relative_coord": obj_relative_coord}
+                    
+                    InferenceRunner._update_metrics(metrics, commander_action, obj_cls, driver_action, obj_relative_coord, commander_step_success, driver_step_success)
+                    prev_action = {"commander_action": commander_action, "driver_action": driver_action, "obj_cls": obj_cls, "obj_relative_coord": obj_relative_coord}
                     pred_actions.append(prev_action)
                 except Exception as e:
                     logger.error(
@@ -215,7 +225,7 @@ class InferenceRunner:
                     )
                     metrics["error"] = 1
                     break
-                if InferenceRunner._should_end_inference(action, metrics, config.max_api_fails):
+                if InferenceRunner._should_end_inference(driver_action, metrics, config.max_api_fails):
                     break
 
         (
@@ -282,8 +292,13 @@ class InferenceRunner:
         return Image.fromarray(er.simulator.get_latest_images()["ego"])
 
     @staticmethod
-    def _execute_commander_action(simulator, action):
-        pass
+    def _execute_commander_action(simulator, action, obj_cls):
+        step_success = True
+
+        if action in ["OpenProgressCheck", "SearchObject", "SelectOid"]:
+            r = self.simulator.apply_progress_check(action, agent_id=0, query=obj_cls)
+        else:
+            pass
         return step_success
 
     @staticmethod
@@ -313,13 +328,13 @@ class InferenceRunner:
         return f"{metrics_file}.json.{process_index}"
 
     @staticmethod
-    def _update_metrics(metrics, action, obj_relative_coord, step_success):
-        metrics["pred_actions"].append((action, obj_relative_coord))
+    def _update_metrics(metrics, commander_action, obj_cls, driver_action, obj_relative_coord, commander_step_success, driver_step_success):
+        metrics["pred_actions"].append((commander_action, obj_cls, driver_action, obj_relative_coord))
 
-        if action == "Stop":
+        if driver_action == "Stop":
             metrics["predicted_stop"] = 1
 
-        if not step_success:
+        if not commander_step_success or not driver_step_success:
             metrics["num_api_fails"] += 1
 
     @staticmethod

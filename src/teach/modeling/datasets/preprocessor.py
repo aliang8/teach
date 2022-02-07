@@ -43,6 +43,18 @@ class Preprocessor(object):
         sentences = [[w.strip().lower() for w in sent] for sent in sentences]
         return sentences
 
+    def process_goal_instr(self, traj, is_test_split=False):
+        if self.is_test_split:
+            is_test_split = True
+            
+        goal_desc = traj["tasks"][0]["desc"]
+        goal_desc = revtok.tokenize(data_util.remove_spaces_and_lower(goal_desc))
+        goal_desc = [w.strip().lower() for w in goal_desc]
+        traj["lang_goal"] = [
+            self.numericalize(self.vocab["word"], goal_desc, train=not is_test_split) 
+        ]
+        return traj
+
     def process_language(self, ex, traj, r_idx, is_test_split=False):
         if self.is_test_split:
             is_test_split = True

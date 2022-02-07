@@ -83,7 +83,7 @@ def create_optimizer_and_schedulers(first_epoch, args, parameters, optimizer=Non
     return optimizer, {"base": lr_scheduler, "warmup": warmup_scheduler}
 
 
-def load_model(model_name, fsave, device, check_epoch=None, for_inference=False):
+def load_model(model_name, fsave, device, check_epoch=None, test_mode=False):
     """
     load pth model from disk
     """
@@ -96,9 +96,9 @@ def load_model(model_name, fsave, device, check_epoch=None, for_inference=False)
     else:
         model_cls = import_module("alfred.model.learned").LearnedModel
 
-    # model = model_cls(save["args"], save["embs_ann"], save["vocab_out"], for_inference)
+    # model = model_cls(save["args"], save["embs_ann"], save["vocab_out"], test_mode)
     print(save["vocab"].keys())
-    model = model_cls(save["args"], {}, save["vocab"], for_inference)
+    model = model_cls(save["args"], {}, save["vocab"], test_mode)
 
     model.load_state_dict(save["model"])
     OptimizerClass = torch.optim.Adam if save["args"].optimizer == "adam" else torch.optim.AdamW
@@ -252,7 +252,49 @@ def generate_attention_mask(len_lang, len_frames, device, num_input_actions=0):
     return all_to_all
 
 
-def process_prediction(action, objects, pad, vocab_action, clean_special_tokens, predict_object=True):
+# def process_prediction(action, objects, pad, vocab_action, clean_special_tokens, predict_object=True):
+#     """
+#     process a single trajectory, return it as a dict
+#     """
+#     # remove padding tokens
+#     if pad in action:
+#         pad_start_idx = action.index(pad)
+#         action = action[:pad_start_idx]
+#         objects = objects[:pad_start_idx]
+#     if clean_special_tokens:
+#         # remove <<stop>> tokens
+#         stop_token = vocab_action.word2index("Stop")
+#         if stop_token in action:
+#             stop_start_idx = action.index(stop_token)
+#             action = action[:stop_start_idx]
+#             objects = objects[:stop_start_idx]
+#     # index to API actions
+#     words = vocab_action.index2word(action)
+
+#     if predict_object:
+#         pred_object = objects[None].max(2)[1].cpu().numpy()
+#     else:
+#         pred_object = None
+#     pred_processed = {
+#         "action": " ".join(words),
+#         "object": pred_object,
+#     }
+#     return pred_processed
+
+
+# def extract_action_preds(model_out, pad, vocab_action, clean_special_tokens=True, lang_only=False):
+#     """
+#     output processing for a VLN agent
+#     """
+#     zipped_data = zip(model_out["action"].max(2)[1].tolist(), model_out["object"])
+#     predict_object = not lang_only
+#     preds_list = [
+#         process_prediction(action, objects, pad, vocab_action, clean_special_tokens, predict_object)
+#         for action, objects in zipped_data
+#     ]
+#     return preds_list
+
+def process_prediction_commander(action, obj, pad, vocab_action, clean_special_tokens):
     """
     process a single trajectory, return it as a dict
     """
@@ -260,41 +302,67 @@ def process_prediction(action, objects, pad, vocab_action, clean_special_tokens,
     if pad in action:
         pad_start_idx = action.index(pad)
         action = action[:pad_start_idx]
-        objects = objects[:pad_start_idx]
+        obj = obj[:pad_start_idx]
     if clean_special_tokens:
         # remove <<stop>> tokens
         stop_token = vocab_action.word2index("Stop")
         if stop_token in action:
             stop_start_idx = action.index(stop_token)
             action = action[:stop_start_idx]
-            objects = objects[:stop_start_idx]
+            obj = obj[:stop_start_idx]
     # index to API actions
     words = vocab_action.index2word(action)
 
-    if predict_object:
-        pred_object = objects[None].max(2)[1].cpu().numpy()
-    else:
-        pred_object = None
     pred_processed = {
         "action": " ".join(words),
-        "object": pred_object,
+        "obj_cls": obj,
     }
     return pred_processed
 
+def extract_action_preds_commander(model_out, pad, vocab_action, clean_special_tokens=True, lang_only=False):
+    zipped_data = zip(model_out["out_action_low"].max(2)[1].tolist(), model_out["out_action_obj_cls"].max(2)[1].tolist())
 
-def extract_action_preds(model_out, pad, vocab_action, clean_special_tokens=True, lang_only=False):
-    """
-    output processing for a VLN agent
-    """
-    zipped_data = zip(model_out["action"].max(2)[1].tolist(), model_out["object"])
-    predict_object = not lang_only
+    # predict_object = not lang_only
     preds_list = [
-        process_prediction(action, objects, pad, vocab_action, clean_special_tokens, predict_object)
-        for action, objects in zipped_data
+        process_prediction_commander(action, obj, pad, vocab_action, clean_special_tokens)
+        for action, obj in zipped_data
     ]
     return preds_list
 
+def process_prediction_driver(action, coord, pad, vocab_action, clean_special_tokens):
+    """
+    process a single trajectory, return it as a dict
+    """
+    # remove padding tokens
+    if pad in action:
+        pad_start_idx = action.index(pad)
+        action = action[:pad_start_idx]
+    if clean_special_tokens:
+        # remove <<stop>> tokens
+        stop_token = vocab_action.word2index("Stop")
+        if stop_token in action:
+            stop_start_idx = action.index(stop_token)
+            action = action[:stop_start_idx]
 
+    # index to API actions
+    words = vocab_action.index2word(action)
+
+    pred_processed = {
+        "action": " ".join(words),
+        "coord": coord,
+    }
+    return pred_processed
+
+def extract_action_preds_driver(model_out, pad, vocab_action, clean_special_tokens=True, lang_only=False):
+    zipped_data = zip(model_out["out_action_low"].max(2)[1].tolist(), model_out["out_action_coord"])
+
+    # predict_object = not lang_only
+    preds_list = [
+        process_prediction_driver(action, coord, pad, vocab_action, clean_special_tokens)
+        for action, coord in zipped_data
+    ]
+    return preds_list
+    
 def compute_f1_and_exact(metrics, preds, labels, loss_key):
     """
     compute f1 and extract match scores for agent output

@@ -312,11 +312,11 @@ def create_task_thor_from_state_diff(state_diff):
 
     return Task_THOR(
         task_id=0,
-        task_name="edh_custom",
+        task_name="tatc_custom",
         task_nparams=0,
         task_params=[],
         task_anchor_object=None,
-        desc="custom EDH task",
+        desc="custom TATC task",
         components=components,
         relations=[],
     )

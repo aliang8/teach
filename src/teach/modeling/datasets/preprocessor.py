@@ -109,6 +109,8 @@ class Preprocessor(object):
         # Process progress check vocabulary
         for (commander_action, _) in traj["actions_low"]:
             if commander_action["action_name"] == "OpenProgressCheck":
+                if not "pc_json" in commander_action:
+                    continue
                 json_f = commander_action["pc_json"]
 
                 all_words = ""

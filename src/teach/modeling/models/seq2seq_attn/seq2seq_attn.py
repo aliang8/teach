@@ -248,7 +248,7 @@ class Module(Base):
             'enc_lang': None
         }
 
-    def step(self, feat, prev_action=None):
+    def step(self, feat, vocab, prev_action=None):
         '''
         forward the model for a single time-step (used for real-time execution during eval)
         '''
@@ -266,7 +266,7 @@ class Module(Base):
         e_t = self.embed_action(prev_action) if prev_action is not None else self.r_state['e_t']
 
         # decode and save embedding and hidden states
-        out_action_low, out_action_low_coord, state_t, *_ = self.dec.step(self.r_state['enc_lang'], feat['frames'][:, 0], e_t=e_t, state_tm1=self.r_state['state_t'])
+        out_action_low, out_action_low_aux, state_t, *_ = self.dec.step(self.r_state['enc_lang'], feat['frames'][:, 0], e_t=e_t, state_tm1=self.r_state['state_t'])
 
         # save states
         self.r_state['state_t'] = state_t
@@ -274,7 +274,7 @@ class Module(Base):
 
         # output formatting
         feat['out_action_low'] = out_action_low.unsqueeze(0)
-        feat['out_action_low_coord'] = out_action_low_coord.unsqueeze(0)
+        feat[f'out_action_{self.aux_pred_type}'] = out_action_low_aux.unsqueeze(0)
         return feat
 
 

@@ -48,7 +48,7 @@ def evaluate_traj(success, edh_instance, traj_len, final_gc_total, final_gc_sati
 def create_new_traj_metrics(edh_instance):
     return {
         # "instance_id": edh_instance["instance_id"],
-        "game_id": edh_instance["game_id"],
+        # "game_id": edh_instance["game_id"],
         "completed_goal_conditions": 0,
         "total_goal_conditions": 0,
         "goal_condition_success": 0.0,

@@ -96,18 +96,21 @@ class InferenceRunner:
         num_files_per_process = InferenceRunner._get_num_files_per_process(
             num_files=num_files, num_processes=config.num_processes
         )
-        start_index, end_index = InferenceRunner._get_range_to_process(
-            process_index=process_index,
-            num_files_per_process=num_files_per_process,
-            num_files=num_files,
-        )
 
-        files_to_process = game_files[start_index:end_index]
+        InferenceRunner._run(process_index, game_files[0:1], config, er)
 
-        process = mp.Process(target=InferenceRunner._run, args=(process_index, files_to_process, config, er))
+        # start_index, end_index = InferenceRunner._get_range_to_process(
+        #     process_index=process_index,
+        #     num_files_per_process=num_files_per_process,
+        #     num_files=num_files,
+        # )
 
-        process.start()
-        time.sleep(0.1)
+        # files_to_process = game_files[start_index:end_index]
+
+        # process = mp.Process(target=InferenceRunner._run, args=(process_index, files_to_process, config, er))
+
+        # process.start()
+        # time.sleep(0.1)
         return process
 
     @staticmethod
@@ -132,38 +135,48 @@ class InferenceRunner:
                 
     @staticmethod
     def _run_game(instance_file, config: InferenceRunnerConfig, model: TeachModel, er: EpisodeReplay):
+        import copy
+        instance_id = copy.deepcopy(instance_file)
+        instance_id = instance_id.replace(config.data_dir + '/', "")
+        instance_id = instance_id.replace(config.split + '/', "")
+        instance_id = instance_id.split('.')[0]
+
         game = InferenceRunner._load_game(instance_file)
+        game['instance_id'] = instance_id
+
         game["state_changes"] = get_state_changes(game["tasks"][0]["episodes"][0]['initial_state'], game["tasks"][0]["episodes"][0]["final_state"])
         game_check_task = create_task_thor_from_state_diff(game["state_changes"])
         game_file = InferenceRunner._get_game_file(game, config)
 
         metrics = create_new_traj_metrics(game)
-        instance_id = game["game_id"]
+        # instance_id = game["instance_id"]
         logger.debug(f"Processing instance {instance_id}")
 
-        try:
-            init_success, er = with_retry(
-                fn=lambda: InferenceRunner._initialize_episode_replay(
-                    game, game_file, game_check_task, config.replay_timeout, er
-                ),
-                retries=config.max_init_tries - 1,
-                check_first_return_value=True,
-            )
-        except Exception:
-            init_success = False
-            logger.error(f"Failed to initialize episode replay for instance={instance_id}", exc_info=True)
+        er.set_episode_by_fn_and_idx(game_file, 0, 0)
+        api_success, init_state = er._set_up_new_episode(None, turn_on_lights=False, task=game_check_task)
+        # try:
+        # init_success, er = with_retry(
+        #     fn=lambda: InferenceRunner._initialize_episode_replay(
+        #         game, game_file, game_check_task, config.replay_timeout, er
+        #     ),
+        #     retries=config.max_init_tries - 1,
+        #     check_first_return_value=True,
+        # )
+        # except Exception:
+        #     init_success = False
+        #     logger.error(f"Failed to initialize episode replay for instance={instance_id}", exc_info=True)
 
-        metrics["init_success"] = init_success
-        if not init_success:
-            return game["game_id"], metrics
+        # metrics["init_success"] = init_success
+        # if not init_success:
+        #     return game["instance_id"], metrics
 
         model_started_success = False
         try:
-            model_started_success = model.start_new_game(game, edh_history_images, instance_file)
+            model_started_success = model.start_new_tatc_instance(game, instance_file)
         except Exception:
             model_started_success = False
             metrics["error"] = 1
-            logger.error(f"Failed to start_new_game for {instance_id}", exc_info=True)
+            logger.error(f"Failed to start_new_tatc_instance for {instance_id}", exc_info=True)
 
         if model_started_success:
             prev_action = None
@@ -176,10 +189,21 @@ class InferenceRunner:
                 try:
                     img = InferenceRunner._get_latest_ego_image(er)
                     image_name = InferenceRunner._save_image(config, game, img, traj_steps_taken)
-                    action, obj_relative_coord = model.get_next_action(
+
+                    # Get next driver action
+                    commander_action = model.get_next_action_commander(
                         img, game, prev_action, image_name, instance_file
                     )
-                    step_success = InferenceRunner._execute_action(er.simulator, action, obj_relative_coord)
+
+                    # Get next commander action
+                    driver_action, obj_relative_coord = model.get_next_action_driver(
+                        img, game, prev_action, image_name, instance_file
+                    )
+
+                    # Execute actions in simulator
+                    commander_step_success = InferenceRunner._execute_driver_action(er.simulator, commander_action)
+                    driver_step_success = InferenceRunner._execute_driver_action(er.simulator, driver_action, obj_relative_coord)
+
                     InferenceRunner._update_metrics(metrics, action, obj_relative_coord, step_success)
                     prev_action = {"action": action, "obj_relative_coord": obj_relative_coord}
                     pred_actions.append(prev_action)
@@ -236,8 +260,8 @@ class InferenceRunner:
         start_time = time.perf_counter()
         er.set_episode_by_fn_and_idx(game_file, 0, 0)
         interactions = list()
-        interactions = game["tasks"][0]["episodes"][0]["interactions"] #[: game["pred_start_idx"]]
-        for interaction in interactions:
+        ep_interactions = game["tasks"][0]["episodes"][0]["interactions"] #[: game["pred_start_idx"]]
+        for interaction in ep_interactions:
             action = action_id_to_info[interaction["action_id"]]
             interactions.append(Interaction.from_dict(interaction, action["action_type"]))
         er.episode.interactions = interactions
@@ -258,7 +282,12 @@ class InferenceRunner:
         return Image.fromarray(er.simulator.get_latest_images()["ego"])
 
     @staticmethod
-    def _execute_action(simulator, action, obj_relative_coord):
+    def _execute_commander_action(simulator, action):
+        pass
+        return step_success
+
+    @staticmethod
+    def _execute_driver_action(simulator, action, obj_relative_coord):
         if action == "Stop":
             return True
 
@@ -276,7 +305,7 @@ class InferenceRunner:
         return os.path.join(
             config.data_dir,
             config.split,
-            f"{game['game_id']}.game.json",
+            f"{game['instance_id']}.game.json",
         )
 
     @staticmethod

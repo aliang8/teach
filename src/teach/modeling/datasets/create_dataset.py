@@ -60,6 +60,8 @@ def cfg_args():
 def process_feats(traj_paths, extractor, lock, image_folder, save_path):
     (save_path / "commander_feats").mkdir(exist_ok=True)
     (save_path / "driver_feats").mkdir(exist_ok=True)
+    (save_path / "target_feats").mkdir(exist_ok=True)
+    (save_path / "mask_feats").mkdir(exist_ok=True)
 
     if str(save_path).endswith("/worker00"):
         with lock:
@@ -73,7 +75,7 @@ def process_feats(traj_paths, extractor, lock, image_folder, save_path):
         filename_new = "{}:{}".format(traj_path.parts[-2], re.sub(".json", ".pt", traj_path.name))
 
         # extract features with th extractor
-        commander_images, driver_images = data_util.read_traj_images(traj_path, image_folder)
+        commander_images, driver_images, target_images, target_masks, target_idx = data_util.read_traj_images(traj_path, image_folder)
         if commander_images is None or len(commander_images) == 0:
             raise RuntimeError(
                 "Failed to find images with image_folder =",
@@ -84,11 +86,19 @@ def process_feats(traj_paths, extractor, lock, image_folder, save_path):
 
         commander_feat = data_util.extract_features(commander_images, extractor)
         driver_feat = data_util.extract_features(driver_images, extractor)
+        target_feat = data_util.extract_features(target_images, extractor)
+        mask_feat = data_util.extract_features(target_masks, extractor)
+
 
         if commander_feat is not None:
             torch.save(commander_feat, save_path / "commander_feats" / filename_new)
         if driver_feat is not None:
             torch.save(driver_feat, save_path / "driver_feats" / filename_new)
+        if target_feat is not None:
+            torch.save(target_feat, save_path / "target_feats" / filename_new)
+        if mask_feat is not None:
+            torch.save(mask_feat, save_path / "mask_feats" / filename_new)
+            torch.save(target_idx, save_path / "mask_feats" / "target_idx.pt")
 
         with lock:
             with open(save_path.parents[0] / "processed_feats.txt", "a") as f:
@@ -176,11 +186,11 @@ def run_in_parallel(func, num_workers, output_path, args, use_processes=False):
 
 
 def gather_data(output_path, num_workers):
-    for dirname in ("commander_feats", "driver_feats", "masks", "jsons"):
+    for dirname in ("commander_feats", "driver_feats", "target_feats", "target_masks", "masks", "jsons"):
         if (output_path / dirname).is_dir():
             shutil.rmtree(output_path / dirname)
         (output_path / dirname).mkdir()
-    for dirname in ("commander_feats", "driver_feats", "masks", "jsons"):
+    for dirname in ("commander_feats", "driver_feats", "target_feats", "target_masks", "masks", "jsons"):
         for path_file in output_path.glob("worker*/{}/*".format(dirname)):
             if path_file.stat().st_size == 0:
                 continue
@@ -208,10 +218,17 @@ def gather_data(output_path, num_workers):
             driver_feats_files = output_path.glob("driver_feats/{}:*.pt".format(partition))
             driver_feats_files = sorted([str(path) for path in driver_feats_files])
 
+            target_feats_files = output_path.glob("target_feats/{}:*.pt".format(partition))
+            target_feats_files = sorted([str(path) for path in target_feats_files])
+            mask_feats_files = output_path.glob("mask_feats/{}:*.pt".format(partition))
+            mask_feats_files = sorted([str(path) for path in mask_feats_files])
+
             jsons_files = [p.replace("/driver_feats/", "/jsons/").replace(".pt", ".pkl") for p in driver_feats_files]
             (output_path / partition).mkdir(exist_ok=True)
             data_util.gather_feats(commander_feats_files, output_path / partition / "commander_feats")
             data_util.gather_feats(driver_feats_files, output_path / partition / "driver_feats")
+            data_util.gather_feats(target_feats_files, output_path / partition / "target_feats")
+            data_util.gather_feats(mask_feats_files, output_path / partition / "mask_feats")
             data_util.gather_jsons(jsons_files, output_path / partition / "jsons.pkl")
 
     logger.info("Removing worker directories")
@@ -219,7 +236,7 @@ def gather_data(output_path, num_workers):
     for worker_idx in range(max(num_workers, 1)):
         worker_dir = output_path / "worker{:02d}".format(worker_idx)
         shutil.rmtree(worker_dir)
-    for dirname in ("commander_feats", "driver_feats", "masks", "jsons"):
+    for dirname in ("commander_feats", "driver_feats", "target_feats", "target_masks", "masks", "jsons"):
         shutil.rmtree(output_path / dirname)
     os.remove(output_path / ".deleting_worker_dirs")
     os.remove(output_path / "processed_feats.txt")

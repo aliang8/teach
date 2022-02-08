@@ -86,8 +86,14 @@ def process_feats(traj_paths, extractor, lock, image_folder, save_path):
 
         commander_feat = data_util.extract_features(commander_images, extractor)
         driver_feat = data_util.extract_features(driver_images, extractor)
-        target_feat = data_util.extract_features(target_images, extractor)
-        mask_feat = data_util.extract_features(target_masks, extractor)
+        if len(target_images) > 0:
+            target_feat = data_util.extract_features(target_images, extractor)
+        else:
+            target_feat = None
+        if len(target_masks) > 0:
+            mask_feat = data_util.extract_features(target_masks, extractor)
+        else:
+            mask_feat = None
 
 
         if commander_feat is not None:

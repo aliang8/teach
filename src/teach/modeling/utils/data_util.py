@@ -59,7 +59,7 @@ def read_traj_images(json_path, image_folder):
     mask_images = []
     target_idx = []
     for i in interactions:
-        if i["action_id"] > 500:
+        if i["action_id"] > 500 and i["success"]==1:
             target_images.append(".".join(i["targetobject"].split(".")[:-4]) +".frame."+".".join(i["targetobject"].split(".")[-3:]))
             mask_images.append(".".join(i["targetobject"].split(".")[:-4]) +".mask."+".".join(i["targetobject"].split(".")[-3:]))
             target_idx.append(interactions.index(i))

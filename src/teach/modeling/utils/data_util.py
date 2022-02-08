@@ -55,7 +55,14 @@ def read_traj_images(json_path, image_folder):
     interactions = json_dict["tasks"][0]["episodes"][0]["interactions"]
     commander_images = [interactions[i]["commander_obs"] for i in range(len(interactions))]
     driver_images = [interactions[i]["driver_obs"] for i in range(len(interactions))]
-
+    target_images=[]
+    mask_images=[]
+    target_idx =[]
+    for i in interactions:
+        if i["action_id"]>500:
+            target_images.append(".".join(i["targetobject"].split(".")[:-4]) +".frame."+".".join(i["targetobject"].split(".")[-3:]))
+            mask_images.append(".".join(i["targetobject"].split(".")[:-4]) +".mask."+".".join(i["targetobject"].split(".")[-3:]))
+            target_idx.append(interactions.index(i))
     logger.debug("Loading images from %s" % images_dir)
     logger.debug("Expected commander image files: %s" % "\n\t".join([str(x) for x in commander_images]))
     logger.debug("Expected driver image files: %s" % "\n\t".join([str(x) for x in driver_images]))
@@ -68,8 +75,10 @@ def read_traj_images(json_path, image_folder):
     # assert len(fimages) > 0
     commander_images = read_images(commander_images)
     driver_images = read_images(driver_images)
+    target_images = read_images(target_images)
+    mask_images = read_images(mask_images)
 
-    return commander_images, driver_images
+    return commander_images, driver_images, target_images, mask_images, target_idx
 
 
 def extract_features(images, extractor):

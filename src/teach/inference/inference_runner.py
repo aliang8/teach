@@ -98,20 +98,20 @@ class InferenceRunner:
             num_files=num_files, num_processes=config.num_processes
         )
 
-        # InferenceRunner._run(process_index, game_files[0:1], config, er)
+        InferenceRunner._run(process_index, game_files[0:1], config, er)
 
-        start_index, end_index = InferenceRunner._get_range_to_process(
-            process_index=process_index,
-            num_files_per_process=num_files_per_process,
-            num_files=num_files,
-        )
+        # start_index, end_index = InferenceRunner._get_range_to_process(
+        #     process_index=process_index,
+        #     num_files_per_process=num_files_per_process,
+        #     num_files=num_files,
+        # )
 
-        files_to_process = game_files[start_index:end_index]
+        # files_to_process = game_files[start_index:end_index]
 
-        process = mp.Process(target=InferenceRunner._run, args=(process_index, files_to_process, config, er))
+        # process = mp.Process(target=InferenceRunner._run, args=(process_index, files_to_process, config, er))
 
-        process.start()
-        time.sleep(0.1)
+        # process.start()
+        # time.sleep(0.1)
         return process
 
     @staticmethod
@@ -232,7 +232,7 @@ class InferenceRunner:
             success,
             final_goal_conditions_total,
             final_goal_conditions_satisfied,
-        ) = InferenceRunner._check_episode_progress(er, game_check_task)
+        ) = InferenceRunner._check_episode_progress(er, er.simulator.current_task)
 
         metrics_diff = evaluate_traj(
             success,

@@ -9,13 +9,13 @@ import numpy as np
 from teach.utils import create_task_thor_from_state_diff
 
 
-def evaluate_traj(success, edh_instance, traj_len, final_gc_total, final_gc_satisfied):
-    init_gc_satisfied = min(
-        edh_instance["expected_init_goal_conditions_total"], edh_instance["expected_init_goal_conditions_satisfied"]
-    )
+def evaluate_traj(success, tatc_instance, traj_len, final_gc_total, final_gc_satisfied):
+    # init_gc_satisfied = min(
+    #     tatc_instance["expected_init_goal_conditions_total"], tatc_instance["expected_init_goal_conditions_satisfied"]
+    # )
     final_gc_satisfied = min(final_gc_total, final_gc_satisfied)
 
-    total_goal_conditions = edh_instance["expected_init_goal_conditions_total"] - init_gc_satisfied
+    total_goal_conditions = final_gc_total # tatc_instance["expected_init_goal_conditions_total"] - init_gc_satisfied
     # TODO: Remove this after testing and recheck EDH instances to remove any where there is nothing to do
     if total_goal_conditions != 0:
         unsatisfied_goal_conditions = final_gc_total - final_gc_satisfied
@@ -24,16 +24,15 @@ def evaluate_traj(success, edh_instance, traj_len, final_gc_total, final_gc_sati
         goal_condition_success_rate = 1
 
     # SPL
-    gt_path_len = len(edh_instance["driver_actions_future"])
+    gt_path_len = len(tatc_instance["tasks"][0]["episodes"][0]["interactions"])
     s_spl = (1 if success else 0) * min(1.0, gt_path_len / float(max(traj_len, gt_path_len)))
     pc_spl = goal_condition_success_rate * min(1.0, gt_path_len / float(max(traj_len, gt_path_len)))
     # path length weighted SPL
     plw_s_spl = s_spl * gt_path_len
     plw_pc_spl = pc_spl * gt_path_len
     return {
-        "completed_goal_conditions": int((edh_instance["expected_init_goal_conditions_total"] - init_gc_satisfied))
-        - int(final_gc_total - final_gc_satisfied),
-        "total_goal_conditions": int(edh_instance["expected_init_goal_conditions_total"] - init_gc_satisfied),
+        "completed_goal_conditions": final_gc_satisfied,
+        "total_goal_conditions": final_gc_total,
         "goal_condition_success": float(goal_condition_success_rate),
         "success_spl": float(s_spl),
         "path_len_weighted_success_spl": float(plw_s_spl),
@@ -45,10 +44,10 @@ def evaluate_traj(success, edh_instance, traj_len, final_gc_total, final_gc_sati
     }
 
 
-def create_new_traj_metrics(edh_instance):
+def create_new_traj_metrics(tatc_instance):
     return {
-        # "instance_id": edh_instance["instance_id"],
-        # "game_id": edh_instance["game_id"],
+        # "instance_id": tatc_instance["instance_id"],
+        # "game_id": tatc_instance["game_id"],
         "completed_goal_conditions": 0,
         "total_goal_conditions": 0,
         "goal_condition_success": 0.0,
@@ -116,16 +115,16 @@ def aggregate_metrics(traj_stats, args):
 def load_traj_metrics(output_file, pred_actions_file, args):
     with open(output_file) as h:
         game_json = json.load(h)
-    edh_instance_file = os.path.join(
-        args.data_dir, "edh_instances", args.split, os.path.basename(output_file).split("__")[1]
+    tatc_instance_file = os.path.join(
+        args.data_dir, "tatc_instances", args.split, os.path.basename(output_file).split("__")[1]
     )
-    with open(edh_instance_file) as h:
-        edh_instance = json.load(h)
+    with open(tatc_instance_file) as h:
+        tatc_instance = json.load(h)
 
     with open(pred_actions_file) as h:
         pred_actions = json.load(h)
 
-    edh_check_task = create_task_thor_from_state_diff(edh_instance["state_changes"])
+    edh_check_task = create_task_thor_from_state_diff(tatc_instance["state_changes"])
     final_state_objects = game_json["tasks"][0]["episodes"][0]["final_state"]["objects"]
     final_state_custom_metadata = game_json["tasks"][0]["episodes"][0]["final_state"]["custom_object_metadata"]
     for obj in final_state_objects:
@@ -136,14 +135,14 @@ def load_traj_metrics(output_file, pred_actions_file, args):
     final_goal_conditions_total = progress_check_output["goal_conditions_total"]
     final_goal_conditions_satisfied = progress_check_output["goal_conditions_satisfied"]
 
-    traj_metrics = create_new_traj_metrics(edh_instance)
-    traj_metrics["game_id"] = edh_instance["game_id"]
-    # traj_metrics["instance_id"] = edh_instance["instance_id"]
-    traj_metrics["gt_path_len"] = len(edh_instance["driver_actions_future"])
+    traj_metrics = create_new_traj_metrics(tatc_instance)
+    traj_metrics["game_id"] = tatc_instance["game_id"]
+    # traj_metrics["instance_id"] = tatc_instance["instance_id"]
+    traj_metrics["gt_path_len"] = len(tatc_instance["driver_actions_future"])
     traj_metrics.update(
         evaluate_traj(
-            success, edh_instance, len(pred_actions), final_goal_conditions_total, final_goal_conditions_satisfied
+            success, tatc_instance, len(pred_actions), final_goal_conditions_total, final_goal_conditions_satisfied
         )
     )
 
-    return edh_instance["game_id"], traj_metrics
+    return tatc_instance["game_id"], traj_metrics

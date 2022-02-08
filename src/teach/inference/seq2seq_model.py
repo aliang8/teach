@@ -98,7 +98,8 @@ class Seq2SeqModel(TeachModel):
         self.driver_model.reset()
 
         self.input_dict = {}
-        tatc_instance = self.preprocessor.process_goal_instr(tatc_instance)
+        tatc_instance = self.preprocessor.process_goal_instr(tatc_instance, is_test_split=True)
+        print(tatc_instance["lang_goal"])
         lang_goal = torch.tensor(tatc_instance["lang_goal"], dtype=torch.long).to(self.args.device)
         lang_goal = self.commander_model.emb_word(lang_goal)
         self.input_dict["lang_goal_instr"] = lang_goal
@@ -147,12 +148,16 @@ class Seq2SeqModel(TeachModel):
             m_out, self.commander_model.pad, self.commander_model.vocab["commander_action_low"], clean_special_tokens=False
         )[0]
 
+        
+
         # Assume previous action succeeded if no better info available
         prev_success = True
         if prev_action is not None and "success" in prev_action:
             prev_success = prev_action["success"]
 
         action, obj_cls = m_pred["action"], m_pred["obj_cls"]
+
+        logger.debug("Predicted action: %s, obj = %s" % (str(action), str(obj_cls)))
         return action, obj_cls
 
     def get_next_action_driver(self, img, tatc_instance, prev_action, img_name=None, tatc_name=None):

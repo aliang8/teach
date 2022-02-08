@@ -323,8 +323,8 @@ class Module(Base):
         '''
         embed low-level action
         '''
-        device = torch.device('cuda') if self.args.device == "cuda" else torch.device('cpu')
-        action_num = torch.tensor(self.vocab[f'{self.args.agent}_action_low'].word2index(action), device=device)
+        # device = torch.device('cpu') if self.args.device == "cpu" else torch.device('cuda')
+        action_num = torch.tensor(self.vocab[f'{self.args.agent}_action_low'].word2index(action), device=self.args.device)
         action_emb = self.dec.emb(action_num).unsqueeze(0)
         return action_emb
 

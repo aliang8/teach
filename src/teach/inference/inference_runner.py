@@ -98,20 +98,20 @@ class InferenceRunner:
             num_files=num_files, num_processes=config.num_processes
         )
 
-        InferenceRunner._run(process_index, game_files[0:1], config, er)
+        # InferenceRunner._run(process_index, game_files[0:1], config, er)
 
-        # start_index, end_index = InferenceRunner._get_range_to_process(
-        #     process_index=process_index,
-        #     num_files_per_process=num_files_per_process,
-        #     num_files=num_files,
-        # )
+        start_index, end_index = InferenceRunner._get_range_to_process(
+            process_index=process_index,
+            num_files_per_process=num_files_per_process,
+            num_files=num_files,
+        )
 
-        # files_to_process = game_files[start_index:end_index]
+        files_to_process = game_files[start_index:end_index]
 
-        # process = mp.Process(target=InferenceRunner._run, args=(process_index, files_to_process, config, er))
+        process = mp.Process(target=InferenceRunner._run, args=(process_index, files_to_process, config, er))
 
-        # process.start()
-        # time.sleep(0.1)
+        process.start()
+        time.sleep(0.1)
         return process
 
     @staticmethod
@@ -213,9 +213,9 @@ class InferenceRunner:
                     # Execute actions in simulator
                     commander_step_success = InferenceRunner._execute_commander_action(er.simulator, commander_action, obj_cls)
                     driver_step_success = InferenceRunner._execute_driver_action(er.simulator, driver_action, obj_relative_coord)
-                    
+                    # import ipdb; ipdb.set_trace()
                     InferenceRunner._update_metrics(metrics, commander_action, obj_cls, driver_action, obj_relative_coord, commander_step_success, driver_step_success)
-                    prev_action = {"commander_action": commander_action, "driver_action": driver_action, "obj_cls": obj_cls, "obj_relative_coord": obj_relative_coord}
+                    prev_action = {"commander_action": commander_action, "driver_action": driver_action, "obj_cls": str(obj_cls), "obj_relative_coord": str(obj_relative_coord)}
                     pred_actions.append(prev_action)
                 except Exception as e:
                     logger.error(
@@ -296,7 +296,8 @@ class InferenceRunner:
         step_success = True
 
         if action in ["OpenProgressCheck", "SearchObject", "SelectOid"]:
-            r = self.simulator.apply_progress_check(action, agent_id=0, query=obj_cls)
+            r = simulator.apply_progress_check(action, agent_id=0, query=obj_cls)
+
         else:
             pass
         return step_success
@@ -307,9 +308,9 @@ class InferenceRunner:
             return True
 
         if action in obj_interaction_actions:
-            y = obj_relative_coord[0]
-            x = obj_relative_coord[1]
-            step_success, _, _ = simulator.apply_object_interaction(action, 1, x, y)
+            y = obj_relative_coord[0,0]
+            x = obj_relative_coord[0,1]
+            step_success, _, _ = simulator.apply_object_interaction(action, 1, x.cpu(), y.cpu())
             return step_success
 
         step_success, _, _ = simulator.apply_motion(action, 1)

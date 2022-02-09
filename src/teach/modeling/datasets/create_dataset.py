@@ -138,7 +138,7 @@ def process_jsons(traj_paths, preprocessor, lock, save_path):
         with traj_path.open() as f:
             traj_orig = json.load(f)
 
-        trajs = [data_util.process_traj(traj_orig, traj_path, 0, preprocessor)]
+        trajs = [data_util.process_traj(traj_orig, traj_path, preprocessor)]
 
         # save masks and traj jsons
         filename = "{}:{}".format(traj_path.parts[-2],

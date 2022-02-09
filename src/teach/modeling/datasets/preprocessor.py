@@ -4,7 +4,7 @@ import copy
 import json
 import revtok
 
-import modeling.constants
+import modeling.constants as constants
 from modeling.utils import data_util
 from vocab import Vocab
 
@@ -76,7 +76,7 @@ class Preprocessor(object):
         ]
         return traj
 
-    def process_language(self, ex, traj, r_idx, is_test_split=False):
+    def process_language(self, ex, traj, is_test_split=False):
         """
         Process commander + driver dialogues, commander progress check outputs, etc. Add words to vocabulary.
         """
@@ -161,7 +161,9 @@ class Preprocessor(object):
 
                 # Concatenate all the high-level and low-level instructions into a single string
                 all_words = ""
-                with open(pc_json_f) as f:
+
+                # TODO: fix abs path
+                with open(os.path.join(constants.TEACH_DATA, pc_json_f[1:])) as f:
                     pc_output = json.load(f)
 
                     all_words += pc_output["task_desc"] + " "
@@ -189,10 +191,10 @@ class Preprocessor(object):
         idx_to_action_json = "meta_data_files/ai2thor_resources/action_idx_to_action_name.json"
         action_to_idx_json = "meta_data_files/ai2thor_resources/action_to_action_idx.json"
 
-        with open(os.path.join(TEACH_SRC, idx_to_action_json)) as f:
+        with open(os.path.join(constants.TEACH_SRC, idx_to_action_json)) as f:
             idx_to_action_name = json.load(f)
 
-        with open(os.path.join(TEACH_SRC, action_to_idx_json)) as f:
+        with open(os.path.join(constants.TEACH_SRC, action_to_idx_json)) as f:
             action_to_idx = json.load(f)
 
         all_interactions = ex['tasks'][0]['episodes'][0]['interactions']

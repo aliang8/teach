@@ -9,7 +9,7 @@ from copy import deepcopy
 
 import lmdb
 import torch
-from modeling import constants
+import modeling.constants as constants
 from modeling.utils import helper_util
 from PIL import Image
 from torch.nn.utils.rnn import pad_sequence
@@ -40,23 +40,15 @@ def read_traj_images(json_path, image_folder):
 
     commander_images, driver_images, target_images, mask_images, target_idx = [], [], [], [], []
 
+    # TODO : FIX
     for interaction in interactions:
-        commander_images.append(interaction["commander_obs"])
-        driver_images.append(interaction["driver_obs"])
+        commander_images.append(os.path.join(constants.TEACH_DATA, interaction["commander_obs"][1:]))
+        driver_images.append(os.path.join(constants.TEACH_DATA, interaction["driver_obs"][1:]))
 
         # If successful commander action
         if interaction["agent_id"] > 500 and interaction["success"]:
-            # TODO: clean up this merge
-            target_image_f = os.path.join(
-                ".".join(interaction["targetobject"].split(".")[:-4]),
-                ".frame.",
-                ".".join(interaction["targetobject"].split(".")[-3:]))
-            mask_image_f = os.path.join(
-                ".".join(interaction["targetobject"].split(".")[:-4]),
-                ".mask.",
-                ".".join(interaction["targetobject"].split(".")[-3:]))
-            target_images.append(target_image_f)
-            mask_images.append(mask_image_f)
+            target_images.append(os.path.join(constants.TEACH_DATA, interaction["targetobject_frame"][1:]))
+            mask_images.append(os.path.join(constants.TEACH_DATA, interaction["targetobject_mask"][1:]))
             target_idx.append(interactions.index(i))
 
     logger.debug("Loading images from %s" % images_dir)
@@ -85,14 +77,14 @@ def extract_features(images, extractor):
     return feat.cpu()
 
 
-def process_traj(traj_orig, traj_path, r_idx, preprocessor):
+def process_traj(traj_orig, traj_path, preprocessor):
     # copy trajectory
     traj = traj_orig.copy()
     # root & split
     traj["root"] = str(traj_path)
     partition = traj_path.parts[-2]
     traj["split"] = partition
-    traj["repeat_idx"] = r_idx
+    traj["repeat_idx"] = traj_orig["tasks"][0]["episodes"][0]["episode_id"]
 
     # numericalize language
     if "test" in partition:
@@ -100,13 +92,11 @@ def process_traj(traj_orig, traj_path, r_idx, preprocessor):
         preprocessor.process_actions(traj_orig, traj, is_test_split=True)
         preprocessor.process_language(traj_orig,
                                       traj,
-                                      r_idx,
                                       is_test_split=True)
     else:
         preprocessor.process_actions(traj_orig, traj, is_test_split=False)
         preprocessor.process_language(traj_orig,
                                       traj,
-                                      r_idx,
                                       is_test_split=False)
     return traj
 

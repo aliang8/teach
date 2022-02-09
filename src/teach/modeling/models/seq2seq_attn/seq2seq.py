@@ -55,8 +55,6 @@ class Module(nn.Module):
         '''
         training loop
         '''
-        import ipdb
-        ipdb.set_trace()
         # args
         args = args or self.args
 
@@ -107,7 +105,8 @@ class Module(nn.Module):
 
             p_train = {}
 
-            for _ in tqdm(range(epoch_length), desc="train"):
+            # for _ in tqdm(range(epoch_length), desc="train"):
+            for _ in tqdm(range(2), desc="train"):
                 # sample batches
                 batches = data_util.sample_batches(train_iterators,
                                                    self.args.device, self.pad,
@@ -120,13 +119,17 @@ class Module(nn.Module):
                 # iterate over batches
                 for batch_name, (traj_data, input_dict,
                                  gt_dict) in batches.items():
-                    feat = self.featurize(traj_data, load_frames=False)
+                    feat = self.featurize(traj_data)
                     feat['frames'] = input_dict['frames']
 
+                    # Compute forward pass of model
                     m_out = self.forward(feat)
-                    m_preds = self.extract_preds(m_out, traj_data, feat)
+
+                    # Given the model output, convert into executable action
+                    m_preds = self.extract_preds(m_out, traj_data)
                     p_train.update(m_preds)
-                    loss = self.compute_loss(m_preds, traj_data, feat)
+
+                    loss = self.compute_loss(m_out, traj_data, feat)
 
                     for k, v in loss.items():
                         ln = 'loss_' + k
@@ -275,8 +278,12 @@ class Module(nn.Module):
         dev_iter = iteration
 
         data_iter = {key: iter(loader) for key, loader in dev.items()}
+        
+        num_batches = len(next(iter(data_iter.values())))
 
-        for _ in tqdm(range(1), desc=name):
+        import ipdb; ipdb.set_trace()
+        
+        for _ in tqdm(range(num_batches), desc=name):
             # sample batches
             batches = data_util.sample_batches(data_iter, self.args.device,
                                                self.pad, self.args)

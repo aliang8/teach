@@ -75,7 +75,7 @@ def process_feats(traj_paths, extractor, lock, image_folder, save_path):
         filename_new = "{}:{}".format(traj_path.parts[-2],
                                       re.sub(".json", ".pt", traj_path.name))
 
-        # extract features with th extractor
+        # extract features with the extractor
         commander_images, driver_images, target_images, target_masks, target_idx = data_util.read_traj_images(
             traj_path, image_folder)
         if commander_images is None or len(commander_images) == 0:

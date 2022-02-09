@@ -242,5 +242,7 @@ def main(exp, seq2seq):
     loaders = wrap_datasets(datasets, args)
     # create the model
     model, optimizer, prev_train_info = create_model(args, embs_ann, vocab)
+    import ipdb
+    ipdb.set_trace()
     # start train loop
     model.run_train(loaders, prev_train_info, optimizer=optimizer)

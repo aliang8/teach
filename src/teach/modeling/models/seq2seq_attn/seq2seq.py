@@ -34,17 +34,13 @@ class Module(nn.Module):
         # emb modules
         self.emb_word = nn.Embedding(len(vocab['word']), args.demb)
 
-        if args.agent == "driver":
-            self.emb_action_low = nn.Embedding(len(vocab['driver_action_low']),
-                                               args.demb)
-            self.vocab_out = vocab['driver_action_low']
-        elif args.agent == "commander":
-            self.emb_action_low = nn.Embedding(
-                len(vocab['commander_action_low']), args.demb)
-            self.vocab_out = vocab['commander_action_low']
+        # action embedding specific to driver and commander
+        action_emb_key = "driver_action_low" if self.args.agent == "driver" else "commander_action_low"
+        self.emb_action_low = nn.Embedding(len(vocab[action_emb_key]),
+                                           args.demb)
+        self.vocab_out = vocab[action_emb_key]
 
         # end tokens
-        # TODO: word or action_low??
         self.stop_token = self.vocab['word'].word2index("<<stop>>",
                                                         train=False)
         self.seg_token = self.vocab['word'].word2index("<<seg>>", train=False)
@@ -59,15 +55,12 @@ class Module(nn.Module):
         '''
         training loop
         '''
-
+        import ipdb
+        ipdb.set_trace()
         # args
         args = args or self.args
 
-        # splits
-        # train = splits['train']
-        # valid_seen = splits['valid_seen']
-        # valid_unseen = splits['valid_unseen']
-
+        # setup data loaders
         loaders_train = dict(filter(lambda x: "train" in x[0],
                                     loaders.items()))
         loaders_valid_seen = dict(
@@ -77,22 +70,10 @@ class Module(nn.Module):
 
         assert len(set([len(loader)
                         for loader in loaders_train.values()])) == 1
+
         epoch_length = len(next(iter(loaders_train.values())))
 
         logger.debug("In Seq2seq.run_train, epoch_length = %d" % epoch_length)
-        # debugging: chose a small fraction of the dataset
-        # if self.args.dataset_fraction > 0:
-        #     small_train_size = int(self.args.dataset_fraction * 0.7)
-        #     small_valid_size = int((self.args.dataset_fraction * 0.3) / 2)
-        #     train = train[:small_train_size]
-        #     valid_seen = valid_seen[:small_valid_size]
-        #     valid_unseen = valid_unseen[:small_valid_size]
-
-        # # debugging: use to check if training loop works without waiting for full epoch
-        # if self.args.fast_epoch:
-        #     train = train[:16]
-        #     valid_seen = valid_seen[:16]
-        #     valid_unseen = valid_unseen[:16]
 
         # initialize summary writer for tensorboardX
         self.summary_writer = SummaryWriter(log_dir=args.dout)
@@ -108,10 +89,13 @@ class Module(nn.Module):
 
         # display dout
         print("Saving to: %s" % self.args.dout)
+
         best_loss = {'train': 1e10, 'valid_seen': 1e10, 'valid_unseen': 1e10}
         train_iter, valid_seen_iter, valid_unseen_iter = 0, 0, 0
-        # for epoch in trange(0, args.epoch, desc='epoch'):
+
         logger.info("Saving to: %s" % args.dout)
+
+        # training loop
         for epoch in range(info["progress"], args.epochs):
             logger.info("Epoch {}/{}".format(epoch, args.epochs))
             self.train()
@@ -121,29 +105,28 @@ class Module(nn.Module):
                 for key, loader in loaders_train.items()
             }
 
+            p_train = {}
+
             for _ in tqdm(range(epoch_length), desc="train"):
                 # sample batches
                 batches = data_util.sample_batches(train_iterators,
                                                    self.args.device, self.pad,
                                                    self.args)
-                # gt.stamp("data fetching", unique=False)
 
                 m_train = collections.defaultdict(list)
 
-                # self.adjust_lr(optimizer, args.lr, epoch, decay_epoch=args.decay_epoch)
                 total_train_loss = list()
-                model_outs, model_preds, losses_train = {}, {}, {}
+
+                # iterate over batches
                 for batch_name, (traj_data, input_dict,
                                  gt_dict) in batches.items():
                     feat = self.featurize(traj_data, load_frames=False)
                     feat['frames'] = input_dict['frames']
 
-                    model_outs[batch_name] = self.forward(feat)
-                    model_preds[batch_name] = self.extract_preds(
-                        model_outs[batch_name], traj_data, feat)
-                    # p_train.update(preds)
-                    loss = self.compute_loss(model_outs[batch_name], traj_data,
-                                             feat)
+                    m_out = self.forward(feat)
+                    m_preds = self.extract_preds(m_out, traj_data, feat)
+                    p_train.update(m_preds)
+                    loss = self.compute_loss(m_preds, traj_data, feat)
 
                     for k, v in loss.items():
                         ln = 'loss_' + k
@@ -159,18 +142,13 @@ class Module(nn.Module):
 
                     self.summary_writer.add_scalar('train/loss', sum_loss,
                                                    train_iter)
+
                     sum_loss = sum_loss.detach().cpu()
                     total_train_loss.append(float(sum_loss))
                     train_iter += self.args.batch
 
-                    del feat, model_outs, loss, model_preds
+                    del feat, m_out, loss, m_preds
                     torch.cuda.empty_cache()
-
-            ## compute metrics for train (too memory heavy!)
-            # m_train = {k: sum(v) / len(v) for k, v in m_train.items()}
-            # m_train.update(self.compute_metric(p_train, train))
-            # m_train['total_loss'] = sum(total_train_loss) / len(total_train_loss)
-            # self.summary_writer.add_scalar('train/total_loss', m_train['total_loss'], train_iter)
 
             # compute metrics for valid_seen
             p_valid_seen, valid_seen_iter, total_valid_seen_loss, m_valid_seen = self.run_pred(
@@ -178,7 +156,9 @@ class Module(nn.Module):
                 args=args,
                 name='valid_seen',
                 iteration=valid_seen_iter)
-            # m_valid_seen.update(self.compute_metric(p_valid_seen, valid_seen))
+
+            m_valid_seen.update(self.compute_metric(p_valid_seen,
+                                                    m_valid_seen))
             m_valid_seen['total_loss'] = float(total_valid_seen_loss)
             self.summary_writer.add_scalar('valid_seen/total_loss',
                                            m_valid_seen['total_loss'],
@@ -190,7 +170,9 @@ class Module(nn.Module):
                 args=args,
                 name='valid_unseen',
                 iteration=valid_unseen_iter)
-            # m_valid_unseen.update(self.compute_metric(p_valid_unseen, valid_unseen))
+
+            m_valid_unseen.update(
+                self.compute_metric(p_valid_unseen, m_valid_unseen))
             m_valid_unseen['total_loss'] = float(total_valid_unseen_loss)
             self.summary_writer.add_scalar('valid_unseen/total_loss',
                                            m_valid_unseen['total_loss'],
@@ -213,15 +195,17 @@ class Module(nn.Module):
                         'optim': optimizer.state_dict(),
                         'args': self.args,
                         'embs_ann': self.embs_ann,
-                        'vocab_out': self.vocab,
+                        'vocab': self.vocab,
                     }, fsave)
                 fbest = os.path.join(args.dout, 'best_seen.json')
                 with open(fbest, 'wt') as f:
                     json.dump(stats, f, indent=2)
 
                 fpred = os.path.join(args.dout, 'valid_seen.debug.preds.json')
-                # with open(fpred, 'wt') as f:
-                #     json.dump(self.make_debug(p_valid_seen, valid_seen), f, indent=2)
+                with open(fpred, 'wt') as f:
+                    json.dump(self.make_debug(p_valid_seen, m_valid_seen),
+                              f,
+                              indent=2)
                 best_loss['valid_seen'] = total_valid_seen_loss
 
             # new best valid_unseen loss
@@ -234,15 +218,19 @@ class Module(nn.Module):
                         'model': self.state_dict(),
                         'optim': optimizer.state_dict(),
                         'args': self.args,
+                        'embs_ann': self.embs_ann,
                         'vocab': self.vocab,
                     }, fsave)
                 fbest = os.path.join(args.dout, 'best_unseen.json')
                 with open(fbest, 'wt') as f:
                     json.dump(stats, f, indent=2)
 
-                # fpred = os.path.join(args.dout, 'valid_unseen.debug.preds.json')
-                # with open(fpred, 'wt') as f:
-                #     json.dump(self.make_debug(p_valid_unseen, valid_unseen), f, indent=2)
+                fpred = os.path.join(args.dout,
+                                     'valid_unseen.debug.preds.json')
+                with open(fpred, 'wt') as f:
+                    json.dump(self.make_debug(p_valid_unseen, m_valid_unseen),
+                              f,
+                              indent=2)
 
                 best_loss['valid_unseen'] = total_valid_unseen_loss
 
@@ -251,6 +239,7 @@ class Module(nn.Module):
                 fsave = os.path.join(args.dout, 'net_epoch_%d.pth' % epoch)
             else:
                 fsave = os.path.join(args.dout, 'latest.pth')
+
             torch.save(
                 {
                     'metric': stats,
@@ -260,10 +249,10 @@ class Module(nn.Module):
                     'vocab': self.vocab,
                 }, fsave)
 
-            ## debug action output json for train
-            # fpred = os.path.join(args.dout, 'train.debug.preds.json')
-            # with open(fpred, 'wt') as f:
-            #     json.dump(self.make_debug(p_train, train), f, indent=2)
+            # debug action output json for train
+            fpred = os.path.join(args.dout, 'train.debug.preds.json')
+            with open(fpred, 'wt') as f:
+                json.dump(self.make_debug(p_train, m_train), f, indent=2)
 
             # write stats
             for split in stats.keys():
@@ -281,10 +270,12 @@ class Module(nn.Module):
         m_dev = collections.defaultdict(list)
         p_dev = {}
         self.eval()
+
         total_loss = list()
         dev_iter = iteration
-        # for batch, feat in self.iterate(dev, args.batch):
+
         data_iter = {key: iter(loader) for key, loader in dev.items()}
+
         for _ in tqdm(range(1), desc=name):
             # sample batches
             batches = data_util.sample_batches(data_iter, self.args.device,
@@ -295,10 +286,11 @@ class Module(nn.Module):
                 feat = self.featurize(traj_data, load_frames=False)
                 feat['frames'] = input_dict['frames']
 
-                out = self.forward(feat)
-                preds = self.extract_preds(out, traj_data)
-                p_dev.update(preds)
-                loss = self.compute_loss(out, traj_data, feat)
+                m_out = self.forward(feat)
+                m_preds = self.extract_preds(m_out, traj_data)
+                p_dev.update(m_preds)
+                loss = self.compute_loss(m_out, traj_data, feat)
+
                 for k, v in loss.items():
                     ln = 'loss_' + k
                     m_dev[ln].append(v.item())
@@ -374,16 +366,6 @@ class Module(nn.Module):
         return os.path.join(self.args.data, ex['split'],
                             *(ex['root'].split('/')[-2:]))
 
-    def iterate(self, data, batch_size):
-        '''
-        breaks dataset into batch_size chunks for training
-        '''
-        for i in trange(0, len(data), batch_size, desc='batch'):
-            tasks = data[i:i + batch_size]
-            batch = [self.load_task_json(task) for task in tasks]
-            feat = self.featurize(batch)
-            yield batch, feat
-
     def zero_input(self, x, keep_end_token=True):
         '''
         pad input with zeros (used for ablations)
@@ -407,28 +389,3 @@ class Module(nn.Module):
         lr = init_lr * (0.1**(epoch // decay_epoch))
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
-
-    @classmethod
-    def load(cls, fsave):
-        '''
-        load pth model from disk
-        '''
-        save = torch.load(fsave)
-        model = cls(save['args'], save['vocab'])
-        model.load_state_dict(save['model'])
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-        optimizer.load_state_dict(save['optim'])
-        return model, optimizer
-
-    @classmethod
-    def has_interaction(cls, action):
-        '''
-        check if low-level action is interactive
-        '''
-        non_interact_actions = [
-            'MoveAhead', 'Rotate', 'Look', '<<stop>>', '<<pad>>', '<<seg>>'
-        ]
-        if any(a in action for a in non_interact_actions):
-            return False
-        else:
-            return True

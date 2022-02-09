@@ -13,7 +13,7 @@ from modeling.utils import data_util
 class Module(Base):
     def __init__(self, args, embs_ann, vocab, test_mode=False):
         '''
-            Seq2Seq Follower agent
+        Seq2Seq agent
         '''
         super().__init__(args, vocab)
 
@@ -22,17 +22,18 @@ class Module(Base):
                            args.dhid,
                            bidirectional=True,
                            batch_first=True)
+
         self.enc_att = vnn.SelfAttn(args.dhid * 2)
 
         # subgoal monitoring
         self.subgoal_monitoring = (self.args.progress_aux_loss_wt > 0
                                    or self.args.subgoal_aux_loss_wt > 0)
 
+        decoder = vnn.ConvFrameDecoderProgressMonitor if self.subgoal_monitoring else vnn.ConvFrameDecoder
+
         if self.args.agent == "driver":
-            decoder = vnn.ConvFrameCoordDecoderProgressMonitor if self.subgoal_monitoring else vnn.ConvFrameDecoder
             self.aux_pred_type = "coord"
         elif self.args.agent == "commander":
-            decoder = vnn.ConvFrameDecoder
             self.aux_pred_type = "obj_cls"
 
         self.num_obj_classes = len(vocab['object_cls'])
@@ -59,7 +60,6 @@ class Module(Base):
         self.test_mode = test_mode
 
         # bce reconstruction loss
-        # self.bce_with_logits = torch.nn.BCEWithLogitsLoss(reduction='none')
         self.cross_entropy = torch.nn.CrossEntropyLoss(reduction='none')
         self.mse_loss = torch.nn.MSELoss(reduction='none')
 
@@ -388,7 +388,6 @@ class Module(Base):
         '''
         embed low-level action
         '''
-        # device = torch.device('cpu') if self.args.device == "cpu" else torch.device('cuda')
         action_num = torch.tensor(
             self.vocab[f'{self.args.agent}_action_low'].word2index(action),
             device=self.args.device)

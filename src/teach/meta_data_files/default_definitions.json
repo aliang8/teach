@@ -1,4 +1,4 @@
- {
+{
     "definitions": {
         "agents": [
             {
@@ -109,7 +109,7 @@
                     30,
                     0
                 ]
-            },            
+            },
             {
                 "action_id": 8,
                 "action_name": "Pan Left",
@@ -135,7 +135,7 @@
                     0,
                     0
                 ]
-            },            
+            },
             {
                 "action_id": 10,
                 "action_name": "Move Up",
@@ -161,7 +161,7 @@
                     0,
                     0
                 ]
-            },             
+            },
             {
                 "action_id": 12,
                 "action_name": "Double Forward",

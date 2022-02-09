@@ -60,8 +60,8 @@
       "primary_condition": "objectType",
       "instance_shareable": false,
       "conditions": {
-          "objectType": "LightSwitch",
-          "isToggled": 1
+        "objectType": "LightSwitch",
+        "isToggled": 1
       },
       "condition_failure_descs": {
         "isToggled": "The overhead lights should be on."
@@ -71,10 +71,22 @@
   "relations": [
     {
       "property": "parentReceptacles",
-      "tail_entity_list": ["gather_spot"],
-      "tail_determiner_list": ["the"],
-      "head_entity_list": ["writing", "laptop", "book"],
-      "head_determiner_list": ["#0", "#1", "#2"],
+      "tail_entity_list": [
+        "gather_spot"
+      ],
+      "tail_determiner_list": [
+        "the"
+      ],
+      "head_entity_list": [
+        "writing",
+        "laptop",
+        "book"
+      ],
+      "head_determiner_list": [
+        "#0",
+        "#1",
+        "#2"
+      ],
       "failure_desc": "#0 writing utensils, #1 laptops, and #2 books need to be put on the table."
     }
   ]

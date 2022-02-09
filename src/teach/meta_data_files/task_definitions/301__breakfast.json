@@ -34,22 +34,39 @@
     "potatoes": {
       "determiner": "#2",
       "task_name": "N Cooked Slices Of X In Y",
-      "task_params": ["2", "Potato", "on", "#3"]
+      "task_params": [
+        "2",
+        "Potato",
+        "on",
+        "#3"
+      ]
     },
     "apple": {
       "determiner": "#4",
       "task_name": "N Slices Of X In Y",
-      "task_params": ["1", "Apple", "on", "#5"]
+      "task_params": [
+        "1",
+        "Apple",
+        "on",
+        "#5"
+      ]
     },
     "sandwich": {
       "determiner": "#6",
       "task_name": "Sandwich",
-      "task_params": ["#7", "#8"]
+      "task_params": [
+        "#7",
+        "#8"
+      ]
     },
     "salad": {
       "determiner": "#9",
       "task_name": "Salad",
-      "task_params": ["#10", "#11", "#12"]
+      "task_params": [
+        "#10",
+        "#11",
+        "#12"
+      ]
     },
     "serving_spot": {
       "determiner": "a",
@@ -59,17 +76,34 @@
         "objectType": "#13",
         "receptacle": 1
       },
-      "condition_failure_descs": {
-      }
+      "condition_failure_descs": {}
     }
   },
   "relations": [
     {
       "property": "parentReceptacles",
-      "tail_entity_list": ["serving_spot"],
-      "tail_determiner_list": ["a"],
-      "head_entity_list": ["coffee", "toast", "potatoes", "apple", "sandwich", "salad"],
-      "head_determiner_list": ["#0", "#1", "#2", "#4", "#6", "#9"],
+      "tail_entity_list": [
+        "serving_spot"
+      ],
+      "tail_determiner_list": [
+        "a"
+      ],
+      "head_entity_list": [
+        "coffee",
+        "toast",
+        "potatoes",
+        "apple",
+        "sandwich",
+        "salad"
+      ],
+      "head_determiner_list": [
+        "#0",
+        "#1",
+        "#2",
+        "#4",
+        "#6",
+        "#9"
+      ],
       "failure_desc": "All breakfast items need to be on the #13."
     }
   ]

@@ -31,7 +31,8 @@ class BaseDataset(TorchDataset):
         # read information about the dataset
         self.dataset_info = data_util.read_dataset_info(name)
         if self.dataset_info["visual_checkpoint"]:
-            logger.info("Visual checkpoint for data preprocessing: %s" % str(self.dataset_info["visual_checkpoint"]))
+            logger.info("Visual checkpoint for data preprocessing: %s" %
+                        str(self.dataset_info["visual_checkpoint"]))
 
         # load data
         self._length = self.load_data(path)
@@ -54,8 +55,10 @@ class BaseDataset(TorchDataset):
         self.driver_vocab_out = vocab[driver_out_type]
         self.commander_vocab_out = vocab[commander_out_type]
 
-        logger.debug("Loaded driver vocab_out: %s" % str(self.driver_vocab_out.to_dict()["index2word"]))
-        logger.debug("Loaded commander vocab_out: %s" % str(self.commander_vocab_out.to_dict()["index2word"]))
+        logger.debug("Loaded driver vocab_out: %s" %
+                     str(self.driver_vocab_out.to_dict()["index2word"]))
+        logger.debug("Loaded commander vocab_out: %s" %
+                     str(self.commander_vocab_out.to_dict()["index2word"]))
 
         # if several datasets are used, we will translate outputs to this vocab later
         self.driver_vocab_translate = None
@@ -67,11 +70,13 @@ class BaseDataset(TorchDataset):
         """
         # do not open the lmdb database open in the main process, do it in each thread
         if feats:
-            self.feats_lmdb_path = os.path.join(path, self.partition, "driver_feats")
+            self.feats_lmdb_path = os.path.join(path, self.partition,
+                                                "driver_feats")
 
         # load jsons with pickle and parse them
         if jsons:
-            with open(os.path.join(path, self.partition, "jsons.pkl"), "rb") as jsons_file:
+            with open(os.path.join(path, self.partition, "jsons.pkl"),
+                      "rb") as jsons_file:
                 jsons = pickle.load(jsons_file)
             self.jsons_and_keys = []
             for idx in range(len(jsons)):
@@ -83,7 +88,8 @@ class BaseDataset(TorchDataset):
                         if "task" in json and isinstance(json["task"], str):
                             pass
                         else:
-                            json["task"] = "/".join(json["root"].split("/")[-3:-1])
+                            json["task"] = "/".join(
+                                json["root"].split("/")[-3:-1])
                         # add dataset idx and partition into the json
                         json["dataset_name"] = self.name
                         self.jsons_and_keys.append((json, key))
@@ -101,7 +107,8 @@ class BaseDataset(TorchDataset):
         if not hasattr(self, "feats_lmdb"):
             self.feats_lmdb, self.feats = self.load_lmdb(self.feats_lmdb_path)
         feats_bytes = self.feats.get(key)
-        feats_numpy = np.frombuffer(feats_bytes, dtype=np.float32).reshape(self.dataset_info["feat_shape"])
+        feats_numpy = np.frombuffer(feats_bytes, dtype=np.float32).reshape(
+            self.dataset_info["feat_shape"])
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             frames = torch.tensor(feats_numpy)

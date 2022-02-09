@@ -8,6 +8,7 @@ dagger_ingredient = Ingredient("dagger")
 
 SETTINGS.CONFIG.READ_ONLY_CONFIG = False
 
+
 @exp_ingredient.config
 def cfg_exp():
     # HIGH-LEVEL MODEL SETTINGS
@@ -33,6 +34,7 @@ def cfg_exp():
         "ann_type": "lang"
     }
 
+
 @train_ingredient.config
 def cfg_train():
     # GENERAL TRANING SETTINGS
@@ -52,7 +54,7 @@ def cfg_train():
     lr = 1e-4
     # weight of action loss
     action_loss_wt = 1.0
-    # weight of predicting coord loss 
+    # weight of predicting coord loss
     action_coord_loss_wt = 1.0
     # weight of subgoal completion predictor
     subgoal_aux_loss_wt = 0
@@ -61,7 +63,7 @@ def cfg_train():
 
     # SEQ2SEQ PARAMETERS
     # language embedding size
-    demb = 768 
+    demb = 768
     # hidden layer size
     dhid = 512
     # image feature vector size
@@ -69,17 +71,17 @@ def cfg_train():
 
     # DROPOUT
     # dropout rate for attention
-    attn_dropout=0
-    # dropout rate for actor fc 
-    actor_dropout=0
+    attn_dropout = 0
+    # dropout rate for actor fc
+    actor_dropout = 0
     # dropout rate for LSTM hidden states
-    hstate_dropout=0.3
+    hstate_dropout = 0.3
     # dropout rate for ResNet features
-    vis_dropout=0.3
+    vis_dropout = 0.3
     # dropout rate for concatted input features
-    input_dropout=0
+    input_dropout = 0
     # dropout frate for langauge (goal + dialogue)
-    lang_dropout=0
-    
+    lang_dropout = 0
+
     # use teacher forcing for decoder
-    dec_teacher_forcing=True
+    dec_teacher_forcing = True

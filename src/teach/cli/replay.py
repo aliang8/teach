@@ -25,7 +25,12 @@ def init_playback_status():
     """
     initialize overall counts to 0
     """
-    playback_status = {CNT_PLAYED_BACK: 0, CNT_API_SUCC: 0, CNT_TASK_SUCC: 0, PLAYBACK_FAILURES: []}
+    playback_status = {
+        CNT_PLAYED_BACK: 0,
+        CNT_API_SUCC: 0,
+        CNT_TASK_SUCC: 0,
+        PLAYBACK_FAILURES: []
+    }
     return playback_status
 
 
@@ -50,45 +55,58 @@ def load_preran_status(cmd_args, game_fns):
     playback_status = dict()
     with open(cmd_args.status_out_fn) as h:
         replay_status = json.load(h)
-        playback_status[CNT_PLAYED_BACK] = len([k for k, v in replay_status.items() if v["replay_ran"] == 1])
-        playback_status[CNT_API_SUCC] = len([k for k, v in replay_status.items() if v["api_success"] == 1])
-        playback_status[CNT_TASK_SUCC] = len([k for k, v in replay_status.items() if v["task_success"] == 1])
-        playback_status[PLAYBACK_FAILURES] = [k for k, v in replay_status.items() if v["replay_ran"] == 0]
-    replayed_codes = [k.split("/")[-1].split(".")[0] for k, v in replay_status.items() if v["replay_ran"] == 1]
+        playback_status[CNT_PLAYED_BACK] = len(
+            [k for k, v in replay_status.items() if v["replay_ran"] == 1])
+        playback_status[CNT_API_SUCC] = len(
+            [k for k, v in replay_status.items() if v["api_success"] == 1])
+        playback_status[CNT_TASK_SUCC] = len(
+            [k for k, v in replay_status.items() if v["task_success"] == 1])
+        playback_status[PLAYBACK_FAILURES] = [
+            k for k, v in replay_status.items() if v["replay_ran"] == 0
+        ]
+    replayed_codes = [
+        k.split("/")[-1].split(".")[0] for k, v in replay_status.items()
+        if v["replay_ran"] == 1
+    ]
     replayed_folders = set(os.listdir(cmd_args.write_frames_dir))
     logs_without_folders = set(replayed_codes).difference(replayed_folders)
     folders_without_logs = set(replayed_folders).difference(replayed_codes)
-    logger.info("Replayed codes without folder = %s" % ",".join(logs_without_folders))
-    logger.info("Folders without replay stat = %s" % ",".join(folders_without_logs))
-    logger.info("# Replayed codes without folder = %d" % len(logs_without_folders))
-    logger.info("# Folders without replay stat = %d" % len(folders_without_logs))
+    logger.info("Replayed codes without folder = %s" %
+                ",".join(logs_without_folders))
+    logger.info("Folders without replay stat = %s" %
+                ",".join(folders_without_logs))
+    logger.info("# Replayed codes without folder = %d" %
+                len(logs_without_folders))
+    logger.info("# Folders without replay stat = %d" %
+                len(folders_without_logs))
     if len(logs_without_folders) > 0 or len(folders_without_logs) > 1:
         raise RuntimeError(
-            "Mismatch between status file and output images folder: "
-            + "\nReplayed codes without folder = "
-            + str(logs_without_folders)
-            + "\nFolders without replay stat = "
-            + str(folders_without_logs)
-            + "\n# Replayed codes without folder = "
-            + str(len(logs_without_folders))
-            + "\n# Folders without replay stat = "
-            + str(len(folders_without_logs))
-        )
+            "Mismatch between status file and output images folder: " +
+            "\nReplayed codes without folder = " + str(logs_without_folders) +
+            "\nFolders without replay stat = " + str(folders_without_logs) +
+            "\n# Replayed codes without folder = " +
+            str(len(logs_without_folders)) +
+            "\n# Folders without replay stat = " +
+            str(len(folders_without_logs)))
     elif len(folders_without_logs) == 1:
         dangling_folder = list(folders_without_logs)[0]
-        game_file_for_dangling_folder = [f for f in game_fns if f.split("/")[-1].split(".")[0] == dangling_folder]
+        game_file_for_dangling_folder = [
+            f for f in game_fns
+            if f.split("/")[-1].split(".")[0] == dangling_folder
+        ]
         if len(game_file_for_dangling_folder) != 1:
-            raise RuntimeError(
-                "Trying to handle dangling folder "
-                + str(folders_without_logs)
-                + ", expected 1 matching game file but found: "
-                + str(game_file_for_dangling_folder)
-            )
+            raise RuntimeError("Trying to handle dangling folder " +
+                               str(folders_without_logs) +
+                               ", expected 1 matching game file but found: " +
+                               str(game_file_for_dangling_folder))
         replay_status[game_file_for_dangling_folder[0]] = dict()
         replay_status[game_file_for_dangling_folder[0]]["replay_ran"] = 1
         replay_status[game_file_for_dangling_folder[0]]["api_success"] = 0
         replay_status[game_file_for_dangling_folder[0]]["task_success"] = 0
-    files_to_play = [f for f in game_fns if f.split("/")[-1].split(".")[0] not in replayed_folders]
+    files_to_play = [
+        f for f in game_fns
+        if f.split("/")[-1].split(".")[0] not in replayed_folders
+    ]
     return files_to_play, playback_status, replay_status
 
 
@@ -108,8 +126,14 @@ def get_game_file_names(cmd_args):
 
 
 def process_arguments():
-    parser = argparse.ArgumentParser(description="Read in a game log, replay an episode, and create a video.")
-    parser.add_argument("--game_fn", type=str, required=False, default=None, help="The game logfile to read")
+    parser = argparse.ArgumentParser(
+        description="Read in a game log, replay an episode, and create a video."
+    )
+    parser.add_argument("--game_fn",
+                        type=str,
+                        required=False,
+                        default=None,
+                        help="The game logfile to read")
     parser.add_argument(
         "--game_dir",
         type=str,
@@ -117,7 +141,10 @@ def process_arguments():
         default=None,
         help="The directory to read all game files from",
     )
-    parser.add_argument("--task_idx", type=int, default=0, help="The task index to replay in the game file")
+    parser.add_argument("--task_idx",
+                        type=int,
+                        default=0,
+                        help="The task index to replay in the game file")
     parser.add_argument(
         "--episode_idx",
         type=int,
@@ -127,7 +154,8 @@ def process_arguments():
     parser.add_argument(
         "--realtime",
         action="store_true",
-        help="Whether to play the episode back in real time by waiting between actions",
+        help=
+        "Whether to play the episode back in real time by waiting between actions",
     )
     parser.add_argument(
         "--write_states",
@@ -138,7 +166,8 @@ def process_arguments():
         "--write_frames_dir",
         type=str,
         required=False,
-        help="Directory to write frames for video creation; won't write frames if not specified",
+        help=
+        "Directory to write frames for video creation; won't write frames if not specified",
     )
     parser.add_argument(
         "--write_episode_progress",
@@ -158,9 +187,12 @@ def process_arguments():
     parser.add_argument(
         "--force_replay",
         action="store_true",
-        help="Specify this to force replay the game even if the game has been replayed before",
+        help=
+        "Specify this to force replay the game even if the game has been replayed before",
     )
-    parser.add_argument("--create_video", action="store_true", help="Whether to write a video into the frames dir")
+    parser.add_argument("--create_video",
+                        action="store_true",
+                        help="Whether to write a video into the frames dir")
     parser.add_argument(
         "--font_fn",
         type=str,
@@ -171,9 +203,13 @@ def process_arguments():
         "--status_out_fn",
         type=str,
         default="replay_stats.json",
-        help="Path to a json file, stores whether replay ran, and API and task success during replay.",
+        help=
+        "Path to a json file, stores whether replay ran, and API and task success during replay.",
     )
-    parser.add_argument("--num_processes", type=int, default=1, help="Number of processes to use")
+    parser.add_argument("--num_processes",
+                        type=int,
+                        default=1,
+                        help="Number of processes to use")
     args = parser.parse_args()
     if args.game_fn is None and args.game_dir is None:
         print("please specify either game_fn or game_dir")
@@ -195,7 +231,8 @@ def main():
 
     files_to_play = game_fns
     if os.path.isfile(cmd_args.status_out_fn) and cmd_args.write_frames_dir:
-        files_to_play, playback_status, replay_status = load_preran_status(cmd_args, game_fns)
+        files_to_play, playback_status, replay_status = load_preran_status(
+            cmd_args, game_fns)
 
     logger.info("len(files_to_play) = %d" % len(files_to_play))
 
@@ -210,15 +247,19 @@ def main():
         )
         worker.run()
     else:
-        num_files_per_process = int(len(files_to_play) / cmd_args.num_processes) + 1
+        num_files_per_process = int(
+            len(files_to_play) / cmd_args.num_processes) + 1
         processes = list()
         status_files = list()
         try:
             for idx in range(cmd_args.num_processes):
                 games_start_idx = idx * num_files_per_process
-                games_end_idx = min(games_start_idx + num_files_per_process, len(files_to_play))
-                files_for_process = files_to_play[games_start_idx:games_end_idx]
-                status_file = re.sub(".json", "_" + str(idx) + ".json", cmd_args.status_out_fn)
+                games_end_idx = min(games_start_idx + num_files_per_process,
+                                    len(files_to_play))
+                files_for_process = files_to_play[
+                    games_start_idx:games_end_idx]
+                status_file = re.sub(".json", "_" + str(idx) + ".json",
+                                     cmd_args.status_out_fn)
                 worker = EpisodeReplayWorker(
                     idx,
                     cmd_args,

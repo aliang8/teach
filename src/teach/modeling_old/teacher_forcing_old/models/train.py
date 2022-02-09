@@ -29,14 +29,17 @@ def prepare(train, exp):
     args = helper_util.AttrDict(**train, **exp)
     args.dout = os.path.join(constants.ET_LOGS, args.name)
     args.data["train"] = args.data["train"].split(",")
-    args.data["valid"] = args.data["valid"].split(",") if args.data["valid"] else []
+    args.data["valid"] = args.data["valid"].split(
+        ",") if args.data["valid"] else []
     num_datas = len(args.data["train"]) + len(args.data["valid"])
-    for key in ("ann_type",):
+    for key in ("ann_type", ):
         args.data[key] = args.data[key].split(",")
         if len(args.data[key]) == 1:
             args.data[key] = args.data[key] * num_datas
         if len(args.data[key]) != num_datas:
-            raise ValueError("Provide either 1 {} or {} separated by commas".format(key, num_datas))
+            raise ValueError(
+                "Provide either 1 {} or {} separated by commas".format(
+                    key, num_datas))
 
     # set seeds
     torch.manual_seed(args.seed)
@@ -54,7 +57,8 @@ def load_only_matching_layers(model, pretrained_model, train_lmdb_name):
     pretrained_dict = {}
     model_dict = model.state_dict()
 
-    logger.debug("Pretrained Model keys: %s" % str(pretrained_model["model"].keys()))
+    logger.debug("Pretrained Model keys: %s" %
+                 str(pretrained_model["model"].keys()))
     logger.debug("Model state dict keys: %s" % str(model_dict.keys()))
 
     for name, param in pretrained_model["model"].items():
@@ -67,11 +71,13 @@ def load_only_matching_layers(model, pretrained_model, train_lmdb_name):
 
         if param.size() == model_dict[model_name].size():
             logger.debug(
-                "Matched name and size: %s %s %s" % (name, str(param.size()), str(model_dict[model_name].size()))
-            )
+                "Matched name and size: %s %s %s" %
+                (name, str(param.size()), str(model_dict[model_name].size())))
             pretrained_dict[model_name] = param
         else:
-            logger.debug("Mismatched size: %s %s %s" % (name, str(param.size()), str(model_dict[model_name].size())))
+            logger.debug(
+                "Mismatched size: %s %s %s" %
+                (name, str(param.size()), str(model_dict[model_name].size())))
     logger.debug("Matched keys: %s" % str(pretrained_dict.keys()))
     return pretrained_dict
 
@@ -118,6 +124,7 @@ def load_only_matching_layers(model, pretrained_model, train_lmdb_name):
 #         model.model = helper_util.DataParallel(model.model)
 #     return model, optimizer, prev_train_info
 
+
 def create_model(args, emb_ann, vocab_out, vocab):
     # load model
     M = import_module('teacher_forcing.models.model.{}'.format(args.model))
@@ -141,7 +148,8 @@ def load_data(name, args, ann_type, valid_only=False):
     """
     load dataset and wrap them into torch loaders
     """
-    partitions = ([] if valid_only else ["train"]) + ["valid_seen", "valid_unseen"]
+    partitions = ([] if valid_only else ["train"
+                                         ]) + ["valid_seen", "valid_unseen"]
     datasets = []
     for partition in partitions:
         if args.model == "speaker":
@@ -173,14 +181,25 @@ def wrap_datasets(datasets, args):
         if dataset.partition == "train":
             if args.data["train_load_type"] == "sample":
                 weights = [1 / len(dataset)] * len(dataset)
-                num_samples = 16 if args.fast_epoch else (args.data["length"] or len(dataset))
+                num_samples = 16 if args.fast_epoch else (args.data["length"]
+                                                          or len(dataset))
                 num_samples = num_samples // len(args.data["train"])
-                sampler = torch.utils.data.WeightedRandomSampler(weights, num_samples=num_samples, replacement=True)
-                loader = torch.utils.data.DataLoader(dataset, batch_size, sampler=sampler, **loader_args)
+                sampler = torch.utils.data.WeightedRandomSampler(
+                    weights, num_samples=num_samples, replacement=True)
+                loader = torch.utils.data.DataLoader(dataset,
+                                                     batch_size,
+                                                     sampler=sampler,
+                                                     **loader_args)
             else:
-                loader = torch.utils.data.DataLoader(dataset, args.batch, shuffle=True, **loader_args)
+                loader = torch.utils.data.DataLoader(dataset,
+                                                     args.batch,
+                                                     shuffle=True,
+                                                     **loader_args)
         else:
-            loader = torch.utils.data.DataLoader(dataset, args.batch, shuffle=(not args.fast_epoch), **loader_args)
+            loader = torch.utils.data.DataLoader(dataset,
+                                                 args.batch,
+                                                 shuffle=(not args.fast_epoch),
+                                                 **loader_args)
         loaders[dataset.id] = loader
     return loaders
 
@@ -191,7 +210,8 @@ def process_vocabs(datasets, args):
     """
     # find the longest vocabulary for outputs among all datasets
     for dataset in datasets:
-        logger.debug("dataset.id = %s, vocab_out = %s" % (dataset.id, str(dataset.vocab_out)))
+        logger.debug("dataset.id = %s, vocab_out = %s" %
+                     (dataset.id, str(dataset.vocab_out)))
     vocab_out = sorted(datasets, key=lambda x: len(x.vocab_out))[-1].vocab_out
 
     vocab = sorted(datasets, key=lambda x: len(x.vocab["word"]))[-1].vocab
@@ -227,7 +247,8 @@ def main(train, exp):
     # wrap datasets with loaders
     loaders = wrap_datasets(datasets, args)
     # create the model
-    model, optimizer, prev_train_info = create_model(args, embs_ann, vocab_out, vocab)
+    model, optimizer, prev_train_info = create_model(args, embs_ann, vocab_out,
+                                                     vocab)
 
     print(model)
     # start train loop

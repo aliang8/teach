@@ -1,7 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
 
-
 import base64
 import copy
 import io
@@ -37,7 +36,10 @@ logger = create_logger(__name__)
 
 class SharedContent:
     def __init__(self):
-        self.ego = np.random.randint(0, 255, size=(512, 512, 3), dtype=np.uint8)
+        self.ego = np.random.randint(0,
+                                     255,
+                                     size=(512, 512, 3),
+                                     dtype=np.uint8)
         self.info = {"message": ""}
 
 
@@ -45,7 +47,6 @@ class SimulatorBase:
     """
     This class contains most of the common implementations for simulators
     """
-
     def __init__(
         self,
         task_type="eqa_complex",
@@ -86,14 +87,19 @@ class SimulatorBase:
 
         self.fps = fps
         time_start = time.time()
-        self._dataset = Dataset(task_type=task_type, definitions=None, comments=comments, version="2.0")
+        self._dataset = Dataset(task_type=task_type,
+                                definitions=None,
+                                comments=comments,
+                                version="2.0")
         time_end = time.time()
 
         self.__reset_helper(dir_out=dir_out)
         self.logger = create_logger(logger_name, level=logger_level)
-        self.logger.info("Time to create dataset definitions: %s sec" % (time_end - time_start))
+        self.logger.info("Time to create dataset definitions: %s sec" %
+                         (time_end - time_start))
 
-        self.live_feeds = set()  # set of feed names to bother encoding for emission
+        self.live_feeds = set(
+        )  # set of feed names to bother encoding for emission
         self.last_images = {}
 
         self.current_task = self.start_time = self.current_episode = None
@@ -117,10 +123,15 @@ class SimulatorBase:
         This should precede calls to start_new_episode() and set_task() to ensure that a future call to save() or done()
         will save session data properly.
         """
-        logger.info("Resetting dataset object and removing previously stored episodes...")
+        logger.info(
+            "Resetting dataset object and removing previously stored episodes..."
+        )
         task_type = self._dataset.task_type
         comments = self._dataset.comments
-        self._dataset = Dataset(task_type=task_type, definitions=None, comments=comments, version="2.0")
+        self._dataset = Dataset(task_type=task_type,
+                                definitions=None,
+                                comments=comments,
+                                version="2.0")
 
     def start_new_episode(
         self,
@@ -161,7 +172,12 @@ class SimulatorBase:
 
         self.start_time = time.time()
         eid = uuid.uuid4().hex if episode_id is None else episode_id
-        new_episode = Episode(eid, world, world_type, commander_embodied, initial_state=None, interactions=[])
+        new_episode = Episode(eid,
+                              world,
+                              world_type,
+                              commander_embodied,
+                              initial_state=None,
+                              interactions=[])
         self.current_episode = new_episode
         self.to_broadcast["info"] = {"message": "Initial state"}
 
@@ -189,14 +205,17 @@ class SimulatorBase:
         :param motion_name: Action name of action defined in default_definitions.json with action_type Motion
         :param agent_id: 0 for Commander and 1 for Driver/ Follower
         """
-        agent_name = self._dataset.definitions.map_agents_id2info[agent_id]["agent_name"]
+        agent_name = self._dataset.definitions.map_agents_id2info[agent_id][
+            "agent_name"]
         self.logger.debug("%s: %s" % (agent_name, motion_name))
 
-        action_definition = self._dataset.definitions.map_actions_name2info.get(motion_name)
+        action_definition = self._dataset.definitions.map_actions_name2info.get(
+            motion_name)
         if action_definition is None:
             self.logger.error("Unsupported motion: %s" % motion_name)
             return False, "Unsupported motion: %s" % motion_name, ""
-        if "pose_delta" not in action_definition or action_definition["pose_delta"] is None:
+        if "pose_delta" not in action_definition or action_definition[
+                "pose_delta"] is None:
             self.logger.error("Unsupported motion: %s" % motion_name)
             return False, "Unsupported motion: %s" % motion_name, ""
 
@@ -207,14 +226,22 @@ class SimulatorBase:
             pose=Pose(0, 0, 0, 0, 0, 0),
             pose_delta=Pose.from_array(action_definition["pose_delta"]),
         )
-        interaction = Interaction(agent_id=agent_id, action=action, is_object=False, status=None)
+        interaction = Interaction(agent_id=agent_id,
+                                  action=action,
+                                  is_object=False,
+                                  status=None)
         sim_succ, err_message, help_message = self.add_interaction(interaction)
-        self.to_broadcast["info"] = {"message": motion_name, "success": sim_succ, "sim_message": err_message}
+        self.to_broadcast["info"] = {
+            "message": motion_name,
+            "success": sim_succ,
+            "sim_message": err_message
+        }
         if help_message is not None:
             self.to_broadcast["info"]["help_message"] = help_message
         return sim_succ, err_message, help_message
 
-    def apply_map_goal(self, goal_name, agent_id, start_x, start_y, end_x, end_y):
+    def apply_map_goal(self, goal_name, agent_id, start_x, start_y, end_x,
+                       end_y):
         """
         Identify and execute a series of lower-level motion actions to reach a destination.
         :param goal_name: Action name of action defined in default_definitions.json with action_type MapGoal
@@ -224,10 +251,14 @@ class SimulatorBase:
         :param end_x: x-coordinate of desired end position on top-down map as shown in data collection interface
         :param end_y: y-coordinate of desired end position on top-down map as shown in data collection interface
         """
-        agent_name = self._dataset.definitions.map_agents_id2info[agent_id]["agent_name"]
-        self.logger.debug("%s: %s @ %.2f,%.2f -> %.2f,%.2f" % (agent_name, goal_name, start_x, start_y, end_x, end_y))
+        agent_name = self._dataset.definitions.map_agents_id2info[agent_id][
+            "agent_name"]
+        self.logger.debug(
+            "%s: %s @ %.2f,%.2f -> %.2f,%.2f" %
+            (agent_name, goal_name, start_x, start_y, end_x, end_y))
 
-        action_definition = self._dataset.definitions.map_actions_name2info.get(goal_name)
+        action_definition = self._dataset.definitions.map_actions_name2info.get(
+            goal_name)
         if action_definition is None:
             self.logger.error("Unsupported map goal: %s" % goal_name)
             return
@@ -241,12 +272,19 @@ class SimulatorBase:
             end_x=end_x,
             end_y=end_y,
         )
-        interaction = Interaction(agent_id=agent_id, action=action, is_object=False, status=None)
+        interaction = Interaction(agent_id=agent_id,
+                                  action=action,
+                                  is_object=False,
+                                  status=None)
         sim_succ, action_sequence = self.add_interaction(interaction)
         self.to_broadcast["info"] = {
-            "message": "%s: %.2f,%.2f->%.2f,%.2f" % (goal_name, start_x, start_y, end_x, end_y),
-            "success": sim_succ,
-            "action_sequence": action_sequence,
+            "message":
+            "%s: %.2f,%.2f->%.2f,%.2f" %
+            (goal_name, start_x, start_y, end_x, end_y),
+            "success":
+            sim_succ,
+            "action_sequence":
+            action_sequence,
         }
 
     def apply_object_interaction(self, interaction_name, agent_id, x, y):
@@ -258,23 +296,37 @@ class SimulatorBase:
         :param x: Relative x coordinate on agent's egocentric image
         :param y: Relative y coordinate on agent's egocentric image
         """
-        agent_name = self._dataset.definitions.map_agents_id2info[agent_id]["agent_name"]
-        self.logger.debug("%s: %s @ %.2f,%.2f" % (agent_name, interaction_name, x, y))
+        agent_name = self._dataset.definitions.map_agents_id2info[agent_id][
+            "agent_name"]
+        self.logger.debug("%s: %s @ %.2f,%.2f" %
+                          (agent_name, interaction_name, x, y))
 
-        action_definition = self._dataset.definitions.map_actions_name2info.get(interaction_name)
+        action_definition = self._dataset.definitions.map_actions_name2info.get(
+            interaction_name)
         if action_definition is None:
-            self.logger.error("Unsupported object interaction: %s" % interaction_name)
+            self.logger.error("Unsupported object interaction: %s" %
+                              interaction_name)
             return False, "Unsupported object interaction: %s" % interaction_name, ""
 
         action = Action_ObjectInteraction(
-            action_id=action_definition["action_id"], time_start=time.time() - self.start_time, duration=1, x=x, y=y
-        )
-        interaction = Interaction(agent_id=agent_id, action=action, is_object=False, status=None)
+            action_id=action_definition["action_id"],
+            time_start=time.time() - self.start_time,
+            duration=1,
+            x=x,
+            y=y)
+        interaction = Interaction(agent_id=agent_id,
+                                  action=action,
+                                  is_object=False,
+                                  status=None)
         sim_succ, sim_msg, help_msg = self.add_interaction(interaction)
         self.to_broadcast["info"] = {
-            "message": "%s: %.2f,%.2f %s" % (interaction_name, x, y, action.oid if sim_succ else ""),
-            "success": sim_succ,
-            "sim_message": sim_msg,
+            "message":
+            "%s: %.2f,%.2f %s" %
+            (interaction_name, x, y, action.oid if sim_succ else ""),
+            "success":
+            sim_succ,
+            "sim_message":
+            sim_msg,
         }
         if help_msg is not None:
             self.to_broadcast["info"]["help_message"] = help_msg
@@ -290,36 +342,48 @@ class SimulatorBase:
         :param agent_id: 0 for Commander and 1 for Driver/ Follower
         :param query: Specify search query for SearchObject action or object ID for SelectOid action
         """
-        agent_name = self._dataset.definitions.map_agents_id2info[agent_id]["agent_name"]
-        self.logger.debug('%s: %s query "%s"' % (agent_name, action_name, query))
+        agent_name = self._dataset.definitions.map_agents_id2info[agent_id][
+            "agent_name"]
+        self.logger.debug('%s: %s query "%s"' %
+                          (agent_name, action_name, query))
 
-        action_definition = self._dataset.definitions.map_actions_name2info.get(action_name)
+        action_definition = self._dataset.definitions.map_actions_name2info.get(
+            action_name)
 
-        action = Action_ProgressCheck(
-            action_id=action_definition["action_id"], time_start=time.time() - self.start_time, duration=1, query=query
-        )
-        interaction = Interaction(agent_id=agent_id, action=action, is_object=False, status=None)
+        action = Action_ProgressCheck(action_id=action_definition["action_id"],
+                                      time_start=time.time() - self.start_time,
+                                      duration=1,
+                                      query=query)
+        interaction = Interaction(agent_id=agent_id,
+                                  action=action,
+                                  is_object=False,
+                                  status=None)
         self.add_interaction(interaction)
 
         # Take appropriate action based on action name.
         if action_name == "OpenProgressCheck":
-            task_desc, success, subgoals, gc_total, gc_satisfied = self.check_episode_progress(self.current_task)
+            task_desc, success, subgoals, gc_total, gc_satisfied = self.check_episode_progress(
+                self.current_task)
             interaction.action.success = 1 if success else 0
             # Return JSON-safe encoding.
             for subgoal in subgoals:
                 subgoal["success"] = 1 if subgoal["success"] else 0
                 if "step_successes" in subgoal:
-                    subgoal["step_successes"] = [int(v) for v in subgoal["step_successes"]]
+                    subgoal["step_successes"] = [
+                        int(v) for v in subgoal["step_successes"]
+                    ]
                 for step in subgoal["steps"]:
                     step["success"] = 1 if step["success"] else 0
-            return {"task_desc": task_desc, "success": 1 if success else 0, "subgoals": subgoals}
+            return {
+                "task_desc": task_desc,
+                "success": 1 if success else 0,
+                "subgoals": subgoals
+            }
 
         elif action_name == "SelectOid" or action_name == "SearchObject":
-            obj_data = (
-                self.set_target_object_view(query, None)
-                if action_name == "SelectOid"
-                else self.set_target_object_view(None, query)
-            )
+            obj_data = (self.set_target_object_view(query, None) if action_name
+                        == "SelectOid" else self.set_target_object_view(
+                            None, query))
             if obj_data:
                 interaction.action.success = 1
                 return obj_data
@@ -327,7 +391,8 @@ class SimulatorBase:
                 interaction.action.success = 0
                 return {"success": False}
         else:
-            raise ValueError("Unrecognized progress check action type '%s'" % action_name)
+            raise ValueError("Unrecognized progress check action type '%s'" %
+                             action_name)
 
     def keyboard(self, agent_id, utterance):
         """
@@ -340,11 +405,13 @@ class SimulatorBase:
             self.logger.error(message)
             raise Exception(message)
 
-        agent_name = self._dataset.definitions.map_agents_id2info[agent_id]["agent_name"]
+        agent_name = self._dataset.definitions.map_agents_id2info[agent_id][
+            "agent_name"]
 
         self.logger.debug("%s: %s" % (agent_name, utterance))
 
-        action_definition = self._dataset.definitions.map_actions_name2info.get("Text")
+        action_definition = self._dataset.definitions.map_actions_name2info.get(
+            "Text")
         if action_definition is None:
             self.logger.error("Unsupported action: Text")
             return
@@ -355,9 +422,14 @@ class SimulatorBase:
             duration=1,
             utterance=utterance,
         )
-        interaction = Interaction(agent_id=agent_id, action=action, is_object=False, status=None)
+        interaction = Interaction(agent_id=agent_id,
+                                  action=action,
+                                  is_object=False,
+                                  status=None)
         self.add_interaction(interaction)
-        self.to_broadcast["info"] = {"message": "%s: %s" % (agent_name, utterance)}
+        self.to_broadcast["info"] = {
+            "message": "%s: %s" % (agent_name, utterance)
+        }
 
     def speech(self, agent_id, file_name, utterance):
         """
@@ -371,11 +443,13 @@ class SimulatorBase:
             self.logger.error(message)
             raise Exception(message)
 
-        agent_name = self._dataset.definitions.map_agents_id2info[agent_id]["agent_name"]
+        agent_name = self._dataset.definitions.map_agents_id2info[agent_id][
+            "agent_name"]
 
         self.logger.debug("%s: %s" % (agent_name, utterance))
 
-        action_definition = self._dataset.definitions.map_actions_name2info.get("Speech")
+        action_definition = self._dataset.definitions.map_actions_name2info.get(
+            "Speech")
         if action_definition is None:
             self.logger.error("Unsupported action: Speech")
             return
@@ -396,7 +470,8 @@ class SimulatorBase:
             os.remove(file_wav)
 
         # Record action
-        file_mp3 = os.path.join(os.path.basename(self.dir_out), episode_id, "%d.mp3" % time_start)
+        file_mp3 = os.path.join(os.path.basename(self.dir_out), episode_id,
+                                "%d.mp3" % time_start)
         action = Action_Audio(
             action_id=action_definition["action_id"],
             time_start=time_start,
@@ -404,9 +479,14 @@ class SimulatorBase:
             utterance=utterance,
             file_name=file_mp3,
         )
-        interaction = Interaction(agent_id=agent_id, action=action, is_object=False, status=None)
+        interaction = Interaction(agent_id=agent_id,
+                                  action=action,
+                                  is_object=False,
+                                  status=None)
         self.add_interaction(interaction)
-        self.to_broadcast["info"] = {"message": "%s: %s" % (agent_name, utterance)}
+        self.to_broadcast["info"] = {
+            "message": "%s: %s" % (agent_name, utterance)
+        }
 
     def success(self):
         """
@@ -476,7 +556,8 @@ class SimulatorBase:
 
         if self.success():
             self.current_task.add_episode(copy.deepcopy(self.current_episode))
-            self.save(file_name=file_name)  # Always save once episode is complete.
+            self.save(
+                file_name=file_name)  # Always save once episode is complete.
             self.logger.debug("End of episode.")
             self.to_broadcast["info"] = {"message": "Done"}
             self.shutdown_simulator()
@@ -523,15 +604,22 @@ class SimulatorBase:
             self.logger.warning(message)
             raise Exception(message)
 
-        task_desc, success, subgoals = self.check_episode_progress(self.current_task)
+        task_desc, success, subgoals = self.check_episode_progress(
+            self.current_task)
         # Return JSON-safe encoding.
         for subgoal in subgoals:
             subgoal["success"] = 1 if subgoal["success"] else 0
             if "step_successes" in subgoal:
-                subgoal["step_successes"] = [int(v) for v in subgoal["step_successes"]]
+                subgoal["step_successes"] = [
+                    int(v) for v in subgoal["step_successes"]
+                ]
             for step in subgoal["steps"]:
                 step["success"] = 1 if step["success"] else 0
-        return {"task_desc": task_desc, "success": 1 if success else 0, "subgoals": subgoals}
+        return {
+            "task_desc": task_desc,
+            "success": 1 if success else 0,
+            "subgoals": subgoals
+        }
 
     def preconditions_check(self):
         """
@@ -572,13 +660,15 @@ class SimulatorBase:
             raise e
 
         self.is_record_mode = record_mode
-        self.logger.debug("Currently%s in record mode" % ("" if record_mode else " not"))
+        self.logger.debug("Currently%s in record mode" %
+                          ("" if record_mode else " not"))
 
     def info(self, include_scenes=False, include_objects=False):
         """
         Obtain information about the current task and episode
         """
-        num_tasks = 0 if self.current_task is None else len(self._dataset.tasks)
+        num_tasks = 0 if self.current_task is None else len(
+            self._dataset.tasks)
         comments_task = ""
         if num_tasks > 0:
             task_id = self._dataset.tasks[-1].task_id
@@ -594,25 +684,26 @@ class SimulatorBase:
             if self.current_episode is not None:
                 episode_id = self.current_episode.episode_id
                 for interaction in self.current_episode.interactions:
-                    action_name = self._dataset.definitions.map_actions_id2info[interaction.action.action_id][
-                        "action_name"
-                    ]
+                    action_name = self._dataset.definitions.map_actions_id2info[
+                        interaction.action.action_id]["action_name"]
                     if action_name == "Text":
-                        history_utterance.append(
-                            {
-                                "agent_id": interaction.agent_id,
-                                "utterance": interaction.action.utterance,
-                                "action_type": interaction.action.action_type,
-                            }
-                        )
+                        history_utterance.append({
+                            "agent_id":
+                            interaction.agent_id,
+                            "utterance":
+                            interaction.action.utterance,
+                            "action_type":
+                            interaction.action.action_type,
+                        })
                     elif action_name == "Speech":
-                        history_utterance.append(
-                            {
-                                "agent_id": interaction.agent_id,
-                                "utterance": interaction.action.utterance,
-                                "action_type": interaction.action.action_type,
-                            }
-                        )
+                        history_utterance.append({
+                            "agent_id":
+                            interaction.agent_id,
+                            "utterance":
+                            interaction.action.utterance,
+                            "action_type":
+                            interaction.action.action_type,
+                        })
             if num_episodes > 0:
                 episode_id = self.current_task.episodes[-1].episode_id
 
@@ -639,7 +730,8 @@ class SimulatorBase:
         Save episode to file
         :param file_name: File name to save episode to; if None, a random file name is assigned
         """
-        logger.info("simulator_base save called with file_name " + str(file_name))
+        logger.info("simulator_base save called with file_name " +
+                    str(file_name))
         if file_name is None or len(file_name) < 1:
             file_name = self.prefix + "_" + ".json"
 
@@ -659,7 +751,8 @@ class SimulatorBase:
         s = self.get_scene_object_locs_and_states()
         if not os.path.exists(self.dir_out):
             os.makedirs(self.dir_out)
-        file_name = os.path.join(self.dir_out, self.prefix + "_state" + ".json")
+        file_name = os.path.join(self.dir_out,
+                                 self.prefix + "_state" + ".json")
         with open(file_name, "w") as f:
             json.dump(s, f)
         self.logger.debug("Saved: %s" % file_name)
@@ -676,34 +769,37 @@ class SimulatorBase:
         file_name = None
         if fn is not None or (fn is None and init_state is None):
             # If no init conditions to read set, try to guess the last state file written out.
-            file_name = os.path.join(self.dir_out, self.prefix + "_state" + ".json") if fn is None else fn
+            file_name = os.path.join(self.dir_out, self.prefix + "_state" +
+                                     ".json") if fn is None else fn
             if os.path.isfile(file_name):
                 with open(file_name, "r") as f:
                     init_state = json.load(f)
             else:
-                raise FileNotFoundError('No scene save file "%s" found' % file_name)
+                raise FileNotFoundError('No scene save file "%s" found' %
+                                        file_name)
 
         self.start_time = time.time()
         success1, msg1 = self.restore_scene_object_locs_and_states(
-            init_state.objects if type(init_state) == Initialization else init_state["objects"]
-        )
-        success2, msg2 = self.set_agent_poses(
-            init_state.agents if type(init_state) == Initialization else init_state["agents"]
-        )
+            init_state.objects if type(init_state) ==
+            Initialization else init_state["objects"])
+        success2, msg2 = self.set_agent_poses(init_state.agents if type(
+            init_state) == Initialization else init_state["agents"])
         self.set_init_state()
         self.start_time = time.time()
         if success1 and success2:
-            self.logger.debug(
-                "Loaded from %s" % file_name if file_name is not None else "Loaded from supplied init state arg"
-            )
+            self.logger.debug("Loaded from %s" %
+                              file_name if file_name is not None else
+                              "Loaded from supplied init state arg")
         else:
-            self.logger.debug(
-                "Error when loading: %s" % file_name if file_name is not None else "Error loading init state"
-            )
+            self.logger.debug("Error when loading: %s" % file_name if file_name
+                              is not None else "Error loading init state")
             if not success1:
-                self.logger.debug("restore_scene_object_locs_and_states failed with message " + msg1)
+                self.logger.debug(
+                    "restore_scene_object_locs_and_states failed with message "
+                    + msg1)
             if not success2:
-                self.logger.debug("set_agent_poses failed with message " + msg2)
+                self.logger.debug("set_agent_poses failed with message " +
+                                  msg2)
         return file_name, success1 and success2
 
     def get_json(self):
@@ -833,7 +929,8 @@ class SimulatorBase:
         for name in latest_images:
             if name in self.live_feeds:
                 # If this is a feed we're subscribed to and the frame values have changed, encode.
-                if force or name not in self.last_images or not np.all(self.last_images[name] == latest_images[name]):
+                if force or name not in self.last_images or not np.all(
+                        self.last_images[name] == latest_images[name]):
                     enc_img_str = self.encode_image(latest_images[name])
                     imgs[name] = enc_img_str
 
@@ -889,7 +986,10 @@ class SimulatorBase:
             pose=Pose(0, 0, 0, 0, 0, 0),
             pose_delta=Pose(0, 0, 0, 0, 0, 0),
         )
-        interaction = Interaction(agent_id=1, action=action, is_object=False, status=status)
+        interaction = Interaction(agent_id=1,
+                                  action=action,
+                                  is_object=False,
+                                  status=status)
         self.add_interaction(interaction)
 
         return True
@@ -905,14 +1005,16 @@ class SimulatorBase:
         self.current_episode = None
         self.current_task = None
         self.is_ready = False
-        self.dir_out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out") if dir_out is None else dir_out
+        self.dir_out = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                    "out") if dir_out is None else dir_out
         if not os.path.exists(self.dir_out):
             os.makedirs(self.dir_out)
 
         self.prefix = datetime.now().strftime("%Y%m%d_%H_%M_%S")
         self.start_time = time.time()
 
-        img = Image.fromarray(np.random.randint(0, 255, size=(512, 910, 3), dtype=np.uint8))
+        img = Image.fromarray(
+            np.random.randint(0, 255, size=(512, 910, 3), dtype=np.uint8))
         img_bytes = io.BytesIO()
         img.save(img_bytes, format="jpeg")
         self.to_broadcast = {
@@ -920,5 +1022,7 @@ class SimulatorBase:
             "allo": self.__generate_random_image_bytes(),
             "map": self.__generate_random_image_bytes(),
             "semantic": self.__generate_random_image_bytes(),
-            "info": {"message": ""},
+            "info": {
+                "message": ""
+            },
         }

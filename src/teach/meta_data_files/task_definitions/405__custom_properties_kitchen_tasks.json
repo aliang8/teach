@@ -8,7 +8,9 @@
     "boiled_potato": {
       "determiner": "a",
       "task_name": "Boil X",
-      "task_params": ["Potato"]
+      "task_params": [
+        "Potato"
+      ]
     },
     "poached_egg": {
       "determiner": "a",

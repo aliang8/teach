@@ -43,9 +43,9 @@ def add_images_path(base_dir, phase):
             img_f = os.path.join(game_image_dir, img_file)
             time_start = ".".join(img_file.split(".")[2:4])
             if img_file.split(".")[0] == "commander":
-                commander_obs[time_start] = img_f 
+                commander_obs[time_start] = img_f
             elif img_file.split(".")[0] == "driver":
-                driver_obs[time_start] = img_f 
+                driver_obs[time_start] = img_f
             elif img_file.split(".")[0] == "targetobject":
                 targetobject[time_start] = img_f
             elif img_file.split(".")[1] == "status":
@@ -58,7 +58,7 @@ def add_images_path(base_dir, phase):
             # interactions[idx].commander_obs = commander_obs[time_start]
             # interactions[idx].driver_obs = driver_obs[time_start]
             try:
-                if interactions[idx]["action_id"]==500:
+                if interactions[idx]["action_id"] == 500:
                     interactions[idx]["pc_json"] = pc_status[time_start]
             except:
                 print(f)
@@ -68,12 +68,12 @@ def add_images_path(base_dir, phase):
         new_f = os.path.join(new_data_dir, os.path.basename(f))
         with open(new_f, 'w') as h:
             json.dump(game, h)
-        
+
         # game.dump(new_f)
 
 
 if __name__ == "__main__":
     base_data_dir = "/data/anthony/teach"
-# "train", 
+    # "train",
     for phase in ["valid_seen", "valid_unseen"]:
         add_images_path(base_data_dir, phase)

@@ -8,7 +8,13 @@ from teach.dataset.interaction import Interaction
 
 
 class Episode:
-    def __init__(self, episode_id, world, world_type, commander_embodied, initial_state=None, interactions=None):
+    def __init__(self,
+                 episode_id,
+                 world,
+                 world_type,
+                 commander_embodied,
+                 initial_state=None,
+                 interactions=None):
         self.episode_id = episode_id
         self.world = world
         self.world_type = world_type
@@ -45,10 +51,14 @@ class Episode:
         return _dict
 
     @classmethod
-    def from_dict(cls, episode_dict, definitions, process_init_state=True) -> "Episode":
+    def from_dict(cls,
+                  episode_dict,
+                  definitions,
+                  process_init_state=True) -> "Episode":
         interactions = []
         for interaction_dict in episode_dict.get("interactions"):
-            action_type = definitions.map_actions_id2info[interaction_dict["action_id"]]["action_type"]
+            action_type = definitions.map_actions_id2info[
+                interaction_dict["action_id"]]["action_type"]
             interaction = Interaction.from_dict(interaction_dict, action_type)
             interactions.append(interaction)
 
@@ -57,8 +67,8 @@ class Episode:
             episode_dict["world"],
             episode_dict["world_type"],
             episode_dict["commander_embodied"],
-            initial_state=Initialization.from_dict(episode_dict["initial_state"])
-            if process_init_state
-            else episode_dict["initial_state"],
+            initial_state=Initialization.from_dict(
+                episode_dict["initial_state"])
+            if process_init_state else episode_dict["initial_state"],
             interactions=interactions,
         )

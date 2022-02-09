@@ -15,7 +15,12 @@ from teach.dataset.actions import (
 
 
 class Interaction:
-    def __init__(self, agent_id, action, is_object=False, status=None, time_start=None):
+    def __init__(self,
+                 agent_id,
+                 action,
+                 is_object=False,
+                 status=None,
+                 time_start=None):
         self.agent_id = agent_id
         self.action = action
         self.is_object = is_object
@@ -69,4 +74,8 @@ class Interaction:
 
         status = interaction_dict.get("status")
         time_start = interaction_dict.get("time_start")
-        return cls(agent_id=agent_id, action=action, is_object=is_object, status=status, time_start=time_start)
+        return cls(agent_id=agent_id,
+                   action=action,
+                   is_object=is_object,
+                   status=status,
+                   time_start=time_start)

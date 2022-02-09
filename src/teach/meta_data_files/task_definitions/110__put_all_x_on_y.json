@@ -10,7 +10,7 @@
       "primary_condition": "simbotObjectClass",
       "instance_shareable": false,
       "conditions": {
-          "simbotObjectClass": "#0"
+        "simbotObjectClass": "#0"
       },
       "condition_failure_descs": {}
     },
@@ -19,8 +19,8 @@
       "primary_condition": "simbotObjectClass",
       "instance_shareable": true,
       "conditions": {
-          "simbotObjectClass": "#2",
-          "receptacle": 1
+        "simbotObjectClass": "#2",
+        "receptacle": 1
       },
       "condition_failure_descs": {}
     }
@@ -28,10 +28,18 @@
   "relations": [
     {
       "property": "parentReceptacles",
-      "tail_entity_list": ["#2"],
-      "tail_determiner_list": ["a"],
-      "head_entity_list": ["#0"],
-      "head_determiner_list": ["all"],
+      "tail_entity_list": [
+        "#2"
+      ],
+      "tail_determiner_list": [
+        "a"
+      ],
+      "head_entity_list": [
+        "#0"
+      ],
+      "head_determiner_list": [
+        "all"
+      ],
       "failure_desc": "The #0 needs to be put #1to a #2"
     }
   ]

@@ -10,11 +10,11 @@
       "primary_condition": "objectType",
       "instance_shareable": false,
       "conditions": {
-          "objectType": "HousePlant",
-          "isFilledWithLiquid": 1
+        "objectType": "HousePlant",
+        "isFilledWithLiquid": 1
       },
       "condition_failure_descs": {
-          "isFilledWithLiquid": "The plant needs to be watered. Bring some water in a container from the sink and pour into the plant."
+        "isFilledWithLiquid": "The plant needs to be watered. Bring some water in a container from the sink and pour into the plant."
       }
     }
   },

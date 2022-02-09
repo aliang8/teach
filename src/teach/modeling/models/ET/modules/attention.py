@@ -6,7 +6,6 @@ class SelfAttn(nn.Module):
     """
     self-attention with learnable parameters
     """
-
     def __init__(self, dhid):
         super().__init__()
         self.scorer = nn.Linear(dhid, 1)
@@ -25,7 +24,6 @@ class DotAttn(nn.Module):
     """
     dot-attention (or soft-attention)
     """
-
     def forward(self, inp, h):
         # inp: batch_size x seq_len x dhid
         # h: batch_size x dhid

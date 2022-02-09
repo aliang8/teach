@@ -35,7 +35,9 @@ def parse_args():
         "--split",
         type=str,
         default="valid_seen",
-        choices=["train", "valid_seen", "valid_unseen", "test_seen", "test_unseen"],
+        choices=[
+            "train", "valid_seen", "valid_unseen", "test_seen", "test_unseen"
+        ],
         help="One of train, valid_seen, valid_unseen, test_seen, test_unseen",
     )
     arg_parser.add_argument(
@@ -45,19 +47,24 @@ def parse_args():
         help="Path of the python module to load the model class from.",
     )
     arg_parser.add_argument(
-        "--model_class", type=str, default="SampleModel", help="Name of the TeachModel class to use during inference."
-    )
-    arg_parser.add_argument(
-        "--use_game_file", dest="use_game_file", action="store_true", help="Use game file instead of request json."
-    )
-    arg_parser.add_argument(
-        "--use_img_file", dest="use_img_file", action="store_true", help="Use img file instead of request bytes."
-    )
+        "--model_class",
+        type=str,
+        default="SampleModel",
+        help="Name of the TeachModel class to use during inference.")
+    arg_parser.add_argument("--use_game_file",
+                            dest="use_game_file",
+                            action="store_true",
+                            help="Use game file instead of request json.")
+    arg_parser.add_argument("--use_img_file",
+                            dest="use_img_file",
+                            action="store_true",
+                            help="Use img file instead of request bytes.")
     return arg_parser.parse_known_args()
 
 
 teach_args, model_args = parse_args()
-model_class = dynamically_load_class(teach_args.model_module, teach_args.model_class)
+model_class = dynamically_load_class(teach_args.model_module,
+                                     teach_args.model_class)
 process_index, num_processes = 1, 1
 model = model_class(process_index, num_processes, model_args=model_args)
 
@@ -66,7 +73,8 @@ def _get_game_instance(req_args):
     if teach_args.use_game_file:
         if not req_args.game_name:
             return None, "request parameter game_name does not have a value"
-        game_instance_path = os.path.join(teach_args.data_dir, "games", teach_args.split, req_args.game_name)
+        game_instance_path = os.path.join(teach_args.data_dir, "games",
+                                          teach_args.split, req_args.game_name)
         if not isfile(game_instance_path):
             return None, f"game file={game_instance_path} does not exist"
         with open(game_instance_path) as handle:
@@ -131,14 +139,18 @@ def get_next_action():
     img, err_msg = _get_img(req_args)
     if err_msg:
         return err_msg, 500
-    prev_action = json.loads(req_args.prev_action) if req_args.prev_action else None
+    prev_action = json.loads(
+        req_args.prev_action) if req_args.prev_action else None
     try:
-        action, obj_relative_coord = model.get_next_action(img, game_instance, prev_action)
+        action, obj_relative_coord = model.get_next_action(
+            img, game_instance, prev_action)
     except Exception as e:
         err_msg = f"failed to get_next_action with game_name={req_args.game_name}"
         app.logger.error(err_msg, exc_info=True)
         return err_msg, 500
-    app.logger.debug(f"model.get_next_action returns action={action}, obj_relative_coord={obj_relative_coord}")
+    app.logger.debug(
+        f"model.get_next_action returns action={action}, obj_relative_coord={obj_relative_coord}"
+    )
     resp = jsonify(action=action, obj_relative_coord=obj_relative_coord)
     return resp, 200
 
@@ -146,11 +158,13 @@ def get_next_action():
 @app.route("/start_new_game_instance", methods=["POST"])
 def start_new_game_instance():
     req_args = start_new_game_instance_parse_args()
-    app.logger.info(f"start_new_game_instance with game_name={req_args.game_name}")
+    app.logger.info(
+        f"start_new_game_instance with game_name={req_args.game_name}")
     game_instance, err_msg = _get_game_instance(req_args)
     if err_msg:
         return err_msg, 500
-    edh_history_images, err_msg = _get_edh_history_images(req_args.game_name, game_instance)
+    edh_history_images, err_msg = _get_edh_history_images(
+        req_args.game_name, game_instance)
     if err_msg:
         return err_msg, 500
     try:
@@ -185,12 +199,14 @@ def get_next_action_parse_args():
     parser.add_argument(
         "prev_action",
         type=str,
-        help="One of None or a dict with keys 'action' and 'obj_relative_coord' containing returned values.",
+        help=
+        "One of None or a dict with keys 'action' and 'obj_relative_coord' containing returned values.",
     )
     parser.add_argument(
         "game_instance",
         type=str,
-        help="One of None or a dict with keys 'action' and 'obj_relative_coord' containing returned values.",
+        help=
+        "One of None or a dict with keys 'action' and 'obj_relative_coord' containing returned values.",
     )
     args = parser.parse_args()
     return args
@@ -206,7 +222,8 @@ def start_new_game_instance_parse_args():
     parser.add_argument(
         "game_instance",
         type=str,
-        help="One of None or a dict with keys 'action' and 'obj_relative_coord' containing returned values.",
+        help=
+        "One of None or a dict with keys 'action' and 'obj_relative_coord' containing returned values.",
     )
     args = parser.parse_args()
     return args

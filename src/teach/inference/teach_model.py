@@ -7,7 +7,8 @@ from typing import List
 
 class TeachModel:
     @abstractmethod
-    def __init__(self, process_index: int, num_processes: int, model_args: List[str]):
+    def __init__(self, process_index: int, num_processes: int,
+                 model_args: List[str]):
         """
         A model will be initialized for each evaluation process.
 
@@ -19,7 +20,12 @@ class TeachModel:
         """
 
     @abstractmethod
-    def get_next_action(self, img, edh_instance, prev_action, img_name=None, edh_name=None):
+    def get_next_action(self,
+                        img,
+                        edh_instance,
+                        prev_action,
+                        img_name=None,
+                        edh_name=None):
         """
         This method will be called at each timestep during inference to get the next predicted action from the model.
         :param img: PIL Image containing agent's egocentric image
@@ -36,7 +42,10 @@ class TeachModel:
         """
 
     @abstractmethod
-    def start_new_edh_instance(self, edh_instance, edh_history_images, edh_name=None):
+    def start_new_edh_instance(self,
+                               edh_instance,
+                               edh_history_images,
+                               edh_name=None):
         """
         This method will be called at the start of each EDH instance after the environment has been set to the
         initial state by replaying history actions but before any actions are requested from the model by calling

@@ -43,7 +43,9 @@ class TEAChController(Controller):
         super().__init__(**kwargs)
 
     @staticmethod
-    def build_local_executable_path(base_dir: str, commit_id: str, release_dir: str = "releases"):
+    def build_local_executable_path(base_dir: str,
+                                    commit_id: str,
+                                    release_dir: str = "releases"):
         """Helper method to build the path to the local executable. Useful when executable is pre-downloaded."""
         arch = arch_platform_map[platform.system()]
         name = build_name(arch, commit_id)
@@ -122,15 +124,18 @@ class SimulatorTHOR(SimulatorBase):
             s3_bucket_name=s3_bucket_name,
         )
         time_base_init = time.time()
-        logger.info("Initializing simulator... time to init Simulator_base: %s sec" % (time_base_init - time_start))
+        logger.info(
+            "Initializing simulator... time to init Simulator_base: %s sec" %
+            (time_base_init - time_start))
         self.controller = None
 
         teach_settings = get_settings()
         self.controller_base_dir = teach_settings.AI2THOR_BASE_DIR
         use_local_exe = teach_settings.AI2THOR_USE_LOCAL_EXE
         self.controller_local_executable_path = (
-            TEAChController.build_local_executable_path(self.controller_base_dir, COMMIT_ID) if use_local_exe else None
-        )
+            TEAChController.build_local_executable_path(
+                self.controller_base_dir, COMMIT_ID)
+            if use_local_exe else None)
 
         self.world_type = "Kitchen"
         self.world = None
@@ -154,28 +159,75 @@ class SimulatorTHOR(SimulatorBase):
         # Affordances by action type - identifies what properties an object must satisfy for it to be possible to take
         # an action on it; Used in highlighting valid objects in TEACh data collection interface to assist annotators
         self.action_to_affordances = {
-            "Pickup": [{"pickupable": True, "isPickedUp": False}],
-            "Place": [{"receptacle": True}],
-            "Open": [{"openable": True, "isOpen": False}],
-            "Close": [{"openable": True, "isOpen": True}],
-            "ToggleOn": [{"toggleable": True, "isToggled": False}],
-            "ToggleOff": [{"toggleable": True, "isToggled": True}],
-            "Slice": [{"sliceable": True, "isSliced": False}],
-            "Dirty": [{"dirtyable": True, "isDirty": False}],
-            "Clean": [{"dirtyable": True, "isDirty": True}],
-            "Fill": [{"canFillWithLiquid": True, "isFilledWithLiquid": False}],
-            "Empty": [{"canFillWithLiquid": True, "isFilledWithLiquid": True}],
+            "Pickup": [{
+                "pickupable": True,
+                "isPickedUp": False
+            }],
+            "Place": [{
+                "receptacle": True
+            }],
+            "Open": [{
+                "openable": True,
+                "isOpen": False
+            }],
+            "Close": [{
+                "openable": True,
+                "isOpen": True
+            }],
+            "ToggleOn": [{
+                "toggleable": True,
+                "isToggled": False
+            }],
+            "ToggleOff": [{
+                "toggleable": True,
+                "isToggled": True
+            }],
+            "Slice": [{
+                "sliceable": True,
+                "isSliced": False
+            }],
+            "Dirty": [{
+                "dirtyable": True,
+                "isDirty": False
+            }],
+            "Clean": [{
+                "dirtyable": True,
+                "isDirty": True
+            }],
+            "Fill": [{
+                "canFillWithLiquid": True,
+                "isFilledWithLiquid": False
+            }],
+            "Empty": [{
+                "canFillWithLiquid": True,
+                "isFilledWithLiquid": True
+            }],
             "Pour": [
-                {"canFillWithLiquid": True, "isFilledWithLiquid": False},
-                {"objectType": "Sink"},
-                {"objectType": "SinkBasin"},
-                {"objectType": "Bathtub"},
-                {"objectType": "BathtubBasin"},
+                {
+                    "canFillWithLiquid": True,
+                    "isFilledWithLiquid": False
+                },
+                {
+                    "objectType": "Sink"
+                },
+                {
+                    "objectType": "SinkBasin"
+                },
+                {
+                    "objectType": "Bathtub"
+                },
+                {
+                    "objectType": "BathtubBasin"
+                },
             ],
-            "Break": [{"breakable": True, "isBroken": False}],
+            "Break": [{
+                "breakable": True,
+                "isBroken": False
+            }],
         }
         time_end = time.time()
-        logger.info("Finished initializing simulator. Total time: %s sec" % (time_end - time_start))
+        logger.info("Finished initializing simulator. Total time: %s sec" %
+                    (time_end - time_start))
 
     def set_task(self, task, task_params=None, comments=""):
         """
@@ -191,12 +243,17 @@ class SimulatorTHOR(SimulatorBase):
         if task_params is not None:
             new_task.task_params = task_params
         new_task.comments = comments
-        new_task.episodes = [] if self.current_episode is None else [self.current_episode]
+        new_task.episodes = [] if self.current_episode is None else [
+            self.current_episode
+        ]
         self._dataset.add_task(new_task)
         self.current_task = new_task
-        self.logger.debug("New task: %d, %s, %s, %s" % (task.task_id, task.task_name, comments, str(task.task_params)))
+        self.logger.debug(
+            "New task: %d, %s, %s, %s" %
+            (task.task_id, task.task_name, comments, str(task.task_params)))
         self.to_broadcast["info"] = {"message": ""}
-        logger.info("SimulatorTHOR set_task done New task: %d, %s, %s" % (task.task_id, task.task_name, comments))
+        logger.info("SimulatorTHOR set_task done New task: %d, %s, %s" %
+                    (task.task_id, task.task_name, comments))
 
     def set_task_by_id(self, task_id: int, task_params=None, comments=""):
         """
@@ -228,7 +285,9 @@ class SimulatorTHOR(SimulatorBase):
         AI2-THOR)
         """
         # Load custom object classes
-        with importlib.resources.open_text(ai2thor_resources, "custom_object_classes.json") as file_handle:
+        with importlib.resources.open_text(
+                ai2thor_resources,
+                "custom_object_classes.json") as file_handle:
             custom_object_classes = json.load(file_handle)
         # Assign custom classes to each object
         all_objects = self.get_objects(self.controller.last_event)
@@ -244,7 +303,9 @@ class SimulatorTHOR(SimulatorBase):
                 cur_obj_classes += ["Bathtub"]
             if obj["objectType"] in custom_object_classes:
                 cur_obj_classes += custom_object_classes[obj["objectType"]]
-            self.__update_custom_object_metadata(obj["objectId"], "simbotObjectClass", cur_obj_classes)
+            self.__update_custom_object_metadata(obj["objectId"],
+                                                 "simbotObjectClass",
+                                                 cur_obj_classes)
 
         self.__check_per_step_custom_properties()
 
@@ -255,43 +316,54 @@ class SimulatorTHOR(SimulatorBase):
         # Update whether things got cleaned and filled with water
         self.__update_sink_interaction_outcomes(self.controller.last_event)
         # Update whether a mug should be filled with coffee
-        self.__update_custom_coffee_prop(self.controller.last_event, objs_before_step)
+        self.__update_custom_coffee_prop(self.controller.last_event,
+                                         objs_before_step)
         # Update whether things got cooked
         self.__update_custom_property_cooked(self.controller.last_event)
         # Check for objects that are boiled at the start of the episode
-        self.__update_custom_property_boiled(objs_before_step, self.controller.last_event)
+        self.__update_custom_property_boiled(objs_before_step,
+                                             self.controller.last_event)
 
-    def __update_custom_object_metadata(self, object_id, custom_property_name, custom_property_value):
+    def __update_custom_object_metadata(self, object_id, custom_property_name,
+                                        custom_property_value):
         """
         Update custom properties
         """
         if object_id not in self.__custom_object_metadata:
             self.__custom_object_metadata[object_id] = dict()
-        self.__custom_object_metadata[object_id][custom_property_name] = custom_property_value
+        self.__custom_object_metadata[object_id][
+            custom_property_name] = custom_property_value
 
-    def __append_to_custom_object_metadata_list(self, object_id, custom_property_name, custom_property_value):
+    def __append_to_custom_object_metadata_list(self, object_id,
+                                                custom_property_name,
+                                                custom_property_value):
         """
         Add values to custom properties that are lists
         """
         if object_id not in self.__custom_object_metadata:
             self.__custom_object_metadata[object_id] = dict()
-        if custom_property_name not in self.__custom_object_metadata[object_id]:
-            self.__custom_object_metadata[object_id][custom_property_name] = list()
-        if custom_property_value not in self.__custom_object_metadata[object_id][custom_property_name]:
-            self.__custom_object_metadata[object_id][custom_property_name].append(custom_property_value)
+        if custom_property_name not in self.__custom_object_metadata[
+                object_id]:
+            self.__custom_object_metadata[object_id][
+                custom_property_name] = list()
+        if custom_property_value not in self.__custom_object_metadata[
+                object_id][custom_property_name]:
+            self.__custom_object_metadata[object_id][
+                custom_property_name].append(custom_property_value)
 
-    def __delete_from_custom_object_metadata_list(self, object_id, custom_property_name, custom_property_value):
+    def __delete_from_custom_object_metadata_list(self, object_id,
+                                                  custom_property_name,
+                                                  custom_property_value):
         """
         Delete values from custom properties that are lists
         """
-        if (
-            object_id in self.__custom_object_metadata
-            and custom_property_name in self.__custom_object_metadata[object_id]
-            and custom_property_value in self.__custom_object_metadata[object_id][custom_property_name]
-        ):
+        if (object_id in self.__custom_object_metadata and custom_property_name
+                in self.__custom_object_metadata[object_id]
+                and custom_property_value in self.
+                __custom_object_metadata[object_id][custom_property_name]):
             del self.__custom_object_metadata[object_id][custom_property_name][
-                self.__custom_object_metadata[object_id][custom_property_name].index(custom_property_value)
-            ]
+                self.__custom_object_metadata[object_id]
+                [custom_property_name].index(custom_property_value)]
 
     def __delete_object_from_custom_object_metadata(self, object_id):
         """
@@ -302,13 +374,11 @@ class SimulatorTHOR(SimulatorBase):
             del self.__custom_object_metadata[object_id]
         for oid in self.__custom_object_metadata:
             for prop in self.__custom_object_metadata[oid]:
-                if (
-                    type(self.__custom_object_metadata[oid][prop]) is list
-                    and object_id in self.__custom_object_metadata[oid][prop]
-                ):
+                if (type(self.__custom_object_metadata[oid][prop]) is list and
+                        object_id in self.__custom_object_metadata[oid][prop]):
                     del self.__custom_object_metadata[oid][prop][
-                        self.__custom_object_metadata[oid][prop].index(object_id)
-                    ]
+                        self.__custom_object_metadata[oid][prop].index(
+                            object_id)]
                 elif object_id == self.__custom_object_metadata[oid][prop]:
                     self.__custom_object_metadata[oid][prop] = None
 
@@ -331,14 +401,15 @@ class SimulatorTHOR(SimulatorBase):
 
             if transfer_needed and orig_obj_id is not None and orig_obj_id in self.__custom_object_metadata:
                 self.__custom_object_metadata[obj["objectId"]] = copy.deepcopy(
-                    self.__custom_object_metadata[orig_obj_id]
-                )
-                if (
-                    "simbotLastParentReceptacle" in self.__custom_object_metadata[obj["objectId"]]
-                    and self.__custom_object_metadata[obj["objectId"]]["simbotLastParentReceptacle"] is not None
-                ):
-                    poid = self.__custom_object_metadata[obj["objectId"]]["simbotLastParentReceptacle"]
-                    self.__append_to_custom_object_metadata_list(poid, "simbotIsReceptacleOf", obj["objectId"])
+                    self.__custom_object_metadata[orig_obj_id])
+                if ("simbotLastParentReceptacle"
+                        in self.__custom_object_metadata[obj["objectId"]]
+                        and self.__custom_object_metadata[obj["objectId"]]
+                    ["simbotLastParentReceptacle"] is not None):
+                    poid = self.__custom_object_metadata[
+                        obj["objectId"]]["simbotLastParentReceptacle"]
+                    self.__append_to_custom_object_metadata_list(
+                        poid, "simbotIsReceptacleOf", obj["objectId"])
                 objects_to_delete.add(orig_obj_id)
         for obj_id in objects_to_delete:
             self.__delete_object_from_custom_object_metadata(obj_id)
@@ -393,13 +464,17 @@ class SimulatorTHOR(SimulatorBase):
         :param randomize_object_search: If True, attempts to search for objects will return a random object of type
         matching the search string; if false, the object closest to the agent is always returned on search
         """
-        logger.info("In simulator_THOR.start_new_episode, world = %s world_type = %s" % (world, world_type))
+        logger.info(
+            "In simulator_THOR.start_new_episode, world = %s world_type = %s" %
+            (world, world_type))
         self.randomize_object_search = randomize_object_search
         if commander_embodied is not None:
             self.commander_embodied = commander_embodied
         else:
             self.commander_embodied = False
-            logger.info("SimulatorTHOR warning: commander_embodied was not set on first episode init; default to False")
+            logger.info(
+                "SimulatorTHOR warning: commander_embodied was not set on first episode init; default to False"
+            )
         if world is None:
             world_type, world = self.select_random_world(world_type=world_type)
 
@@ -412,9 +487,11 @@ class SimulatorTHOR(SimulatorBase):
             randomize_object_search=randomize_object_search,
         )
 
-        logger.info("In SimulatorTHOR.start_new_episode, before __launch_simulator")
+        logger.info(
+            "In SimulatorTHOR.start_new_episode, before __launch_simulator")
         self.__launch_simulator(world=world, world_type=world_type)
-        logger.info("In SimulatorTHOR.start_new_episode, completed __launch_simulator")
+        logger.info(
+            "In SimulatorTHOR.start_new_episode, completed __launch_simulator")
         self.__init_custom_object_metadata()
         state = self.get_scene_object_locs_and_states()
         self.current_episode.initial_state = Initialization(
@@ -483,14 +560,11 @@ class SimulatorTHOR(SimulatorBase):
             # errors with clones
             return obj["position"]
         xzy_obj_face = {
-            c: obj["axisAlignedBoundingBox"]["cornerPoints"][
-                self.__argmin(
-                    [
-                        np.abs(obj["axisAlignedBoundingBox"]["cornerPoints"][pidx][coords.index(c)] - pos[c])
-                        for pidx in range(len(obj["axisAlignedBoundingBox"]["cornerPoints"]))
-                    ]
-                )
-            ][coords.index(c)]
+            c: obj["axisAlignedBoundingBox"]["cornerPoints"][self.__argmin([
+                np.abs(obj["axisAlignedBoundingBox"]["cornerPoints"][pidx][
+                    coords.index(c)] - pos[c]) for pidx in range(
+                        len(obj["axisAlignedBoundingBox"]["cornerPoints"]))
+            ])][coords.index(c)]
             for c in coords
         }
         return xzy_obj_face
@@ -502,7 +576,8 @@ class SimulatorTHOR(SimulatorBase):
         :param obj: Object to face - an element of the output of get_objects()
         :param camera_id: A valid camera ID
         """
-        nav_point_idx = self.__get_nav_graph_point(obj["position"]["x"], obj["position"]["z"])
+        nav_point_idx = self.__get_nav_graph_point(obj["position"]["x"],
+                                                   obj["position"]["z"])
         face_obj_rot = self.__get_nav_graph_rot(
             self.navigation_points[nav_point_idx]["x"],
             self.navigation_points[nav_point_idx]["z"],
@@ -516,28 +591,39 @@ class SimulatorTHOR(SimulatorBase):
         # difference in gaze versus object height.
         # To get the object 'face' instead of center (which could be out of frame, especially for large objects like
         # drawers and cabinets), we decide the x,z,y position of the obj as the min distance to its corners.
-        xzy_obj_face = self.__get_nearest_object_face_to_position(obj, self.navigation_points[nav_point_idx])
+        xzy_obj_face = self.__get_nearest_object_face_to_position(
+            obj, self.navigation_points[nav_point_idx])
         xz_dist = np.sqrt(
-            np.power(xzy_obj_face["x"] - self.navigation_points[nav_point_idx]["x"], 2)
-            + np.power(xzy_obj_face["z"] - self.navigation_points[nav_point_idx]["z"], 2)
-        )
+            np.power(
+                xzy_obj_face["x"] -
+                self.navigation_points[nav_point_idx]["x"], 2) + np.power(
+                    xzy_obj_face["z"] -
+                    self.navigation_points[nav_point_idx]["z"], 2))
         y_diff = 1.8 - xzy_obj_face["y"]
-        theta = np.arctan(y_diff / xz_dist) * 180.0 / np.pi if not np.isclose(xz_dist, 0) else 0
+        theta = np.arctan(y_diff / xz_dist) * 180.0 / np.pi if not np.isclose(
+            xz_dist, 0) else 0
 
         action = dict(
             action="UpdateThirdPartyCamera",
             thirdPartyCameraId=camera_id,
-            rotation=dict(x=theta, y=self.__get_y_rot_from_xz(face_obj_rot[0], face_obj_rot[1]), z=0),
-            position=dict(
-                x=self.navigation_points[nav_point_idx]["x"], y=1.8, z=self.navigation_points[nav_point_idx]["z"]
-            ),
+            rotation=dict(x=theta,
+                          y=self.__get_y_rot_from_xz(face_obj_rot[0],
+                                                     face_obj_rot[1]),
+                          z=0),
+            position=dict(x=self.navigation_points[nav_point_idx]["x"],
+                          y=1.8,
+                          z=self.navigation_points[nav_point_idx]["z"]),
         )
         if debug_print_all_sim_steps:
             logger.info("step %s", action)
         self.controller.step(action)
         return nav_point_idx, face_obj_rot
 
-    def teleport_agent_to_face_object(self, obj, agent_id, force_face=None, get_closest=True):
+    def teleport_agent_to_face_object(self,
+                                      obj,
+                                      agent_id,
+                                      force_face=None,
+                                      get_closest=True):
         """
         Move agent to a position where object obj is visible
         :param obj: Object to face - an element of the output of get_objects()
@@ -549,10 +635,13 @@ class SimulatorTHOR(SimulatorBase):
         # Get point and facing direction.
         tried_points = set()
         face_obj_rot = nav_point_idx = None
-        while face_obj_rot is None or (force_face is not None and face_obj_rot != force_face):
+        while face_obj_rot is None or (force_face is not None
+                                       and face_obj_rot != force_face):
             nav_point_idx = self.__get_nav_graph_point(
-                obj["position"]["x"], obj["position"]["z"], exclude_points=tried_points, get_closest=get_closest
-            )
+                obj["position"]["x"],
+                obj["position"]["z"],
+                exclude_points=tried_points,
+                get_closest=get_closest)
             if nav_point_idx is None:
                 return False, None, None
             face_obj_rot = self.__get_nav_graph_rot(
@@ -568,9 +657,8 @@ class SimulatorTHOR(SimulatorBase):
         # Teleport
         agent_pose = (
             self.controller.last_event.events[agent_id].metadata["agent"]
-            if self.commander_embodied
-            else self.controller.last_event.metadata["agent"]
-        )
+            if self.commander_embodied else
+            self.controller.last_event.metadata["agent"])
         action = dict(
             action="Teleport",
             agentId=agent_id,
@@ -603,14 +691,11 @@ class SimulatorTHOR(SimulatorBase):
         else:
             events = [self.controller.last_event]
         ds = [
-            np.linalg.norm(
-                [
-                    obj["position"]["x"] - e.metadata["agent"]["position"]["x"],
-                    obj["position"]["y"] - e.metadata["agent"]["position"]["y"],
-                    obj["position"]["z"] - e.metadata["agent"]["position"]["z"],
-                ]
-            )
-            for e in events
+            np.linalg.norm([
+                obj["position"]["x"] - e.metadata["agent"]["position"]["x"],
+                obj["position"]["y"] - e.metadata["agent"]["position"]["y"],
+                obj["position"]["z"] - e.metadata["agent"]["position"]["z"],
+            ]) for e in events
         ]
         return min(ds)
 
@@ -618,16 +703,20 @@ class SimulatorTHOR(SimulatorBase):
         """
         Return Euclidean distance between two agents in the sim.
         """
-        a_agent_pos = self.controller.last_event.events[agent_id_a].metadata["agent"]["position"]
-        b_agent_pos = self.controller.last_event.events[agent_id_b].metadata["agent"]["position"]
-        return np.linalg.norm([a_agent_pos[c] - b_agent_pos[c] for c in ["x", "y", "z"]])
+        a_agent_pos = self.controller.last_event.events[agent_id_a].metadata[
+            "agent"]["position"]
+        b_agent_pos = self.controller.last_event.events[agent_id_b].metadata[
+            "agent"]["position"]
+        return np.linalg.norm(
+            [a_agent_pos[c] - b_agent_pos[c] for c in ["x", "y", "z"]])
 
     def check_episode_preconditions(self, task):
         """
         Check whether the current simulator state is one in which the input task can be completed
         :param task: Instance of Task_THOR; task to be checked
         """
-        return task.check_episode_preconditions(self, self.get_objects(self.controller.last_event))
+        return task.check_episode_preconditions(
+            self, self.get_objects(self.controller.last_event))
 
     def check_episode_progress(self, task):
         """
@@ -638,7 +727,8 @@ class SimulatorTHOR(SimulatorBase):
                  Each element of subgoal_status[idx]['steps'] is a dict with keys 'success':bool, 'objectId':str,
                      'objectType':str, 'desc':str
         """
-        progress_check_output = task.check_episode_progress(self.get_objects(self.controller.last_event), self)
+        progress_check_output = task.check_episode_progress(
+            self.get_objects(self.controller.last_event), self)
         return (
             progress_check_output["description"],
             progress_check_output["success"],
@@ -647,7 +737,9 @@ class SimulatorTHOR(SimulatorBase):
             progress_check_output["goal_conditions_satisfied"],
         )
 
-    def __get_nearest_object_matching_search_str(self, query, exclude_inventory=False):
+    def __get_nearest_object_matching_search_str(self,
+                                                 query,
+                                                 exclude_inventory=False):
         """
         Obtain the nearest object to the commander OR driver matching the given search string.
         :param query: the search string to check against AI2-THOR objectType of objects (uses fuzzy matching)
@@ -656,8 +748,11 @@ class SimulatorTHOR(SimulatorBase):
         closest_obj = closest_str_ratio = closet_obj_d_to_agent = None
         if self.commander_embodied:
             le = self.controller.last_event.events[0]
-            inv_objs = self.get_inventory_objects(self.controller.last_event.events[0])
-            inv_objs.extend(self.get_inventory_objects(self.controller.last_event.events[1]))
+            inv_objs = self.get_inventory_objects(
+                self.controller.last_event.events[0])
+            inv_objs.extend(
+                self.get_inventory_objects(
+                    self.controller.last_event.events[1]))
         else:
             le = self.controller.last_event
             inv_objs = self.get_inventory_objects(le)
@@ -667,24 +762,22 @@ class SimulatorTHOR(SimulatorBase):
                 logger.info("%s in inv; skipping" % obj["objectId"])
                 continue
             str_ratio = fuzz.ratio(obj["objectType"], query)
-            if (
-                str_ratio > 0
-                and
-                # Closer string match or equal string match but closer to agent
+            if (str_ratio > 0 and
+                    # Closer string match or equal string match but closer to agent
                 (
-                    closest_obj is None
-                    or str_ratio > closest_str_ratio
-                    or
+                    closest_obj is None or str_ratio > closest_str_ratio or
                     # Physically closer to closest agent.
-                    (str_ratio == closest_str_ratio and self.obj_dist_to_nearest_agent(obj) < closet_obj_d_to_agent)
-                )
-            ):
+                    (str_ratio == closest_str_ratio
+                     and self.obj_dist_to_nearest_agent(obj) <
+                     closet_obj_d_to_agent))):
                 closest_obj = obj
                 closest_str_ratio = str_ratio
                 closet_obj_d_to_agent = self.obj_dist_to_nearest_agent(obj)
         return closest_obj
 
-    def __get_random_object_matching_search_str(self, query, exclude_inventory=False):
+    def __get_random_object_matching_search_str(self,
+                                                query,
+                                                exclude_inventory=False):
         """
         Obtain a random object to the commander OR driver matching the given search string.
         :param query: the search string to check against AI2-THOR objectType of objects (uses fuzzy matching)
@@ -692,20 +785,33 @@ class SimulatorTHOR(SimulatorBase):
         """
         if self.commander_embodied:
             le = self.controller.last_event.events[0]
-            inv_objs = self.get_inventory_objects(self.controller.last_event.events[0])
-            inv_objs.extend(self.get_inventory_objects(self.controller.last_event.events[1]))
+            inv_objs = self.get_inventory_objects(
+                self.controller.last_event.events[0])
+            inv_objs.extend(
+                self.get_inventory_objects(
+                    self.controller.last_event.events[1]))
         else:
             le = self.controller.last_event
             inv_objs = self.get_inventory_objects(le)
         inv_obj_ids = [o["objectId"] for o in inv_objs]
         candidate_objects = self.get_objects(le)
         if exclude_inventory:
-            candidate_objects = [obj for obj in candidate_objects if obj["objectId"] not in inv_obj_ids]
+            candidate_objects = [
+                obj for obj in candidate_objects
+                if obj["objectId"] not in inv_obj_ids
+            ]
 
-        str_ratios = [fuzz.ratio(obj["objectType"], query) for obj in candidate_objects]
+        str_ratios = [
+            fuzz.ratio(obj["objectType"], query) for obj in candidate_objects
+        ]
         max_ratio = np.max(str_ratios)
-        max_ratio_idxs = [idx for idx in range(len(str_ratios)) if np.isclose(max_ratio, str_ratios[idx])]
-        closest_match_objects = [candidate_objects[idx] for idx in max_ratio_idxs]
+        max_ratio_idxs = [
+            idx for idx in range(len(str_ratios))
+            if np.isclose(max_ratio, str_ratios[idx])
+        ]
+        closest_match_objects = [
+            candidate_objects[idx] for idx in max_ratio_idxs
+        ]
         return np.random.choice(closest_match_objects)
 
     def get_target_object_seg_mask(self, oid):
@@ -713,9 +819,10 @@ class SimulatorTHOR(SimulatorBase):
         Get a numpy array with 1s on oid segmentation mask and 0s elsewhere.
         :param oid: ID of object to be highlighted in the mask
         """
-        r = self.get_hotspots(
-            agent_id=None, camera_id=self.object_target_camera_idx, object_id=oid, return_full_seg_mask=True
-        )
+        r = self.get_hotspots(agent_id=None,
+                              camera_id=self.object_target_camera_idx,
+                              object_id=oid,
+                              return_full_seg_mask=True)
         return r
 
     def set_target_object_view(self, oid, search):
@@ -725,12 +832,15 @@ class SimulatorTHOR(SimulatorBase):
         :param search: if oid is None, search string to use for fuzzy matching of object type
         """
         assert oid is None or search is None
-        le = self.controller.last_event.events[0] if self.commander_embodied else self.controller.last_event
+        le = self.controller.last_event.events[
+            0] if self.commander_embodied else self.controller.last_event
         if oid is None:  # need to choose an oid via search first
             if self.randomize_object_search:
-                obj = self.__get_random_object_matching_search_str(search, exclude_inventory=True)
+                obj = self.__get_random_object_matching_search_str(
+                    search, exclude_inventory=True)
             else:
-                obj = self.__get_nearest_object_matching_search_str(search, exclude_inventory=True)
+                obj = self.__get_nearest_object_matching_search_str(
+                    search, exclude_inventory=True)
             if obj is None:
                 return False
         else:
@@ -741,94 +851,112 @@ class SimulatorTHOR(SimulatorBase):
         # First, teleport the camera to the nearest navigable point to the object of interest.
         if self.navigation_graph is None:
             self.__generate_navigation_graph()
-        nav_point_idx, face_obj_rot = self.__aim_camera_at_object(obj, self.object_target_camera_idx)
+        nav_point_idx, face_obj_rot = self.__aim_camera_at_object(
+            obj, self.object_target_camera_idx)
 
         # Get hotspots of the object from this vantage point.
         shown_obj_id = obj["objectId"]
         enc_obj_hotspots = self.get_hotspots(
-            agent_id=None, camera_id=self.object_target_camera_idx, object_id=obj["objectId"]
-        )
+            agent_id=None,
+            camera_id=self.object_target_camera_idx,
+            object_id=obj["objectId"])
 
-        parent_receptacles = self.get_parent_receptacles(obj, self.get_objects(self.controller.last_event))
+        parent_receptacles = self.get_parent_receptacles(
+            obj, self.get_objects(self.controller.last_event))
 
         # Back off to container if object is fully occluded.
         if len(enc_obj_hotspots["hotspots"]) == 0:
             if parent_receptacles is not None and len(parent_receptacles) > 0:
-                logger.warning('no hotspots for obj "%s", so checking parentReceptacles' % obj["objectId"])
+                logger.warning(
+                    'no hotspots for obj "%s", so checking parentReceptacles' %
+                    obj["objectId"])
                 for receptacle_obj in parent_receptacles:
                     if "Floor" in receptacle_obj:  # ignore the floor as a parent since hotspotting it isn't helpful
                         continue
                     logger.info("... trying %s" % receptacle_obj)
                     shown_obj_id = receptacle_obj
                     enc_obj_hotspots = self.get_hotspots(
-                        agent_id=None, camera_id=self.object_target_camera_idx, object_id=receptacle_obj
-                    )
+                        agent_id=None,
+                        camera_id=self.object_target_camera_idx,
+                        object_id=receptacle_obj)
                     if len(enc_obj_hotspots["hotspots"]) == 0:
                         # Couldn't see receptacle, so recenter camera and get a new frame
                         nav_point_idx, face_obj_rot = self.__aim_camera_at_object(
-                            le.get_object(receptacle_obj), self.object_target_camera_idx
-                        )
+                            le.get_object(receptacle_obj),
+                            self.object_target_camera_idx)
                         enc_obj_hotspots = self.get_hotspots(
-                            agent_id=None, camera_id=self.object_target_camera_idx, object_id=receptacle_obj
-                        )
+                            agent_id=None,
+                            camera_id=self.object_target_camera_idx,
+                            object_id=receptacle_obj)
                         if len(enc_obj_hotspots["hotspots"]) == 0:
                             # Put camera back on target object.
                             nav_point_idx, face_obj_rot = self.__aim_camera_at_object(
-                                obj, self.object_target_camera_idx
-                            )
+                                obj, self.object_target_camera_idx)
                     if len(enc_obj_hotspots["hotspots"]) > 0:
                         break  # got a hotspot view for this parent
             if len(enc_obj_hotspots["hotspots"]) == 0:
                 logger.warning(
-                    'no hotspots for obj "%s", and no parentReceptacles hotspots,' % obj["objectId"]
-                    + "so getting hotspots for nearest receptacle..."
-                )
+                    'no hotspots for obj "%s", and no parentReceptacles hotspots,'
+                    % obj["objectId"] +
+                    "so getting hotspots for nearest receptacle...")
                 nn_objs = [obj["objectId"]]
                 while len(nn_objs) < 6:  # try limited number of nearby objects
                     nn_obj = self.__get_object_by_position(
-                        le.metadata["objects"], obj["position"], ignore_object_ids=nn_objs
-                    )
+                        le.metadata["objects"],
+                        obj["position"],
+                        ignore_object_ids=nn_objs)
                     logger.info("... trying %s" % nn_obj["objectId"])
                     if nn_obj["receptacle"]:
-                        if "Floor" not in nn_obj["objectId"]:  # ignore the floor as a parent
+                        if "Floor" not in nn_obj[
+                                "objectId"]:  # ignore the floor as a parent
                             shown_obj_id = nn_obj["objectId"]
                             enc_obj_hotspots = self.get_hotspots(
-                                agent_id=None, camera_id=self.object_target_camera_idx, object_id=nn_obj["objectId"]
-                            )
+                                agent_id=None,
+                                camera_id=self.object_target_camera_idx,
+                                object_id=nn_obj["objectId"])
                             if len(enc_obj_hotspots["hotspots"]) == 0:
                                 # Couldn't see receptacle, so recenter camera and get a new frame
                                 nav_point_idx, face_obj_rot = self.__aim_camera_at_object(
-                                    nn_obj, self.object_target_camera_idx
-                                )
+                                    nn_obj, self.object_target_camera_idx)
                                 enc_obj_hotspots = self.get_hotspots(
-                                    agent_id=None, camera_id=self.object_target_camera_idx, object_id=nn_obj["objectId"]
-                                )
+                                    agent_id=None,
+                                    camera_id=self.object_target_camera_idx,
+                                    object_id=nn_obj["objectId"])
                                 if len(enc_obj_hotspots["hotspots"]) == 0:
                                     # Put camera back on target object.
                                     nav_point_idx, face_obj_rot = self.__aim_camera_at_object(
-                                        obj, self.object_target_camera_idx
-                                    )
+                                        obj, self.object_target_camera_idx)
                             if len(enc_obj_hotspots["hotspots"]) > 0:
                                 break  # got a hotspot view for this candidate receptacle
 
                     nn_objs.append(nn_obj["objectId"])
         # If no receptacle hotspots can be found at all, just return the frame looking "at" the object.
         if len(enc_obj_hotspots["hotspots"]) == 0:
-            logger.warning("no hotspots for parentReceptacles %s" % parent_receptacles)
+            logger.warning("no hotspots for parentReceptacles %s" %
+                           parent_receptacles)
             shown_obj_id = ""
         # Prep metadata to be sent up for UI.
         obj_view_pos_norm = self.__get_click_normalized_position_from_xz(
-            self.navigation_points[nav_point_idx]["x"], self.navigation_points[nav_point_idx]["z"]
-        )
+            self.navigation_points[nav_point_idx]["x"],
+            self.navigation_points[nav_point_idx]["z"])
         obj_data = {
-            "success": True,
-            "oid": obj["objectId"],  # the object matching the query
-            "shown_oid": shown_obj_id,  # The object whose hotspots are shown
-            "view_pos_norm": obj_view_pos_norm,  # Location of the viewing camera on the topdown map
-            "view_rot_norm": [face_obj_rot[0], -face_obj_rot[1]],  # flip y from thor coords
-            "pos_norm": self.__get_click_normalized_position_from_xz(obj["position"]["x"], obj["position"]["z"]),
+            "success":
+            True,
+            "oid":
+            obj["objectId"],  # the object matching the query
+            "shown_oid":
+            shown_obj_id,  # The object whose hotspots are shown
+            "view_pos_norm":
+            obj_view_pos_norm,  # Location of the viewing camera on the topdown map
+            "view_rot_norm": [face_obj_rot[0],
+                              -face_obj_rot[1]],  # flip y from thor coords
+            "pos_norm":
+            self.__get_click_normalized_position_from_xz(
+                obj["position"]["x"], obj["position"]["z"]),
         }
-        obj_data.update({"view_%s" % k: enc_obj_hotspots[k] for k in enc_obj_hotspots})  # hotspot array and width data
+        obj_data.update(
+            {"view_%s" % k: enc_obj_hotspots[k]
+             for k in enc_obj_hotspots})  # hotspot array and width data
 
         return obj_data
 
@@ -847,12 +975,15 @@ class SimulatorTHOR(SimulatorBase):
 
         elif "simbotLastParentReceptacle" in obj:
             immediate_parent_receptacle = obj["simbotLastParentReceptacle"]
-            if immediate_parent_receptacle is not None and immediate_parent_receptacle != obj["objectId"]:
+            if immediate_parent_receptacle is not None and immediate_parent_receptacle != obj[
+                    "objectId"]:
                 # Second clause is to prevent infinite recursion in weird corner cases that should ideally never happen
                 parent_receptacles = [immediate_parent_receptacle]
-                immediate_parent_receptacle_obj = self.__get_object_by_id(objects, immediate_parent_receptacle)
+                immediate_parent_receptacle_obj = self.__get_object_by_id(
+                    objects, immediate_parent_receptacle)
                 if type(immediate_parent_receptacle_obj) == dict:
-                    further_parent_receptacles = self.get_parent_receptacles(immediate_parent_receptacle_obj, objects)
+                    further_parent_receptacles = self.get_parent_receptacles(
+                        immediate_parent_receptacle_obj, objects)
                     if further_parent_receptacles is not None:
                         parent_receptacles += further_parent_receptacles
                 return parent_receptacles
@@ -876,16 +1007,24 @@ class SimulatorTHOR(SimulatorBase):
             cmd_r = self.__get_agent_click_rotation(agent_id=0)
             dri_xy = self.__get_agent_click_normalized_position(agent_id=1)
             dri_r = self.__get_agent_click_rotation(agent_id=1)
-            return [(cmd_xy[0], cmd_xy[1], cmd_r[0], cmd_r[1]), (dri_xy[0], dri_xy[1], dri_r[0], dri_r[1])]
+            return [(cmd_xy[0], cmd_xy[1], cmd_r[0], cmd_r[1]),
+                    (dri_xy[0], dri_xy[1], dri_r[0], dri_r[1])]
         else:
             e = self.controller.last_event
-            cmd_xy = self.__get_agent_click_normalized_position(agent_metadata=e.metadata["thirdPartyCameras"][0])
-            cmd_r = self.__get_agent_click_rotation(agent_metadata=e.metadata["thirdPartyCameras"][0])
+            cmd_xy = self.__get_agent_click_normalized_position(
+                agent_metadata=e.metadata["thirdPartyCameras"][0])
+            cmd_r = self.__get_agent_click_rotation(
+                agent_metadata=e.metadata["thirdPartyCameras"][0])
             dri_xy = self.__get_agent_click_normalized_position()
             dri_r = self.__get_agent_click_rotation()
-        return [(cmd_xy[0], cmd_xy[1], cmd_r[0], cmd_r[1]), (dri_xy[0], dri_xy[1], dri_r[0], dri_r[1])]
+        return [(cmd_xy[0], cmd_xy[1], cmd_r[0], cmd_r[1]),
+                (dri_xy[0], dri_xy[1], dri_r[0], dri_r[1])]
 
-    def __get_nav_graph_point(self, thor_x, thor_z, exclude_points=None, get_closest=True):
+    def __get_nav_graph_point(self,
+                              thor_x,
+                              thor_z,
+                              exclude_points=None,
+                              get_closest=True):
         """
         Get the index in the navigation graph nearest to the given x,z coord in AI2-THOR coordinates
         :param thor_x: x coordinate on AI2-THOR floor plan
@@ -902,26 +1041,37 @@ class SimulatorTHOR(SimulatorBase):
             if exclude_points is not None and idx in exclude_points:
                 distances.append(float("inf"))
                 continue
-            d = np.abs(self.navigation_points[idx]["x"] - thor_x) + np.abs(self.navigation_points[idx]["z"] - thor_z)
+            d = np.abs(self.navigation_points[idx]["x"] -
+                       thor_x) + np.abs(self.navigation_points[idx]["z"] -
+                                        thor_z)
             distances.append(d)
             if t_point is None or d < nearest_t_d:
                 t_point = idx
                 nearest_t_d = d
         if not get_closest:  # rather than returning closest point, do nucleus sampling on softmax of 1/d
             scores = [np.exp(1.0 / d) for d in distances]
-            dps = {idx: scores[idx] / sum(scores) for idx in range(len(scores))}
+            dps = {
+                idx: scores[idx] / sum(scores)
+                for idx in range(len(scores))
+            }
             dnps = {}
             nucleus_density = 0.1
             nucleus_sum = 0
-            for k, v in sorted(dps.items(), key=lambda item: item[1], reverse=True):
-                dnps[k] = v if nucleus_sum < nucleus_density or len(dnps) == 0 else 0
+            for k, v in sorted(dps.items(),
+                               key=lambda item: item[1],
+                               reverse=True):
+                dnps[k] = v if nucleus_sum < nucleus_density or len(
+                    dnps) == 0 else 0
                 nucleus_sum += v
             nps = [dnps[idx] for idx in range(len(scores))]
             nps = [p / sum(nps) for p in nps]
-            t_point = np.random.choice(list(range(len(self.navigation_points))), p=nps)
+            t_point = np.random.choice(list(range(len(
+                self.navigation_points))),
+                                       p=nps)
         return t_point
 
-    def __get_nav_graph_rot(self, thor_x, thor_z, thor_facing_x, thor_facing_z):
+    def __get_nav_graph_rot(self, thor_x, thor_z, thor_facing_x,
+                            thor_facing_z):
         """
         Get the cardinal direction to rotate to, to be facing (thor_facing_x, thor_facing_x=z) when standing at
         (thor_x, thor_z)
@@ -931,7 +1081,9 @@ class SimulatorTHOR(SimulatorBase):
         :param thor_facing_z: z Coordinate on Ai2-THOR floor plan where agent is desired to face
         """
         # Determine target rotation.
-        if np.abs(thor_x - thor_facing_x) > np.abs(thor_z - thor_facing_z):  # Difference is greater in the x direction.
+        if np.abs(thor_x - thor_facing_x) > np.abs(
+                thor_z -
+                thor_facing_z):  # Difference is greater in the x direction.
             if thor_x - thor_facing_x > 0:  # Destination to the x left
                 t_rot = (-1, 0)
             else:
@@ -975,14 +1127,16 @@ class SimulatorTHOR(SimulatorBase):
                     if np.isclose(p[idx]["x"] - p[jdx]["x"], self.grid_size):
                         rx = -1
                         rz = 0
-                    elif np.isclose(p[idx]["x"] - p[jdx]["x"], -self.grid_size):
+                    elif np.isclose(p[idx]["x"] - p[jdx]["x"],
+                                    -self.grid_size):
                         rx = 1
                         rz = 0
                 elif np.isclose(p[idx]["x"] - p[jdx]["x"], 0):
                     if np.isclose(p[idx]["z"] - p[jdx]["z"], self.grid_size):
                         rx = 0
                         rz = -1
-                    elif np.isclose(p[idx]["z"] - p[jdx]["z"], -self.grid_size):
+                    elif np.isclose(p[idx]["z"] - p[jdx]["z"],
+                                    -self.grid_size):
                         rx = 0
                         rz = 1
                 if rx is not None and rz is not None:
@@ -1000,41 +1154,48 @@ class SimulatorTHOR(SimulatorBase):
         # Mark all objects detected by THOR as cooked
         thor_cooked = [obj for obj in cur_event_objects if obj["isCooked"]]
         for obj in thor_cooked:
-            self.__update_custom_object_metadata(obj["objectId"], "simbotIsCooked", True)
+            self.__update_custom_object_metadata(obj["objectId"],
+                                                 "simbotIsCooked", True)
         candidate_objs = [
-            obj
-            for obj in cur_event_objects
-            if obj["cookable"] and not obj["isCooked"] and ("simbotIsCooked" not in obj or not obj["simbotIsCooked"])
+            obj for obj in cur_event_objects
+            if obj["cookable"] and not obj["isCooked"] and (
+                "simbotIsCooked" not in obj or not obj["simbotIsCooked"])
         ]
         for cur_obj in candidate_objs:
-            parent_receptacle_ids = self.get_parent_receptacles(cur_obj, cur_event_objects)
-            if parent_receptacle_ids is not None and len(parent_receptacle_ids) > 0:
+            parent_receptacle_ids = self.get_parent_receptacles(
+                cur_obj, cur_event_objects)
+            if parent_receptacle_ids is not None and len(
+                    parent_receptacle_ids) > 0:
                 parent_receptacle_ids = set(parent_receptacle_ids)
                 parent_microwaves_on = [
-                    obj["isToggled"]
-                    for obj in cur_event_objects
-                    if obj["objectId"] in parent_receptacle_ids and obj["objectType"] == "Microwave"
+                    obj["isToggled"] for obj in cur_event_objects
+                    if obj["objectId"] in parent_receptacle_ids
+                    and obj["objectType"] == "Microwave"
                 ]
                 if np.any(parent_microwaves_on):
-                    self.__update_custom_object_metadata(cur_obj["objectId"], "simbotIsCooked", True)
+                    self.__update_custom_object_metadata(
+                        cur_obj["objectId"], "simbotIsCooked", True)
                     continue
 
                 burners = [
-                    obj
-                    for obj in cur_event_objects
-                    if obj["objectId"] in parent_receptacle_ids and obj["objectType"] == "StoveBurner"
+                    obj for obj in cur_event_objects
+                    if obj["objectId"] in parent_receptacle_ids
+                    and obj["objectType"] == "StoveBurner"
                 ]
                 # Depending on ai2thor version need to check either ObjectTemperature or temperature
                 parent_burners_hot = list()
                 for burner in burners:
-                    if "ObjectTemperature" in burner and "Hot" in burner["ObjectTemperature"]:
+                    if "ObjectTemperature" in burner and "Hot" in burner[
+                            "ObjectTemperature"]:
                         parent_burners_hot.append(True)
-                    elif "temperature" in burner and "Hot" in burner["temperature"]:
+                    elif "temperature" in burner and "Hot" in burner[
+                            "temperature"]:
                         parent_burners_hot.append(True)
                     else:
                         parent_burners_hot.append(False)
                 if np.any(parent_burners_hot):
-                    self.__update_custom_object_metadata(cur_obj["objectId"], "simbotIsCooked", True)
+                    self.__update_custom_object_metadata(
+                        cur_obj["objectId"], "simbotIsCooked", True)
 
     def __update_custom_property_boiled(self, last_event_objects, event):
         """
@@ -1045,28 +1206,25 @@ class SimulatorTHOR(SimulatorBase):
 
         # Find objects whose isCooked property flipped after the last action
         just_got_cooked = [
-            obj
-            for obj in cur_event_objects
-            if obj["isCooked"]
-            and (
-                last_event_objects is None
-                or type(self.__get_object_by_id(last_event_objects, obj["objectId"])) != dict
-                or not self.__get_object_by_id(last_event_objects, obj["objectId"])["isCooked"]
-            )
+            obj for obj in cur_event_objects
+            if obj["isCooked"] and (last_event_objects is None or type(
+                self.__get_object_by_id(last_event_objects, obj["objectId"])
+            ) != dict or not self.__get_object_by_id(
+                last_event_objects, obj["objectId"])["isCooked"])
         ]
         for obj in just_got_cooked:
-            parent_receptacles = self.get_parent_receptacles(obj, cur_event_objects)
+            parent_receptacles = self.get_parent_receptacles(
+                obj, cur_event_objects)
             if parent_receptacles is not None and last_event_objects is not None:
                 for parent_receptacle_id in parent_receptacles:
-                    parent_receptacle = self.__get_object_by_id(cur_event_objects, parent_receptacle_id)
+                    parent_receptacle = self.__get_object_by_id(
+                        cur_event_objects, parent_receptacle_id)
                     if type(parent_receptacle) == dict and (
-                        parent_receptacle["isFilledWithLiquid"]
-                        or (
-                            "simbotIsFilledWithWater" in parent_receptacle
-                            and parent_receptacle["simbotIsFilledWithWater"]
-                        )
-                    ):
-                        self.__update_custom_object_metadata(obj["objectId"], "simbotIsBoiled", True)
+                            parent_receptacle["isFilledWithLiquid"] or
+                        ("simbotIsFilledWithWater" in parent_receptacle
+                         and parent_receptacle["simbotIsFilledWithWater"])):
+                        self.__update_custom_object_metadata(
+                            obj["objectId"], "simbotIsBoiled", True)
                         break
 
     def __get_oid_at_frame_xy_with_affordance(
@@ -1100,29 +1258,37 @@ class SimulatorTHOR(SimulatorBase):
         # if last event doesn't have a segmentation frame, get one
         if le.instance_segmentation_frame is None:
             if debug_print_all_sim_steps:
-                logger.info("step %s", dict(action="Pass", agentId=sim_agent_id, renderObjectImage=True))
-            self.controller.step(action="Pass", agentId=sim_agent_id, renderObjectImage=True)
-            le = (
-                self.controller.last_event.events[sim_agent_id]
-                if self.commander_embodied
-                else self.controller.last_event
-            )
+                logger.info(
+                    "step %s",
+                    dict(action="Pass",
+                         agentId=sim_agent_id,
+                         renderObjectImage=True))
+            self.controller.step(action="Pass",
+                                 agentId=sim_agent_id,
+                                 renderObjectImage=True)
+            le = (self.controller.last_event.events[sim_agent_id]
+                  if self.commander_embodied else self.controller.last_event)
 
         # Check if we can get a matching object at exactly (x, y)
         instance_segs = np.array(le.instance_segmentation_frame)
         color_to_object_id = le.color_to_object_id
-        pixel_x, pixel_y = int(np.round(x * self.web_window_size)), int(np.round(y * self.web_window_size))
+        pixel_x, pixel_y = int(np.round(x * self.web_window_size)), int(
+            np.round(y * self.web_window_size))
         instance_color_id = tuple(instance_segs[pixel_y, pixel_x])
         xy_match = False
         if instance_color_id in color_to_object_id:
             oid = color_to_object_id[instance_color_id]
-            if allow_agent_as_target and oid[: len("agent_")] == "agent_":
+            if allow_agent_as_target and oid[:len("agent_")] == "agent_":
                 return oid, None
             if oid in le.instance_detections2D:
-                obj = self.__get_object_by_id(self.get_objects(self.controller.last_event), oid)
+                obj = self.__get_object_by_id(
+                    self.get_objects(self.controller.last_event), oid)
                 if obj:
                     for affordance_properties in candidate_affordance_properties:
-                        if np.all([k in obj and obj[k] == affordance_properties[k] for k in affordance_properties]):
+                        if np.all([
+                                k in obj and obj[k] == affordance_properties[k]
+                                for k in affordance_properties
+                        ]):
                             interacted_oid = oid
                             interacted_obj = obj
                             xy_match = True
@@ -1135,8 +1301,12 @@ class SimulatorTHOR(SimulatorBase):
             affordance_matching_oid_total_pixels = {}
             affordance_matching_oid_to_obj = {}
             affordance_nonmatching_oids = set()
-            for rx in range(max(0, pixel_x - region_radius), min(self.web_window_size, pixel_x + region_radius)):
-                for ry in range(max(0, pixel_y - region_radius), min(self.web_window_size, pixel_y + region_radius)):
+            for rx in range(max(0, pixel_x - region_radius),
+                            min(self.web_window_size,
+                                pixel_x + region_radius)):
+                for ry in range(
+                        max(0, pixel_y - region_radius),
+                        min(self.web_window_size, pixel_y + region_radius)):
                     instance_color_id = tuple(instance_segs[ry, rx])
                     if instance_color_id in color_to_object_id:
                         oid = color_to_object_id[instance_color_id]
@@ -1146,22 +1316,28 @@ class SimulatorTHOR(SimulatorBase):
                             affordance_matching_oid_pixel_counts[oid] += 1
                         else:  # Unseen oid, so find obj and check affordances
                             if oid in le.instance_detections2D:
-                                obj = self.__get_object_by_id(self.get_objects(self.controller.last_event), oid)
+                                obj = self.__get_object_by_id(
+                                    self.get_objects(
+                                        self.controller.last_event), oid)
                                 obj_affordance_match = False
                                 if obj:
                                     for affordance_properties in candidate_affordance_properties:
-                                        if np.all(
-                                            [
-                                                k in obj and obj[k] == affordance_properties[k]
+                                        if np.all([
+                                                k in obj and obj[k]
+                                                == affordance_properties[k]
                                                 for k in affordance_properties
-                                            ]
-                                        ):
-                                            affordance_matching_oid_pixel_counts[oid] = 1
-                                            affordance_matching_oid_to_obj[oid] = obj
+                                        ]):
+                                            affordance_matching_oid_pixel_counts[
+                                                oid] = 1
+                                            affordance_matching_oid_to_obj[
+                                                oid] = obj
                                             # Get the total pixel count for this object's mask in the frame.
-                                            affordance_matching_oid_total_pixels[oid] = np.sum(
-                                                np.all(instance_segs == instance_color_id, axis=2).astype(np.uint8)
-                                            )
+                                            affordance_matching_oid_total_pixels[
+                                                oid] = np.sum(
+                                                    np.all(instance_segs ==
+                                                           instance_color_id,
+                                                           axis=2).astype(
+                                                               np.uint8))
                                             obj_affordance_match = True
                                             break
 
@@ -1171,10 +1347,13 @@ class SimulatorTHOR(SimulatorBase):
             # Tiebreak using IOU
             if len(affordance_matching_oid_pixel_counts) > 0:
                 oid_ious = {
-                    oid: affordance_matching_oid_pixel_counts[oid] / affordance_matching_oid_total_pixels[oid]
+                    oid: affordance_matching_oid_pixel_counts[oid] /
+                    affordance_matching_oid_total_pixels[oid]
                     for oid in affordance_matching_oid_pixel_counts
                 }
-                oid_ious_s = sorted(oid_ious.items(), key=lambda k: k[1], reverse=True)
+                oid_ious_s = sorted(oid_ious.items(),
+                                    key=lambda k: k[1],
+                                    reverse=True)
                 interacted_oid = oid_ious_s[0][0]
                 interacted_obj = affordance_matching_oid_to_obj[interacted_oid]
 
@@ -1189,17 +1368,21 @@ class SimulatorTHOR(SimulatorBase):
         enough to it
         """
         if on_oid is not None:
-            logger.info("SimulatorTHOR add_interaction invoked with an on_oid; disallowed outside replay scripts")
+            logger.info(
+                "SimulatorTHOR add_interaction invoked with an on_oid; disallowed outside replay scripts"
+            )
         if self.controller is None:
             message = "Simulator was not initialized. Possible resolution: Start new episode."
             self.logger.warning(message)
             raise Exception(message)
 
         sim_agent_id = interaction.agent_id if self.commander_embodied else 0
-        le = self.controller.last_event.events[sim_agent_id] if self.commander_embodied else self.controller.last_event
+        le = self.controller.last_event.events[
+            sim_agent_id] if self.commander_embodied else self.controller.last_event
         objects_before_cur_event = copy.deepcopy(self.get_objects(le))
 
-        action_definition = self._dataset.definitions.map_actions_id2info[interaction.action.action_id]
+        action_definition = self._dataset.definitions.map_actions_id2info[
+            interaction.action.action_id]
         action_type = action_definition["action_type"]
         action_name = action_definition["action_name"]
         pose_delta = action_definition["pose_delta"]
@@ -1208,8 +1391,10 @@ class SimulatorTHOR(SimulatorBase):
 
             if not self.commander_embodied and interaction.agent_id == 0:  # Commander third party camera motion
                 event = self.controller.last_event
-                current_position = event.metadata["thirdPartyCameras"][0]["position"]
-                current_rotation = event.metadata["thirdPartyCameras"][0]["rotation"]
+                current_position = event.metadata["thirdPartyCameras"][0][
+                    "position"]
+                current_rotation = event.metadata["thirdPartyCameras"][0][
+                    "rotation"]
 
                 new_position = current_position
                 new_rotation = current_rotation
@@ -1235,11 +1420,13 @@ class SimulatorTHOR(SimulatorBase):
                     new_position["y"] -= self.grid_size
                     pass
                 elif action_name == "Pan Left":  # strafe
-                    rot_facing_left = self.__get_xz_rot_from_y((current_rotation["y"] - 90) % 360)
+                    rot_facing_left = self.__get_xz_rot_from_y(
+                        (current_rotation["y"] - 90) % 360)
                     new_position["x"] += self.grid_size * rot_facing_left[0]
                     new_position["z"] += self.grid_size * rot_facing_left[1]
                 elif action_name == "Pan Right":  # strafe
-                    rot_facing_right = self.__get_xz_rot_from_y((current_rotation["y"] + 90) % 360)
+                    rot_facing_right = self.__get_xz_rot_from_y(
+                        (current_rotation["y"] + 90) % 360)
                     new_position["x"] += self.grid_size * rot_facing_right[0]
                     new_position["z"] += self.grid_size * rot_facing_right[1]
                 elif action_name == "Stop":
@@ -1249,9 +1436,10 @@ class SimulatorTHOR(SimulatorBase):
                     interaction.action.success = 0
                     return False, "", None
 
-                tpc_ac = dict(
-                    action="UpdateThirdPartyCamera", thirdPartyCameraId=0, rotation=new_rotation, position=new_position
-                )
+                tpc_ac = dict(action="UpdateThirdPartyCamera",
+                              thirdPartyCameraId=0,
+                              rotation=new_rotation,
+                              position=new_position)
                 if debug_print_all_sim_steps:
                     logger.info("step %s", tpc_ac)
                 self.controller.step(tpc_ac)
@@ -1266,7 +1454,8 @@ class SimulatorTHOR(SimulatorBase):
                     return (
                         event.metadata["lastActionSuccess"],
                         event.metadata["errorMessage"],
-                        self.__thor_error_to_help_message(event.metadata["errorMessage"]),
+                        self.__thor_error_to_help_message(
+                            event.metadata["errorMessage"]),
                     )
 
             else:  # Agent motion
@@ -1275,42 +1464,64 @@ class SimulatorTHOR(SimulatorBase):
                 # corresponding to the agent who just took the action, so logic like that below does not need any
                 # special hooks for specifying the agent id.
                 if action_name == "Forward":
-                    ac = dict(action="MoveAhead", agentId=sim_agent_id, moveMagnitude=pose_delta[0], forceAction=True)
+                    ac = dict(action="MoveAhead",
+                              agentId=sim_agent_id,
+                              moveMagnitude=pose_delta[0],
+                              forceAction=True)
                     if debug_print_all_sim_steps:
                         logger.info("step %s", ac)
                     e = self.controller.step(ac)
                 elif action_name == "Backward":
-                    ac = dict(action="MoveBack", agentId=sim_agent_id, moveMagnitude=-pose_delta[0], forceAction=True)
+                    ac = dict(action="MoveBack",
+                              agentId=sim_agent_id,
+                              moveMagnitude=-pose_delta[0],
+                              forceAction=True)
                     if debug_print_all_sim_steps:
                         logger.info("step %s", ac)
                     e = self.controller.step(ac)
                 elif action_name == "Look Up":
-                    ac = dict(action="LookUp", agentId=sim_agent_id, degrees=-pose_delta[4], forceAction=True)
+                    ac = dict(action="LookUp",
+                              agentId=sim_agent_id,
+                              degrees=-pose_delta[4],
+                              forceAction=True)
                     if debug_print_all_sim_steps:
                         logger.info("step %s", ac)
                     e = self.controller.step(ac)
                 elif action_name == "Look Down":
-                    ac = dict(action="LookDown", agentId=sim_agent_id, degrees=pose_delta[4], forceAction=True)
+                    ac = dict(action="LookDown",
+                              agentId=sim_agent_id,
+                              degrees=pose_delta[4],
+                              forceAction=True)
                     if debug_print_all_sim_steps:
                         logger.info("step %s", ac)
                     e = self.controller.step(ac)
                 elif action_name == "Turn Left":
-                    ac = dict(action="RotateLeft", agentId=sim_agent_id, degrees=pose_delta[5], forceAction=True)
+                    ac = dict(action="RotateLeft",
+                              agentId=sim_agent_id,
+                              degrees=pose_delta[5],
+                              forceAction=True)
                     if debug_print_all_sim_steps:
                         logger.info("step %s", ac)
                     e = self.controller.step(ac)
                 elif action_name == "Turn Right":
-                    ac = dict(action="RotateRight", agentId=sim_agent_id, degrees=-pose_delta[5], forceAction=True)
+                    ac = dict(action="RotateRight",
+                              agentId=sim_agent_id,
+                              degrees=-pose_delta[5],
+                              forceAction=True)
                     if debug_print_all_sim_steps:
                         logger.info("step %s", ac)
                     e = self.controller.step(ac)
                 elif action_name == "Pan Left":  # strafe left
-                    ac = dict(action="MoveLeft", agentId=sim_agent_id, forceAction=True)
+                    ac = dict(action="MoveLeft",
+                              agentId=sim_agent_id,
+                              forceAction=True)
                     if debug_print_all_sim_steps:
                         logger.info("step %s", ac)
                     e = self.controller.step(ac)
                 elif action_name == "Pan Right":  # strafe right
-                    ac = dict(action="MoveRight", agentId=sim_agent_id, forceAction=True)
+                    ac = dict(action="MoveRight",
+                              agentId=sim_agent_id,
+                              forceAction=True)
                     if debug_print_all_sim_steps:
                         logger.info("step %s", ac)
                     e = self.controller.step(ac)
@@ -1326,7 +1537,8 @@ class SimulatorTHOR(SimulatorBase):
 
                 # Pose returned should be the one for the agent who just took an action based on behavior of event
                 # returns.
-                interaction.action.pose = self.get_current_pose(agent_id=sim_agent_id)
+                interaction.action.pose = self.get_current_pose(
+                    agent_id=sim_agent_id)
                 super().add_interaction(interaction)
 
                 # Return action success data.
@@ -1338,7 +1550,8 @@ class SimulatorTHOR(SimulatorBase):
                     return (
                         e.metadata["lastActionSuccess"],
                         e.metadata["errorMessage"],
-                        self.__thor_error_to_help_message(e.metadata["errorMessage"]),
+                        self.__thor_error_to_help_message(
+                            e.metadata["errorMessage"]),
                     )
 
         elif action_type == "MapGoal":
@@ -1351,29 +1564,34 @@ class SimulatorTHOR(SimulatorBase):
                 # Determine target grid cell based on click (x, y).
                 graph_constrained = True  # whether to abide by navigation graph.
                 if self.commander_embodied:
-                    agent_data = self.controller.last_event.events[sim_agent_id].metadata["agent"]
+                    agent_data = self.controller.last_event.events[
+                        sim_agent_id].metadata["agent"]
                 else:
                     if interaction.agent_id == 0:  # it's the floating camera
                         graph_constrained = False  # camera can fly over/through anything
-                        agent_data = self.controller.last_event.metadata["thirdPartyCameras"][0]
+                        agent_data = self.controller.last_event.metadata[
+                            "thirdPartyCameras"][0]
                     else:  # it's the driver robot agent
-                        agent_data = self.controller.last_event.metadata["agent"]
+                        agent_data = self.controller.last_event.metadata[
+                            "agent"]
                 # Topdown camera mapping derived from
                 # https://github.com/allenai/ai2thor/issues/445#issuecomment-713916052
                 # z is flipped from top-to-bottom y of UI, so 1 - y = z
-                sx, sz = interaction.action.start_x, (1 - interaction.action.start_y)
-                tx, tz = self.topdown_lower_left_xz + 2 * self.topdown_cam_orth_size * np.array((sx, sz))
+                sx, sz = interaction.action.start_x, (
+                    1 - interaction.action.start_y)
+                tx, tz = self.topdown_lower_left_xz + 2 * self.topdown_cam_orth_size * np.array(
+                    (sx, sz))
                 t_face_x, t_face_z = self.topdown_lower_left_xz + 2 * self.topdown_cam_orth_size * np.array(
-                    (interaction.action.end_x, (1 - interaction.action.end_y))
-                )
+                    (interaction.action.end_x, (1 - interaction.action.end_y)))
                 t_rot = self.__get_nav_graph_rot(tx, tz, t_face_x, t_face_z)
                 s_point = nearest_s_d = None
                 if graph_constrained:  # Only need to find start graph node if graph constrained.
                     t_point = self.__get_nav_graph_point(tx, tz)
                     for idx in range(len(self.navigation_points)):
-                        d = np.abs(self.navigation_points[idx]["x"] - agent_data["position"]["x"]) + np.abs(
-                            self.navigation_points[idx]["z"] - agent_data["position"]["z"]
-                        )
+                        d = np.abs(self.navigation_points[idx]["x"] -
+                                   agent_data["position"]["x"]) + np.abs(
+                                       self.navigation_points[idx]["z"] -
+                                       agent_data["position"]["z"])
                         if s_point is None or d < nearest_s_d:
                             s_point = idx
                             nearest_s_d = d
@@ -1383,24 +1601,30 @@ class SimulatorTHOR(SimulatorBase):
                 # Determine current rotation.
                 s_rot = self.__get_xz_rot_from_y(agent_data["rotation"]["y"])
                 if s_rot is None:
-                    msg = "%.4f source rotation failed to align" % agent_data["rotation"]["y"]
+                    msg = "%.4f source rotation failed to align" % agent_data[
+                        "rotation"]["y"]
                     logger.info(msg)
                     interaction.action.success = 0
                     return False, msg
 
                 # Build shortest path and unpack actions needed to execute it.
                 action_sequence = []
-                lrots = [(-1, 0, 0, -1), (0, -1, 1, 0), (1, 0, 0, 1), (0, 1, -1, 0)]
-                rrots = [(0, 1, 1, 0), (1, 0, 0, -1), (0, -1, -1, 0), (-1, 0, 0, 1)]
+                lrots = [(-1, 0, 0, -1), (0, -1, 1, 0), (1, 0, 0, 1),
+                         (0, 1, -1, 0)]
+                rrots = [(0, 1, 1, 0), (1, 0, 0, -1), (0, -1, -1, 0),
+                         (-1, 0, 0, 1)]
                 if graph_constrained:
-                    node_path = nx.shortest_path(
-                        self.navigation_graph, (s_point, s_rot[0], s_rot[1]), (t_point, t_rot[0], t_rot[1])
-                    )
+                    node_path = nx.shortest_path(self.navigation_graph,
+                                                 (s_point, s_rot[0], s_rot[1]),
+                                                 (t_point, t_rot[0], t_rot[1]))
                     # Decode action sequence from graph path.
                     for idx in range(len(node_path) - 1):
                         # Determine action to get from node idx to node idx + 1.
-                        if node_path[idx][0] != node_path[idx + 1][0]:  # moving forward to a new node.
-                            action_sequence.append("forward")  # use web UI names to facilitate feedback thru it.
+                        if node_path[idx][0] != node_path[
+                                idx + 1][0]:  # moving forward to a new node.
+                            action_sequence.append(
+                                "forward"
+                            )  # use web UI names to facilitate feedback thru it.
                         else:
                             rot_trans = (
                                 node_path[idx][1],
@@ -1413,7 +1637,8 @@ class SimulatorTHOR(SimulatorBase):
                             elif rot_trans in rrots:  # rotate right
                                 action_sequence.append("turn_right")
                             else:
-                                msg = "could not determine action from points:", node_path[idx], node_path[idx + 1]
+                                msg = "could not determine action from points:", node_path[
+                                    idx], node_path[idx + 1]
                                 logger.info(msg)
                                 interaction.action.success = 0
                                 return False, msg
@@ -1425,47 +1650,27 @@ class SimulatorTHOR(SimulatorBase):
                     cz = agent_data["position"]["z"]
                     while tx - cx > self.grid_size:  # target is x right
                         action_sequence.append(
-                            "forward"
-                            if s_rot[0] == 1
-                            else "backward"
-                            if s_rot[0] == -1
-                            else "pan_left"
-                            if s_rot[1] == -1
-                            else "pan_right"
-                        )
+                            "forward" if s_rot[0] == 1 else "backward"
+                            if s_rot[0] == -1 else "pan_left" if s_rot[1] ==
+                            -1 else "pan_right")
                         cx += self.grid_size
                     while cx - tx > self.grid_size:  # target is x left
-                        action_sequence.append(
-                            "forward"
-                            if s_rot[0] == -1
-                            else "backward"
-                            if s_rot[0] == 1
-                            else "pan_left"
-                            if s_rot[1] == 1
-                            else "pan_right"
-                        )
+                        action_sequence.append("forward" if s_rot[0] == -1 else
+                                               "backward" if s_rot[0] ==
+                                               1 else "pan_left" if s_rot[1] ==
+                                               1 else "pan_right")
                         cx -= self.grid_size
                     while tz - cz > self.grid_size:  # target is z right
                         action_sequence.append(
-                            "forward"
-                            if s_rot[1] == 1
-                            else "backward"
-                            if s_rot[1] == -1
-                            else "pan_left"
-                            if s_rot[0] == 1
-                            else "pan_right"
-                        )
+                            "forward" if s_rot[1] == 1 else "backward"
+                            if s_rot[1] == -1 else "pan_left" if s_rot[0] ==
+                            1 else "pan_right")
                         cz += self.grid_size
                     while cz - tz > self.grid_size:  # target is z left
-                        action_sequence.append(
-                            "forward"
-                            if s_rot[1] == -1
-                            else "backward"
-                            if s_rot[1] == 1
-                            else "pan_left"
-                            if s_rot[0] == -1
-                            else "pan_right"
-                        )
+                        action_sequence.append("forward" if s_rot[1] == -1 else
+                                               "backward" if s_rot[1] ==
+                                               1 else "pan_left" if s_rot[0] ==
+                                               -1 else "pan_right")
                         cz -= self.grid_size
                     if s_rot != t_rot:
                         rot_trans = (s_rot[0], s_rot[1], t_rot[0], t_rot[1])
@@ -1482,7 +1687,8 @@ class SimulatorTHOR(SimulatorBase):
                 interaction.action.success = 0
                 return False, msg
 
-            super().add_interaction(interaction)  # log successful nav action sequence initiated.
+            super().add_interaction(
+                interaction)  # log successful nav action sequence initiated.
 
             # Create and return error and message structure.
             interaction.action.success = 1
@@ -1504,7 +1710,8 @@ class SimulatorTHOR(SimulatorBase):
 
             if action_name == "Pickup":
                 action = dict(action="PickupObject", agentId=sim_agent_id)
-                candidate_affordance_properties = self.action_to_affordances["Pickup"]
+                candidate_affordance_properties = self.action_to_affordances[
+                    "Pickup"]
             elif action_name == "Place":
                 # Check whether holding anything.
                 if len(inventory_objects_before_action) == 0:
@@ -1512,96 +1719,120 @@ class SimulatorTHOR(SimulatorBase):
                     msg = "%s: ObjectInteraction only supported when holding an object" % action_name
                 else:
                     # Check whether the click position is the other agent, in which case we instead do a handoff.
-                    if (
-                        self.commander_embodied
-                        and len(self.get_inventory_objects(self.controller.last_event.events[(sim_agent_id + 1) % 2]))
-                        == 0
-                    ):
+                    if (self.commander_embodied and len(
+                            self.get_inventory_objects(
+                                self.controller.last_event.events[
+                                    (sim_agent_id + 1) % 2])) == 0):
                         interacted_oid, _ = self.__get_oid_at_frame_xy_with_affordance(
-                            x, y, le, sim_agent_id, {}, allow_agent_as_target=True
-                        )
+                            x,
+                            y,
+                            le,
+                            sim_agent_id, {},
+                            allow_agent_as_target=True)
                         if interacted_oid is not None and "agent_" in interacted_oid:
                             # Check that agent target is close enough for a handoff.
-                            if (
-                                self.__agent_dist_to_agent(sim_agent_id, (sim_agent_id + 1) % 2)
-                                <= self.visibility_distance
-                            ):
+                            if (self.__agent_dist_to_agent(
+                                    sim_agent_id, (sim_agent_id + 1) % 2) <=
+                                    self.visibility_distance):
                                 # Place the held object on the floor so other agent can pick it up.
-                                floor_place = dict(
-                                    action="PutObject", objectId=self.floor_oid, agentId=sim_agent_id, forceAction=True
-                                )
+                                floor_place = dict(action="PutObject",
+                                                   objectId=self.floor_oid,
+                                                   agentId=sim_agent_id,
+                                                   forceAction=True)
                                 if debug_print_all_sim_steps:
                                     logger.info("step %s", floor_place)
                                 drop_e = self.controller.step(floor_place)
                                 if drop_e.metadata["lastActionSuccess"]:
                                     handoff = True
-                                    action = dict(
-                                        action="PickupObject", agentId=(sim_agent_id + 1) % 2, forceAction=True
-                                    )
-                                    interacted_oid = inventory_objects_before_action[0]["objectId"]
+                                    action = dict(action="PickupObject",
+                                                  agentId=(sim_agent_id + 1) %
+                                                  2,
+                                                  forceAction=True)
+                                    interacted_oid = inventory_objects_before_action[
+                                        0]["objectId"]
                                 else:
                                     msg = "You are unable to hand off the object to your partner."
                             else:
                                 msg = "Your partner is too far away for a handoff."
                     if not handoff:
-                        action = dict(action="PutObject", agentId=sim_agent_id, forceAction=True, placeStationary=True)
-                        candidate_affordance_properties = self.action_to_affordances["Place"]
+                        action = dict(action="PutObject",
+                                      agentId=sim_agent_id,
+                                      forceAction=True,
+                                      placeStationary=True)
+                        candidate_affordance_properties = self.action_to_affordances[
+                            "Place"]
             elif action_name == "Open":
                 action = dict(action="OpenObject", agentId=sim_agent_id)
-                candidate_affordance_properties = self.action_to_affordances["Open"]
+                candidate_affordance_properties = self.action_to_affordances[
+                    "Open"]
             elif action_name == "Close":
                 action = dict(action="CloseObject", agentId=sim_agent_id)
-                candidate_affordance_properties = self.action_to_affordances["Close"]
+                candidate_affordance_properties = self.action_to_affordances[
+                    "Close"]
             elif action_name == "ToggleOn":
                 action = dict(action="ToggleObjectOn", agentId=sim_agent_id)
-                candidate_affordance_properties = self.action_to_affordances["ToggleOn"]
+                candidate_affordance_properties = self.action_to_affordances[
+                    "ToggleOn"]
             elif action_name == "ToggleOff":
                 action = dict(action="ToggleObjectOff", agentId=sim_agent_id)
-                candidate_affordance_properties = self.action_to_affordances["ToggleOff"]
+                candidate_affordance_properties = self.action_to_affordances[
+                    "ToggleOff"]
             elif action_name == "Slice":
-                if (
-                    len(inventory_objects_before_action) == 0
-                    or "Knife" not in inventory_objects_before_action[0]["objectType"]
-                ):
+                if (len(inventory_objects_before_action) == 0 or "Knife" not in
+                        inventory_objects_before_action[0]["objectType"]):
                     event = None
                     msg = "%s: ObjectInteraction only supported for held object Knife" % action_name
                 else:
-                    action = dict(action="SliceObject", agentId=sim_agent_id, x=x, y=y)
-                    candidate_affordance_properties = self.action_to_affordances["Slice"]
+                    action = dict(action="SliceObject",
+                                  agentId=sim_agent_id,
+                                  x=x,
+                                  y=y)
+                    candidate_affordance_properties = self.action_to_affordances[
+                        "Slice"]
             elif action_name == "Dirty":
                 action = dict(action="DirtyObject", agentId=sim_agent_id)
-                candidate_affordance_properties = self.action_to_affordances["Dirty"]
+                candidate_affordance_properties = self.action_to_affordances[
+                    "Dirty"]
             elif action_name == "Clean":
                 action = dict(action="CleanObject", agentId=sim_agent_id)
-                candidate_affordance_properties = self.action_to_affordances["Clean"]
+                candidate_affordance_properties = self.action_to_affordances[
+                    "Clean"]
             elif action_name == "Fill":
-                action = dict(action="FillObjectWithLiquid", agentId=sim_agent_id, fillLiquid="water")
-                candidate_affordance_properties = self.action_to_affordances["Fill"]
+                action = dict(action="FillObjectWithLiquid",
+                              agentId=sim_agent_id,
+                              fillLiquid="water")
+                candidate_affordance_properties = self.action_to_affordances[
+                    "Fill"]
             elif action_name == "Empty":
-                action = dict(action="EmptyLiquidFromObject", agentId=sim_agent_id)
-                candidate_affordance_properties = self.action_to_affordances["Empty"]
+                action = dict(action="EmptyLiquidFromObject",
+                              agentId=sim_agent_id)
+                candidate_affordance_properties = self.action_to_affordances[
+                    "Empty"]
             elif action_name == "Pour":
                 if len(inventory_objects_before_action) == 0:
                     event = None
                     msg = "%s: ObjectInteraction only supported for held object filled with liquid" % action_name
                 else:
                     held_obj = self.__get_object_by_id(
-                        self.get_objects(self.controller.last_event), inventory_objects_before_action[0]["objectId"]
-                    )
+                        self.get_objects(self.controller.last_event),
+                        inventory_objects_before_action[0]["objectId"])
                     if not held_obj["isFilledWithLiquid"]:
                         event = None
                         msg = "%s: ObjectInteraction only supported for held object filled with liquid" % action_name
                     else:
-                        fillLiquid = (
-                            "coffee"
-                            if "simbotIsFilledWithCoffee" in held_obj and held_obj["simbotIsFilledWithCoffee"]
-                            else "water"
-                        )
-                        action = dict(action="FillObjectWithLiquid", agentId=sim_agent_id, fillLiquid=fillLiquid)
-                        candidate_affordance_properties = self.action_to_affordances["Pour"]
+                        fillLiquid = ("coffee"
+                                      if "simbotIsFilledWithCoffee" in held_obj
+                                      and held_obj["simbotIsFilledWithCoffee"]
+                                      else "water")
+                        action = dict(action="FillObjectWithLiquid",
+                                      agentId=sim_agent_id,
+                                      fillLiquid=fillLiquid)
+                        candidate_affordance_properties = self.action_to_affordances[
+                            "Pour"]
             elif action_name == "Break":
                 action = dict(action="BreakObject", agentId=sim_agent_id)
-                candidate_affordance_properties = self.action_to_affordances["Break"]
+                candidate_affordance_properties = self.action_to_affordances[
+                    "Break"]
             else:
                 event = None
                 msg = "%s: ObjectInteraction not supported" % action_name
@@ -1627,17 +1858,22 @@ class SimulatorTHOR(SimulatorBase):
 
                     # Need to do a manual visibilityDistance check because we're using forceAction=True to cause
                     # put into any receptacle regardless of metadata constraint (e.g., no sponge in microwave).
-                    raycast_action = dict(action="GetCoordinateFromRaycast", x=x, y=y, agentId=sim_agent_id)
+                    raycast_action = dict(action="GetCoordinateFromRaycast",
+                                          x=x,
+                                          y=y,
+                                          agentId=sim_agent_id)
                     if debug_print_all_sim_steps:
                         logger.info("step %s", raycast_action)
                     raycast_e = self.controller.step(raycast_action)
                     clicked_xyz = raycast_e.metadata["actionReturn"]
-                    if (
-                        np.linalg.norm([clicked_xyz[c] - le.metadata["agent"]["position"][c] for c in ["x", "y", "z"]])
-                        > self.visibility_distance
-                    ):
+                    if (np.linalg.norm([
+                            clicked_xyz[c] -
+                            le.metadata["agent"]["position"][c]
+                            for c in ["x", "y", "z"]
+                    ]) > self.visibility_distance):
                         msg = "%s is too far away to be interacted with" % interacted_oid
-                        del action["objectId"]  # don't take the action because the obj is too far away.
+                        del action[
+                            "objectId"]  # don't take the action because the obj is too far away.
 
                 # Override objectId if specified
                 if on_oid is not None:
@@ -1662,17 +1898,14 @@ class SimulatorTHOR(SimulatorBase):
                     # If we're about to slice an object held by the other agent, cancel the action.
                     # If slice happens with a held object, THOR doesn't de-register inventory.
                     # We tried DropHandObject, but then the slices scatter around the robot base and trap it.
-                    elif (
-                        self.commander_embodied
-                        and action["action"] == "SliceObject"
-                        and action["objectId"]
-                        in [
-                            obj["objectId"]
-                            for obj in self.get_inventory_objects(
-                                self.controller.last_event.events[(sim_agent_id + 1) % 2]
-                            )
-                        ]
-                    ):
+                    elif (self.commander_embodied
+                          and action["action"] == "SliceObject"
+                          and action["objectId"] in [
+                              obj["objectId"]
+                              for obj in self.get_inventory_objects(
+                                  self.controller.last_event.events[
+                                      (sim_agent_id + 1) % 2])
+                          ]):
                         msg = "You cannot slice something while your partner is holding it."
 
                     # Else, just take the action we prepared already.
@@ -1684,70 +1917,84 @@ class SimulatorTHOR(SimulatorBase):
                     # If it is a pour action empty the inventory object
                     if action_name == "Pour":
                         interacted_obj = self.__get_object_by_id(
-                            self.get_objects(self.controller.last_event), action["objectId"]
-                        )
-                        if event.metadata["lastActionSuccess"] or interacted_obj["objectType"] in [
-                            "Sink",
-                            "SinkBasin",
-                            "Bathtub",
-                            "BathtubBasin",
-                        ]:
+                            self.get_objects(self.controller.last_event),
+                            action["objectId"])
+                        if event.metadata[
+                                "lastActionSuccess"] or interacted_obj[
+                                    "objectType"] in [
+                                        "Sink",
+                                        "SinkBasin",
+                                        "Bathtub",
+                                        "BathtubBasin",
+                                    ]:
                             held_obj = self.__get_object_by_id(
                                 self.get_objects(self.controller.last_event),
-                                self.get_inventory_objects(self.controller.last_event)[0]["objectId"],
+                                self.get_inventory_objects(
+                                    self.controller.last_event)[0]["objectId"],
                             )
-                            empty_action = dict(
-                                action="EmptyLiquidFromObject", agentId=sim_agent_id, objectId=held_obj["objectId"]
-                            )
+                            empty_action = dict(action="EmptyLiquidFromObject",
+                                                agentId=sim_agent_id,
+                                                objectId=held_obj["objectId"])
                             if debug_print_all_sim_steps:
                                 logger.info("step %s", empty_action)
                             event = self.controller.step(empty_action)
                             if event.metadata["lastActionSuccess"]:
                                 self.__update_custom_object_metadata(
-                                    held_obj["objectId"], "simbotIsFilledWithCoffee", False
-                                )
+                                    held_obj["objectId"],
+                                    "simbotIsFilledWithCoffee", False)
 
                     # Set custom message for Pickup action on success.
                     # Note: action taken is actually the pickup by the partner agent on a handoff
-                    if action_name == "Pickup" or (handoff and action_name == "Place"):
+                    if action_name == "Pickup" or (handoff
+                                                   and action_name == "Place"):
                         inventory_objects = self.get_inventory_objects(event)
-                        if event is not None and event.metadata["lastActionSuccess"] and len(inventory_objects) > 0:
-                            msg = "Picked up %s" % inventory_objects[0]["objectType"]
+                        if event is not None and event.metadata[
+                                "lastActionSuccess"] and len(
+                                    inventory_objects) > 0:
+                            msg = "Picked up %s" % inventory_objects[0][
+                                "objectType"]
 
                             # Update parent/child relationships in inventory.
                             for obj in inventory_objects:
-                                self.__update_custom_object_metadata(obj["objectId"], "simbotPickedUp", 1)
-                                if "simbotLastParentReceptacle" in self.__custom_object_metadata[obj["objectId"]]:
-                                    parent_receptacle = self.__custom_object_metadata[obj["objectId"]][
-                                        "simbotLastParentReceptacle"
-                                    ]
-                                    self.__delete_from_custom_object_metadata_list(
-                                        parent_receptacle, "simbotIsReceptacleOf", obj["objectId"]
-                                    )
                                 self.__update_custom_object_metadata(
-                                    obj["objectId"], "simbotLastParentReceptacle", None
-                                )
+                                    obj["objectId"], "simbotPickedUp", 1)
+                                if "simbotLastParentReceptacle" in self.__custom_object_metadata[
+                                        obj["objectId"]]:
+                                    parent_receptacle = self.__custom_object_metadata[
+                                        obj["objectId"]][
+                                            "simbotLastParentReceptacle"]
+                                    self.__delete_from_custom_object_metadata_list(
+                                        parent_receptacle,
+                                        "simbotIsReceptacleOf",
+                                        obj["objectId"])
+                                self.__update_custom_object_metadata(
+                                    obj["objectId"],
+                                    "simbotLastParentReceptacle", None)
 
                     elif action_name == "Place":
-                        if event is not None and "objectId" in action and event.metadata["lastActionSuccess"]:
+                        if event is not None and "objectId" in action and event.metadata[
+                                "lastActionSuccess"]:
                             msg = "Placed in %s" % action["objectId"]
                             for obj in inventory_objects_before_action:
                                 self.__update_custom_object_metadata(
-                                    obj["objectId"], "simbotLastParentReceptacle", action["objectId"]
-                                )
+                                    obj["objectId"],
+                                    "simbotLastParentReceptacle",
+                                    action["objectId"])
                                 self.__append_to_custom_object_metadata_list(
-                                    action["objectId"], "simbotIsReceptacleOf", obj["objectId"]
-                                )
+                                    action["objectId"], "simbotIsReceptacleOf",
+                                    obj["objectId"])
 
                 elif msg is None:
                     msg = "Could not find a target object at the specified location"
 
-            super().add_interaction(interaction)  # log attempt, regardless of success.
+            super().add_interaction(
+                interaction)  # log attempt, regardless of success.
 
             # If the event succeeded, do manual simulation updates based on fixed state change rules.
             if event is not None and event.metadata["lastActionSuccess"]:
                 if action["action"] == "SliceObject":
-                    self.__transfer_custom_metadata_on_slicing_cracking(self.get_objects(event))
+                    self.__transfer_custom_metadata_on_slicing_cracking(
+                        self.get_objects(event))
 
             # Update custom properties in case actions changed things up.
             self.__check_per_step_custom_properties(objects_before_cur_event)
@@ -1758,7 +2005,8 @@ class SimulatorTHOR(SimulatorBase):
                 # if we successfully interacted, we need to set with what oid
                 assert interacted_oid is not None or on_oid is not None
                 interaction.action.oid = interacted_oid
-                return True, "%s @ (%.2f, %.2f)" % (action_name, x, y) if msg is None else msg, None
+                return True, "%s @ (%.2f, %.2f)" % (
+                    action_name, x, y) if msg is None else msg, None
             else:
                 interaction.action.success = 0
                 if event is None:  # If the event call never even got made, use custom message.
@@ -1768,14 +2016,16 @@ class SimulatorTHOR(SimulatorBase):
                         return (
                             False,
                             event.metadata["errorMessage"],
-                            self.__thor_error_to_help_message(event.metadata["errorMessage"]),
+                            self.__thor_error_to_help_message(
+                                event.metadata["errorMessage"]),
                         )
                     elif msg is not None:
-                        return False, msg, self.__thor_error_to_help_message(msg)
+                        return False, msg, self.__thor_error_to_help_message(
+                            msg)
                     else:
                         logger.warning(
-                            "action was taken that failed but produced no custom or system error message: %s", action
-                        )
+                            "action was taken that failed but produced no custom or system error message: %s",
+                            action)
                         return False, "", None
 
         elif action_type == "ChangeCamera":
@@ -1785,10 +2035,12 @@ class SimulatorTHOR(SimulatorBase):
 
             if action_name == "BehindAboveOn":
                 interaction.action.success = 0
-                raise NotImplementedError("CameraChange functions are being phased out")
+                raise NotImplementedError(
+                    "CameraChange functions are being phased out")
             elif action_name == "BehindAboveOff":
                 interaction.action.success = 0
-                raise NotImplementedError("CameraChange functions are being phased out")
+                raise NotImplementedError(
+                    "CameraChange functions are being phased out")
 
             return  # noqa R502
 
@@ -1799,22 +2051,27 @@ class SimulatorTHOR(SimulatorBase):
 
         elif action_type == "Keyboard":
             if interaction.agent_id == 0:  # Commander
-                self.logger.debug("*** Commander - Keyboard: %s ***" % interaction.action.utterance)
+                self.logger.debug("*** Commander - Keyboard: %s ***" %
+                                  interaction.action.utterance)
             else:
-                self.logger.debug("*** Driver - Keyboard: %s ***" % interaction.action.utterance)
+                self.logger.debug("*** Driver - Keyboard: %s ***" %
+                                  interaction.action.utterance)
             super().add_interaction(interaction)
             interaction.action.success = 1
             return  # noqa R502
         elif action_type == "Audio":
             if interaction.agent_id == 0:  # Commander
-                self.logger.info("*** Commander - Audio: %s ***" % interaction.action.utterance)
+                self.logger.info("*** Commander - Audio: %s ***" %
+                                 interaction.action.utterance)
             else:
-                self.logger.info("*** Driver - Audio: %s ***" % interaction.action.utterance)
+                self.logger.info("*** Driver - Audio: %s ***" %
+                                 interaction.action.utterance)
             super().add_interaction(interaction)
             interaction.action.success = 1
             return  # noqa R502
         else:
-            logger.warning("%s: Not supported" % interaction.action.action_type)
+            logger.warning("%s: Not supported" %
+                           interaction.action.action_type)
             interaction.action.success = 0
             return  # noqa R502
 
@@ -1824,26 +2081,28 @@ class SimulatorTHOR(SimulatorBase):
         reliability and checks that a container just got placed in a coffee maker and the coffee maker was on
         """
         cur_objects = self.get_objects(event)
-        coffee_maker_ids = set(
-            [obj["objectId"] for obj in cur_objects if "CoffeeMachine" in obj["objectType"] and obj["isToggled"]]
-        )
+        coffee_maker_ids = set([
+            obj["objectId"] for obj in cur_objects
+            if "CoffeeMachine" in obj["objectType"] and obj["isToggled"]
+        ])
         for obj in cur_objects:
             prev_filled_with_liquid = False
             if objs_before_event is not None:
-                prev_state = self.__get_object_by_id(objs_before_event, obj["objectId"])
+                prev_state = self.__get_object_by_id(objs_before_event,
+                                                     obj["objectId"])
                 if prev_state:
                     prev_filled_with_liquid = prev_state["isFilledWithLiquid"]
             parent_receptacles = self.get_parent_receptacles(obj, cur_objects)
             placed_in_toggled_coffee_maker = False
-            if parent_receptacles is not None and len(set(parent_receptacles).intersection(coffee_maker_ids)) > 0:
+            if parent_receptacles is not None and len(
+                    set(parent_receptacles).intersection(
+                        coffee_maker_ids)) > 0:
                 placed_in_toggled_coffee_maker = True
-            if (
-                placed_in_toggled_coffee_maker
-                and obj["canFillWithLiquid"]
-                and obj["isFilledWithLiquid"]
-                and not prev_filled_with_liquid
-            ):
-                self.__update_custom_object_metadata(obj["objectId"], "simbotIsFilledWithCoffee", True)
+            if (placed_in_toggled_coffee_maker and obj["canFillWithLiquid"]
+                    and obj["isFilledWithLiquid"]
+                    and not prev_filled_with_liquid):
+                self.__update_custom_object_metadata(
+                    obj["objectId"], "simbotIsFilledWithCoffee", True)
 
     def __update_sink_interaction_outcomes(self, event):
         """
@@ -1854,14 +2113,14 @@ class SimulatorTHOR(SimulatorBase):
         sink_objects = list()
         for obj in cur_objects:
             # Check if any sink basin is filled with water and clean all dirty objects in.
-            if (
-                "SinkBasin" in obj["objectType"]
-                or "Sink" in obj["objectType"]
-                or "BathtubBasin" in obj["objectType"]
-                or "Bathtub" in obj["objectType"]
-            ):
+            if ("SinkBasin" in obj["objectType"] or "Sink" in obj["objectType"]
+                    or "BathtubBasin" in obj["objectType"]
+                    or "Bathtub" in obj["objectType"]):
                 # Fetch the faucet near the sink
-                faucet_obj = self.__get_object_by_position(self.get_objects(event), obj["position"], obj_type="Faucet")
+                faucet_obj = self.__get_object_by_position(
+                    self.get_objects(event),
+                    obj["position"],
+                    obj_type="Faucet")
                 if faucet_obj["isToggled"]:
                     sink_objects.append(obj)
         sink_obj_ids = set([obj["objectId"] for obj in sink_objects])
@@ -1874,19 +2133,23 @@ class SimulatorTHOR(SimulatorBase):
 
         for child_obj in objs_in_sink:
             if child_obj["isDirty"]:
-                ac = dict(action="CleanObject", objectId=child_obj["objectId"], forceAction=True)
+                ac = dict(action="CleanObject",
+                          objectId=child_obj["objectId"],
+                          forceAction=True)
                 if debug_print_all_sim_steps:
                     logger.info("step %s", ac)
                 self.controller.step(ac)
 
             if child_obj["canFillWithLiquid"]:
-                ac = dict(
-                    action="FillObjectWithLiquid", objectId=child_obj["objectId"], fillLiquid="water", forceAction=True
-                )
+                ac = dict(action="FillObjectWithLiquid",
+                          objectId=child_obj["objectId"],
+                          fillLiquid="water",
+                          forceAction=True)
                 if debug_print_all_sim_steps:
                     logger.info("step %s", ac)
                 self.controller.step(ac)
-                self.__update_custom_object_metadata(child_obj["objectId"], "simbotIsFilledWithWater", 1)
+                self.__update_custom_object_metadata(
+                    child_obj["objectId"], "simbotIsFilledWithWater", 1)
 
     def __thor_error_to_help_message(self, msg):
         """
@@ -1895,9 +2158,11 @@ class SimulatorTHOR(SimulatorBase):
         """
         # Example: "Floor|+00.00|+00.00|+00.00 must have the property CanPickup to be picked up." # noqa: E800
         if "CanPickup to be" in msg:
-            return 'Object "%s" can\'t be picked up.' % msg.split()[0].split("|")[0]
+            return 'Object "%s" can\'t be picked up.' % msg.split()[0].split(
+                "|")[0]
         # Example: "Object ID appears to be invalid." # noqa: E800
-        if ("Object ID" in msg and "invalid" in msg) or "Could not retrieve object" in msg:
+        if ("Object ID" in msg
+                and "invalid" in msg) or "Could not retrieve object" in msg:
             return "Could not determine what object was clicked."
         # Example "Can't place an object if Agent isn't holding anything # noqa: E800
         if "if Agent isn't holding" in msg:
@@ -1916,7 +2181,8 @@ class SimulatorTHOR(SimulatorBase):
             return "Object is already turned on."
         # Example: "CounterTop|-00.08|+01.15|00.00 is not an Openable object" # noqa: E800
         if "is not an Openable object" in msg:
-            return 'Object "%s" can\'t be opened.' % msg.split()[0].split("|")[0]
+            return 'Object "%s" can\'t be opened.' % msg.split()[0].split(
+                "|")[0]
         # Example: "CounterTop_d7cc8dfe Does not have the CanBeSliced property!" # noqa: E800
         if "Does not have the CanBeSliced" in msg:
             return "Object cannot be sliced."
@@ -1991,20 +2257,20 @@ class SimulatorTHOR(SimulatorBase):
         :param return_full_seg_mask: additional flag to highlight a single object specified by object_id
         """
         assert not return_full_seg_mask or object_id is not None
-        assert (action_str is None or object_id is None) and not (action_str is not None and object_id is not None)
+        assert (action_str is None or object_id is None
+                ) and not (action_str is not None and object_id is not None)
         assert agent_id is None or camera_id is None
         if hotspot_pixel_width is None:
             hotspot_pixel_width = self.hotspot_pixel_width
         if agent_id is not None:
             sim_agent_id = agent_id if self.commander_embodied else 0
-            le = (
-                self.controller.last_event.events[sim_agent_id]
-                if self.commander_embodied
-                else self.controller.last_event
-            )
+            le = (self.controller.last_event.events[sim_agent_id]
+                  if self.commander_embodied else self.controller.last_event)
             # Take a no-op step to render the object segmentation frame for hotspots.
             if le.instance_segmentation_frame is None:
-                ac = dict(action="Pass", agentId=sim_agent_id, renderObjectImage=True)
+                ac = dict(action="Pass",
+                          agentId=sim_agent_id,
+                          renderObjectImage=True)
                 if debug_print_all_sim_steps:
                     logger.info("step %s", ac)
                 self.controller.step(ac)
@@ -2013,21 +2279,25 @@ class SimulatorTHOR(SimulatorBase):
                 instance_segs = np.array(le.instance_segmentation_frame)
             elif agent_id == 0:  # commander camera
                 le = self.controller.last_event
-                instance_segs = np.array(le.third_party_instance_segmentation_frames[0])
+                instance_segs = np.array(
+                    le.third_party_instance_segmentation_frames[0])
             else:  # driver camera
                 le = self.controller.last_event
                 instance_segs = np.array(le.instance_segmentation_frame)
             color_to_object_id = le.color_to_object_id
             object_id_to_color = le.object_id_to_color
         else:
-            le = self.controller.last_event.events[0] if self.commander_embodied else self.controller.last_event
+            le = self.controller.last_event.events[
+                0] if self.commander_embodied else self.controller.last_event
             if le.instance_segmentation_frame is None:
                 ac = dict(action="Pass", agentId=0, renderObjectImage=True)
                 if debug_print_all_sim_steps:
                     logger.info("step %s", ac)
                 self.controller.step(ac)
-                le = self.controller.last_event.events[0] if self.commander_embodied else self.controller.last_event
-            instance_segs = np.array(le.third_party_instance_segmentation_frames[camera_id])
+                le = self.controller.last_event.events[
+                    0] if self.commander_embodied else self.controller.last_event
+            instance_segs = np.array(
+                le.third_party_instance_segmentation_frames[camera_id])
             color_to_object_id = le.color_to_object_id
             object_id_to_color = le.object_id_to_color
 
@@ -2044,35 +2314,45 @@ class SimulatorTHOR(SimulatorBase):
             for x in range(0, self.web_window_size, hotspot_pixel_width):
                 for y in range(0, self.web_window_size, hotspot_pixel_width):
                     instance_color_id = tuple(
-                        instance_segs[y + hotspot_pixel_width // 2, x + hotspot_pixel_width // 2]
-                    )  # coordinate system is y x
+                        instance_segs[y + hotspot_pixel_width // 2,
+                                      x + hotspot_pixel_width //
+                                      2])  # coordinate system is y x
                     is_hotspot = False
                     if instance_color_id in color_to_object_id:  # anecdotally, some colors are missing from this map.
                         oid = color_to_object_id[instance_color_id]
                         obj = le.get_object(oid)
                         if action_str is not None:  # search by action str
-                            affordance_lists = self.action_to_affordances[action_str]
-                            if obj is not None and oid in le.instance_detections2D and obj["visible"]:
-                                if np.any(
-                                    [
-                                        np.all([obj[prop] == affordances[prop] for prop in affordances])
-                                        for affordances in affordance_lists
-                                    ]
-                                ):
+                            affordance_lists = self.action_to_affordances[
+                                action_str]
+                            if obj is not None and oid in le.instance_detections2D and obj[
+                                    "visible"]:
+                                if np.any([
+                                        np.all([
+                                            obj[prop] == affordances[prop]
+                                            for prop in affordances
+                                        ]) for affordances in affordance_lists
+                                ]):
                                     is_hotspot = True
-                            elif (
-                                self.commander_embodied
-                                and action_str == "Place"
-                                and oid[: len("agent_")] == "agent_"
-                                and self.__agent_dist_to_agent(agent_id, (agent_id + 1) % 2) <= self.visibility_distance
-                            ):
+                            elif (self.commander_embodied
+                                  and action_str == "Place"
+                                  and oid[:len("agent_")] == "agent_"
+                                  and self.__agent_dist_to_agent(
+                                      agent_id, (agent_id + 1) % 2) <=
+                                  self.visibility_distance):
                                 is_hotspot = True  # handoff to partner agent
                         elif object_id is not None:  # search by objectId
                             if obj is not None and obj["objectId"] == object_id:
                                 is_hotspot = True
                     if is_hotspot:
-                        hotspots.append([float(x) / self.web_window_size, float(y) / self.web_window_size])
-            return {"hotspot_width": float(hotspot_pixel_width) / self.web_window_size, "hotspots": hotspots}
+                        hotspots.append([
+                            float(x) / self.web_window_size,
+                            float(y) / self.web_window_size
+                        ])
+            return {
+                "hotspot_width":
+                float(hotspot_pixel_width) / self.web_window_size,
+                "hotspots": hotspots
+            }
 
     def reset(self):
         """
@@ -2085,8 +2365,13 @@ class SimulatorTHOR(SimulatorBase):
         """
         Obtain information about the current task and episode
         """
-        d = super().info(include_scenes=include_scenes, include_objects=include_objects)
-        d.update({"world_type": self.world_type, "world": self.world, "agent_poses": self.__get_agent_poses()})
+        d = super().info(include_scenes=include_scenes,
+                         include_objects=include_objects)
+        d.update({
+            "world_type": self.world_type,
+            "world": self.world,
+            "agent_poses": self.__get_agent_poses()
+        })
         return d
 
     def select_random_world(self, world_type=None):
@@ -2096,8 +2381,10 @@ class SimulatorTHOR(SimulatorBase):
         be considered
         """
         if world_type is None:
-            world_type = random.choice(["Kitchen", "Living room", "Bedroom", "Bathroom"])
-        world_type, scene_names = self.__get_available_scene_names(world_type=world_type)
+            world_type = random.choice(
+                ["Kitchen", "Living room", "Bedroom", "Bathroom"])
+        world_type, scene_names = self.__get_available_scene_names(
+            world_type=world_type)
         return world_type, random.choice(scene_names)
 
     def get_latest_images(self):
@@ -2126,19 +2413,28 @@ class SimulatorTHOR(SimulatorBase):
 
         if self.commander_embodied:
             return {
-                "ego": self.controller.last_event.events[1].frame,
-                "allo": self.controller.last_event.events[0].frame,
-                "targetobject": self.controller.last_event.events[0].third_party_camera_frames[
-                    self.object_target_camera_idx
-                ],
-                "semantic": self.controller.last_event.events[1].instance_segmentation_frame,
+                "ego":
+                self.controller.last_event.events[1].frame,
+                "allo":
+                self.controller.last_event.events[0].frame,
+                "targetobject":
+                self.controller.last_event.events[0].third_party_camera_frames[
+                    self.object_target_camera_idx],
+                "semantic":
+                self.controller.last_event.events[1].
+                instance_segmentation_frame,
             }
         else:
             return {
-                "ego": self.controller.last_event.frame,
-                "allo": self.controller.last_event.third_party_camera_frames[0],
-                "targetobject": self.controller.last_event.third_party_camera_frames[self.object_target_camera_idx],
-                "semantic": self.controller.last_event.instance_segmentation_frame,
+                "ego":
+                self.controller.last_event.frame,
+                "allo":
+                self.controller.last_event.third_party_camera_frames[0],
+                "targetobject":
+                self.controller.last_event.third_party_camera_frames[
+                    self.object_target_camera_idx],
+                "semantic":
+                self.controller.last_event.instance_segmentation_frame,
             }
 
     def go_to_pose(self, pose):
@@ -2166,18 +2462,23 @@ class SimulatorTHOR(SimulatorBase):
         Return agent's current pose in the form of a Pose object
         :param agent_id: 0 for Commander and 1 for Driver/ Follower
         """
-        event = self.controller.last_event.events[agent_id] if self.commander_embodied else self.controller.last_event
+        event = self.controller.last_event.events[
+            agent_id] if self.commander_embodied else self.controller.last_event
         position = event.metadata["agent"]["position"]
         rotation = event.metadata["agent"]["rotation"]
         horizon = event.metadata["agent"]["cameraHorizon"]
 
-        return Pose.from_array([position["z"], -position["x"], position["y"], 0, horizon, -rotation["y"]])
+        return Pose.from_array([
+            position["z"], -position["x"], position["y"], 0, horizon,
+            -rotation["y"]
+        ])
 
     def get_available_scenes(self):
         """
         Load list of AI2-THOR floor plans
         """
-        with importlib.resources.open_text(config_directory, "metadata_ai2thor.json") as f:
+        with importlib.resources.open_text(config_directory,
+                                           "metadata_ai2thor.json") as f:
             data = json.load(f)
         return data
 
@@ -2186,12 +2487,15 @@ class SimulatorTHOR(SimulatorBase):
         Load list of AI2-THOR objects
         """
         data = None
-        with importlib.resources.open_text(config_directory, "metadata_google_scanned_objects.json") as f:
+        with importlib.resources.open_text(
+                config_directory, "metadata_google_scanned_objects.json") as f:
             data = json.load(f)
 
         return data
 
-    def __get_agent_click_normalized_position(self, agent_id=None, agent_metadata=None):
+    def __get_agent_click_normalized_position(self,
+                                              agent_id=None,
+                                              agent_metadata=None):
         """
         Convert agent position to a visual coordinate on topdown map for TEACh data collection
         :param agent_id: 0 for Commander and 1 for Driver/ Follower
@@ -2215,8 +2519,11 @@ class SimulatorTHOR(SimulatorBase):
         :param x: x coordinate on AI2-THOR floor plan
         :param z: z coordinate on AI2-THOR floor plan
         """
-        norm_x, norm_z = (np.array((x, z)) - self.topdown_lower_left_xz) / (2 * self.topdown_cam_orth_size)
-        click_x, click_y = norm_x, (1 - norm_z)  # z is flipped from top-to-bottom y of UI, so 1 - y = z
+        norm_x, norm_z = (np.array((x, z)) - self.topdown_lower_left_xz) / (
+            2 * self.topdown_cam_orth_size)
+        click_x, click_y = norm_x, (
+            1 - norm_z
+        )  # z is flipped from top-to-bottom y of UI, so 1 - y = z
         return click_x, click_y
 
     def __get_agent_click_rotation(self, agent_id=None, agent_metadata=None):
@@ -2242,7 +2549,8 @@ class SimulatorTHOR(SimulatorBase):
         :param y: Input angle in [0, 359]
         """
         dir_degrees = [270, 180, 90, 0]
-        closest_degree = dir_degrees[min(range(len(dir_degrees)), key=lambda i: abs(dir_degrees[i] - y))]
+        closest_degree = dir_degrees[min(
+            range(len(dir_degrees)), key=lambda i: abs(dir_degrees[i] - y))]
         if closest_degree == 270:  # facing x negative, z neutral
             s_rot = (-1, 0)
         elif closest_degree == 180:  # facing x neutral, z negative
@@ -2257,7 +2565,12 @@ class SimulatorTHOR(SimulatorBase):
         """
         Given (x, z) norm rotation (e.g., (0, 1)), return the closest degrees in [270, 180, 90, 0] matching.
         """
-        s_rot_to_dir_degree = {(-1, 0): 270, (0, -1): 180, (1, 0): 90, (0, 1): 0}
+        s_rot_to_dir_degree = {
+            (-1, 0): 270,
+            (0, -1): 180,
+            (1, 0): 90,
+            (0, 1): 0
+        }
         return s_rot_to_dir_degree[(x, z)]
 
     def __get_available_scene_names(self, world_type=None):
@@ -2287,8 +2600,10 @@ class SimulatorTHOR(SimulatorBase):
         """
         world_type = None
         try:
-            number = int(world.split("_")[0][9:])  # Example: floor plan27_physics
-            room_lo_hi = [("Kitchen", 1, 31), ("Living room", 201, 231), ("Bedroom", 301, 331), ("Bathroom", 401, 431)]
+            number = int(
+                world.split("_")[0][9:])  # Example: floor plan27_physics
+            room_lo_hi = [("Kitchen", 1, 31), ("Living room", 201, 231),
+                          ("Bedroom", 301, 331), ("Bathroom", 401, 431)]
             for current_world_type, low, high in room_lo_hi:
                 if number >= low and number <= high:
                     world_type = current_world_type
@@ -2305,7 +2620,8 @@ class SimulatorTHOR(SimulatorBase):
         pose_robot = self.get_current_pose(agent_id=0)
         ac = dict(
             action="AddThirdPartyCamera",
-            rotation=dict(x=30, y=-pose_robot.z_rot, z=0),  # Look down at 30 degrees
+            rotation=dict(x=30, y=-pose_robot.z_rot,
+                          z=0),  # Look down at 30 degrees
             position=dict(x=-pose_robot.y, y=pose_robot.z + 1, z=pose_robot.x),
             fieldOfView=90,
         )
@@ -2329,7 +2645,8 @@ class SimulatorTHOR(SimulatorBase):
         need_new_map = False
         if self.world is None and world is None:  # no presets and no args, so choose randomly.
             if world_type in ["Kitchen", "Living room", "Bedroom", "Bathroom"]:
-                self.world_type, self.world = self.__get_available_scene_names(world_type=world_type)
+                self.world_type, self.world = self.__get_available_scene_names(
+                    world_type=world_type)
             else:
                 self.world_type, self.world = self.select_random_world()
             need_new_map = True
@@ -2355,13 +2672,16 @@ class SimulatorTHOR(SimulatorBase):
             commit_id=COMMIT_ID,
         )
 
-        logger.info("In SimulatorTHOR.__launch_simulator, creating ai2thor controller (unity process)")
+        logger.info(
+            "In SimulatorTHOR.__launch_simulator, creating ai2thor controller (unity process)"
+        )
         time_start_controller = time.time()
         if debug_print_all_sim_steps:
             logger.info("init %s", init_params)
         self.controller = TEAChController(**init_params)
         time_end_controller = time.time()
-        self.logger.info("Time to create controller: %s sec" % (time_end_controller - time_start_controller))
+        self.logger.info("Time to create controller: %s sec" %
+                         (time_end_controller - time_start_controller))
 
         # Tilt agents down.
         ac = dict(action="LookDown", agentId=0, degrees=30)
@@ -2380,14 +2700,16 @@ class SimulatorTHOR(SimulatorBase):
             if debug_print_all_sim_steps:
                 logger.info("step %s", ac)
             self.controller.step(ac)
-            topdown_cam_position = self.controller.last_event.metadata["cameraPosition"]
-            self.topdown_cam_orth_size = self.controller.last_event.metadata["cameraOrthSize"]
+            topdown_cam_position = self.controller.last_event.metadata[
+                "cameraPosition"]
+            self.topdown_cam_orth_size = self.controller.last_event.metadata[
+                "cameraOrthSize"]
             if debug_print_all_sim_steps:
                 logger.info("step %s", ac)
             self.controller.step(ac)
-            self.topdown_lower_left_xz = (
-                np.array((topdown_cam_position["x"], topdown_cam_position["z"])) - self.topdown_cam_orth_size
-            )
+            self.topdown_lower_left_xz = (np.array(
+                (topdown_cam_position["x"], topdown_cam_position["z"])) -
+                                          self.topdown_cam_orth_size)
 
             self.navigation_graph = None  # Clear cached nav graph if any
 
@@ -2399,16 +2721,20 @@ class SimulatorTHOR(SimulatorBase):
         else:
             self.object_target_camera_idx = 0
         # Initialize a 3rd party camera for object targetting (idx 0 if embodied commander, 1 else).
-        self.controller.step(
-            "AddThirdPartyCamera", rotation=dict(x=0, y=0, z=90), position=dict(x=-1.0, z=-2.0, y=1.0), fieldOfView=90
-        )
+        self.controller.step("AddThirdPartyCamera",
+                             rotation=dict(x=0, y=0, z=90),
+                             position=dict(x=-1.0, z=-2.0, y=1.0),
+                             fieldOfView=90)
 
         # Get floor oid.
-        self.floor_oid = self.__get_nearest_object_matching_search_str("Floor")["objectId"]
+        self.floor_oid = self.__get_nearest_object_matching_search_str(
+            "Floor")["objectId"]
 
         time_end = time.time()
-        self.logger.info("Time to launch simulator: %s sec" % (time_end - time_start))
-        self.logger.debug("Launched world: %s; commander embodied: %s" % (world, str(self.commander_embodied)))
+        self.logger.info("Time to launch simulator: %s sec" %
+                         (time_end - time_start))
+        self.logger.debug("Launched world: %s; commander embodied: %s" %
+                          (world, str(self.commander_embodied)))
 
     def randomize_agent_positions(self):
         """
@@ -2422,29 +2748,36 @@ class SimulatorTHOR(SimulatorBase):
         target_points = None
         d = None
         while d is None or d <= self.grid_size * 2:
-            target_points = list(np.random.choice(all_points, size=2, replace=False))
-            d = np.linalg.norm([target_points[0][c] - target_points[1][c] for c in ["x", "z"]])
-        locs = [
-            {
-                "position": {
-                    "x": target_points[idx]["x"],
-                    "y": event.metadata["agent"]["position"]["y"],
-                    "z": target_points[idx]["z"],
-                },
-                "rotation": {
-                    "x": event.metadata["agent"]["rotation"]["x"],
-                    "y": self.__get_y_rot_from_xz(*[(-1, 0), (0, -1), (1, 0), (0, 1)][np.random.randint(0, 4)]),
-                    "z": event.metadata["agent"]["rotation"]["z"],
-                },
-                "cameraHorizon": event.metadata["agent"]["cameraHorizon"],
-            }
-            for idx in range(2)
-        ]
+            target_points = list(
+                np.random.choice(all_points, size=2, replace=False))
+            d = np.linalg.norm([
+                target_points[0][c] - target_points[1][c] for c in ["x", "z"]
+            ])
+        locs = [{
+            "position": {
+                "x": target_points[idx]["x"],
+                "y": event.metadata["agent"]["position"]["y"],
+                "z": target_points[idx]["z"],
+            },
+            "rotation": {
+                "x":
+                event.metadata["agent"]["rotation"]["x"],
+                "y":
+                self.__get_y_rot_from_xz(
+                    *[(-1, 0), (0, -1), (1, 0), (0,
+                                                 1)][np.random.randint(0, 4)]),
+                "z":
+                event.metadata["agent"]["rotation"]["z"],
+            },
+            "cameraHorizon": event.metadata["agent"]["cameraHorizon"],
+        } for idx in range(2)]
         return self.set_agent_poses(locs)
 
-    def randomize_scene_objects_locations(
-        self, n_placement_attempts=5, min_duplicates=1, max_duplicates=4, duplicate_overrides=None
-    ):
+    def randomize_scene_objects_locations(self,
+                                          n_placement_attempts=5,
+                                          min_duplicates=1,
+                                          max_duplicates=4,
+                                          duplicate_overrides=None):
         """
         Randomize the objects in the current scene.
         Resets the scene, so object states will not survive this call.
@@ -2457,20 +2790,18 @@ class SimulatorTHOR(SimulatorBase):
         otypes = set()
         for obj in self.get_objects(self.controller.last_event):
             otypes.add(obj["objectType"])
-        duplicates = [
-            {
-                "objectType": ot,
-                "count": np.random.randint(
-                    duplicate_overrides[ot]
-                    if duplicate_overrides is not None and ot in duplicate_overrides
-                    else min_duplicates,
-                    max(max_duplicates, duplicate_overrides[ot] + 1)
-                    if duplicate_overrides is not None and ot in duplicate_overrides
-                    else max_duplicates,
-                ),
-            }
-            for ot in otypes
-        ]
+        duplicates = [{
+            "objectType":
+            ot,
+            "count":
+            np.random.randint(
+                duplicate_overrides[ot] if duplicate_overrides is not None
+                and ot in duplicate_overrides else min_duplicates,
+                max(max_duplicates, duplicate_overrides[ot] +
+                    1) if duplicate_overrides is not None
+                and ot in duplicate_overrides else max_duplicates,
+            ),
+        } for ot in otypes]
         ac = dict(
             action="InitialRandomSpawn",
             randomSeed=np.random.randint(0, 1000),
@@ -2483,14 +2814,19 @@ class SimulatorTHOR(SimulatorBase):
         event = self.controller.step(ac)
 
         # Make objects unbreakable to prevent shattering plates, etc on Place that uses PutObjectAtPoint.
-        breakable_ots = list(set([obj["objectType"] for obj in self.get_objects() if obj["breakable"]]))
+        breakable_ots = list(
+            set([
+                obj["objectType"] for obj in self.get_objects()
+                if obj["breakable"]
+            ]))
         for ot in breakable_ots:
             ac = dict(action="MakeObjectsOfTypeUnbreakable", objectType=ot)
             if debug_print_all_sim_steps:
                 logger.info("step %s", ac)
             self.controller.step(ac)
 
-        return event.metadata["lastActionSuccess"], event.metadata["errorMessage"]
+        return event.metadata["lastActionSuccess"], event.metadata[
+            "errorMessage"]
 
     def randomize_scene_objects_states(self):
         """
@@ -2499,39 +2835,49 @@ class SimulatorTHOR(SimulatorBase):
         otypes_to_states = {}
         randomize_attrs = {
             "toggleable": ["isToggled", "ToggleObjectOn", "ToggleObjectOff"],
-            "canFillWithLiquid": ["isFilledWithLiquid", "FillObjectWithLiquid", "EmptyLiquidFromObject"],
+            "canFillWithLiquid": [
+                "isFilledWithLiquid", "FillObjectWithLiquid",
+                "EmptyLiquidFromObject"
+            ],
             "dirtyable": ["isDirty", "DirtyObject", "CleanObject"],
             "canBeUsedUp": ["isUsedUp", "UseUpObject", None],
         }
         for obj in self.get_objects(self.controller.last_event):
             ot = obj["objectType"]
             if ot not in otypes_to_states:
-                otypes_to_states[ot] = {attr for attr in randomize_attrs if obj[attr]}
+                otypes_to_states[ot] = {
+                    attr
+                    for attr in randomize_attrs if obj[attr]
+                }
         success = True
         msgs = []
         for obj in self.get_objects(self.controller.last_event):
             for attr in otypes_to_states[obj["objectType"]]:
                 state = np.random.random() < 0.5
                 if (state and randomize_attrs[attr][1] is not None) or (
-                    not state and randomize_attrs[attr][2] is not None
-                ):
+                        not state and randomize_attrs[attr][2] is not None):
                     if obj[randomize_attrs[attr][0]] != state:
                         action = dict(
-                            action=randomize_attrs[attr][1 if state else 2], objectId=obj["objectId"], forceAction=True
-                        )
+                            action=randomize_attrs[attr][1 if state else 2],
+                            objectId=obj["objectId"],
+                            forceAction=True)
                         if action["action"] == "FillObjectWithLiquid":
                             action["fillLiquid"] = "water"
                             # if obj['objectType'] == 'Mug':
                             #     continue
-                        if action["action"] == "ToggleObjectOn" and obj["breakable"] and obj["isBroken"]:
+                        if action["action"] == "ToggleObjectOn" and obj[
+                                "breakable"] and obj["isBroken"]:
                             continue  # e.g., if a laptop is broken, it cannot be turned on
                         if debug_print_all_sim_steps:
                             logger.info("step %s", action)
                         event = self.controller.step(action)
                         if not event.metadata["lastActionSuccess"]:
                             success = False
-                            msgs.append([action, event.metadata["errorMessage"]])
-        return success, "\n".join(["%s: %s" % (msgs[idx][0], msgs[idx][1]) for idx in range(len(msgs))])
+                            msgs.append(
+                                [action, event.metadata["errorMessage"]])
+        return success, "\n".join([
+            "%s: %s" % (msgs[idx][0], msgs[idx][1]) for idx in range(len(msgs))
+        ])
 
     def get_scene_object_locs_and_states(self):
         """
@@ -2547,7 +2893,10 @@ class SimulatorTHOR(SimulatorBase):
                 self.controller.last_event.metadata["thirdPartyCameras"][0],
                 self.controller.last_event.metadata["agent"],
             ]
-        return {"objects": self.get_objects(self.controller.last_event), "agents": a}
+        return {
+            "objects": self.get_objects(self.controller.last_event),
+            "agents": a
+        }
 
     def restore_scene_object_locs_and_states(self, objs):
         """
@@ -2561,17 +2910,19 @@ class SimulatorTHOR(SimulatorBase):
         scene_objs = self.get_objects()
         for obj in objs:
             if obj["pickupable"] or obj["moveable"]:
-                obj_name = obj["name"][: obj["name"].index("(") if "(" in obj["name"] else len(obj["name"])]
-                if np.any(
-                    [
-                        obj_name
-                        == s_obj["name"][: s_obj["name"].index("(") if "(" in s_obj["name"] else len(s_obj["name"])]
+                obj_name = obj["name"][:obj["name"].index("(") if "(" in
+                                       obj["name"] else len(obj["name"])]
+                if np.any([
+                        obj_name == s_obj["name"]
+                    [:s_obj["name"].index("(") if "(" in
+                     s_obj["name"] else len(s_obj["name"])]
                         for s_obj in scene_objs
-                    ]
-                ):
-                    object_poses.append(
-                        {"objectName": obj_name, "rotation": dict(obj["rotation"]), "position": dict(obj["position"])}
-                    )
+                ]):
+                    object_poses.append({
+                        "objectName": obj_name,
+                        "rotation": dict(obj["rotation"]),
+                        "position": dict(obj["position"])
+                    })
         action = dict(
             action="SetObjectPoses",
             # cut off "(Copy)..." from object name
@@ -2587,7 +2938,10 @@ class SimulatorTHOR(SimulatorBase):
         # Restore object states.
         restore_attrs = {
             "toggleable": ["isToggled", "ToggleObjectOn", "ToggleObjectOff"],
-            "canFillWithLiquid": ["isFilledWithLiquid", "FillObjectWithLiquid", "EmptyLiquidFromObject"],
+            "canFillWithLiquid": [
+                "isFilledWithLiquid", "FillObjectWithLiquid",
+                "EmptyLiquidFromObject"
+            ],
             "dirtyable": ["isDirty", "DirtyObject", "CleanObject"],
             "openable": ["isOpen", "OpenObject", "CloseObject"],
             "canBeUsedUp": ["isUsedUp", "UseUpObject", None],
@@ -2600,12 +2954,17 @@ class SimulatorTHOR(SimulatorBase):
             for attr in restore_attrs:
                 attr_state, attr_on, attr_off = restore_attrs[attr]
                 if obj[attr]:
-                    scene_obj = self.__get_object_by_id(scene_objs, obj["objectId"])
+                    scene_obj = self.__get_object_by_id(
+                        scene_objs, obj["objectId"])
                     if not scene_obj:
-                        scene_obj = self.__get_object_by_position(scene_objs, obj["position"])
+                        scene_obj = self.__get_object_by_position(
+                            scene_objs, obj["position"])
                     if scene_obj["objectType"] != obj["objectType"]:
                         success = False
-                        msgs.append(["restore states", "could not find scene obj for %s" % obj["objectId"]])
+                        msgs.append([
+                            "restore states",
+                            "could not find scene obj for %s" % obj["objectId"]
+                        ])
                         continue
                     if obj[attr_state] != scene_obj[attr_state]:
                         action = dict(
@@ -2615,14 +2974,14 @@ class SimulatorTHOR(SimulatorBase):
                         )
                         if action["action"] is None:
                             success = False
-                            msgs.append(
-                                [
-                                    "restore states",
-                                    "unable to take action to remedy object "
-                                    + "%s wants state %s=%s while scene obj has state %s"
-                                    % (obj["objectId"], attr_state, str(obj[attr_state]), str(scene_obj[attr_state])),
-                                ]
-                            )
+                            msgs.append([
+                                "restore states",
+                                "unable to take action to remedy object " +
+                                "%s wants state %s=%s while scene obj has state %s"
+                                % (obj["objectId"], attr_state,
+                                   str(obj[attr_state]),
+                                   str(scene_obj[attr_state])),
+                            ])
                             continue
                         if action["action"] == "FillObjectWithLiquid":
                             action["fillLiquid"] = "water"
@@ -2631,15 +2990,19 @@ class SimulatorTHOR(SimulatorBase):
                         event = self.controller.step(action)
                         if not event.metadata["lastActionSuccess"]:
                             success = False
-                            msgs.append([action, event.metadata["errorMessage"]])
+                            msgs.append(
+                                [action, event.metadata["errorMessage"]])
 
-        return success, "\n".join(["%s: %s" % (msgs[idx][0], msgs[idx][1]) for idx in range(len(msgs))])
+        return success, "\n".join([
+            "%s: %s" % (msgs[idx][0], msgs[idx][1]) for idx in range(len(msgs))
+        ])
 
     def restore_initial_state(self):
         """
         Reset the simulator to initial state of current episode
         """
-        _, succ = self.load_scene_state(init_state=self.current_episode.initial_state)
+        _, succ = self.load_scene_state(
+            init_state=self.current_episode.initial_state)
         return succ
 
     def load_scene_state(self, fn=None, init_state=None):
@@ -2649,9 +3012,14 @@ class SimulatorTHOR(SimulatorBase):
         :param init_state: Valid initial state to initialize simulator with; must be an instance of class
         Initialization in dataset.py
         """
-        loaded_fn, succ = super().load_scene_state(fn=fn, init_state=init_state)
+        loaded_fn, succ = super().load_scene_state(fn=fn,
+                                                   init_state=init_state)
         # Make objects unbreakable to prevent shattering plates, etc on Place that uses PutObjectAtPoint.
-        breakable_ots = list(set([obj["objectType"] for obj in self.get_objects() if obj["breakable"]]))
+        breakable_ots = list(
+            set([
+                obj["objectType"] for obj in self.get_objects()
+                if obj["breakable"]
+            ]))
         for ot in breakable_ots:
             ac = dict(action="MakeObjectsOfTypeUnbreakable", objectType=ot)
             if debug_print_all_sim_steps:
@@ -2679,7 +3047,11 @@ class SimulatorTHOR(SimulatorBase):
             custom_object_metadata=self.__custom_object_metadata,
         )
 
-    def __get_object_by_position(self, m, pos, obj_type=None, ignore_object_ids=None):
+    def __get_object_by_position(self,
+                                 m,
+                                 pos,
+                                 obj_type=None,
+                                 ignore_object_ids=None):
         """
         Get the object closet to the given position.
         :param m: output of get_objects()
@@ -2688,11 +3060,18 @@ class SimulatorTHOR(SimulatorBase):
         """
         o = None
         d = None
-        for obj in [_obj for _obj in m if obj_type is None or _obj["objectType"] == obj_type]:
-            if ignore_object_ids is not None and obj["objectId"] in ignore_object_ids:
+        for obj in [
+                _obj for _obj in m
+                if obj_type is None or _obj["objectType"] == obj_type
+        ]:
+            if ignore_object_ids is not None and obj[
+                    "objectId"] in ignore_object_ids:
                 continue
             obj_pos = obj["position"]
-            _d = np.linalg.norm([pos["x"] - obj_pos["x"], pos["y"] - obj_pos["y"], pos["z"] - obj_pos["z"]])
+            _d = np.linalg.norm([
+                pos["x"] - obj_pos["x"], pos["y"] - obj_pos["y"],
+                pos["z"] - obj_pos["z"]
+            ])
             if d is None or _d < d:
                 d = _d
                 o = obj
@@ -2724,9 +3103,9 @@ class SimulatorTHOR(SimulatorBase):
                     x=locs[idx]["position"]["x"],
                     y=locs[idx]["position"]["y"],
                     z=locs[idx]["position"]["z"],
-                    rotation=dict(
-                        x=locs[idx]["rotation"]["x"], y=locs[idx]["rotation"]["y"], z=locs[idx]["rotation"]["z"]
-                    ),
+                    rotation=dict(x=locs[idx]["rotation"]["x"],
+                                  y=locs[idx]["rotation"]["y"],
+                                  z=locs[idx]["rotation"]["z"]),
                     horizon=locs[idx]["cameraHorizon"],
                 )
                 if debug_print_all_sim_steps:
@@ -2734,13 +3113,18 @@ class SimulatorTHOR(SimulatorBase):
                 event = self.controller.step(action)
                 if not event.metadata["lastActionSuccess"]:
                     success = False
-                    msgs.append([action["action"], event.metadata["errorMessage"]])
+                    msgs.append(
+                        [action["action"], event.metadata["errorMessage"]])
         else:
             action = dict(
                 action="UpdateThirdPartyCamera",
                 thirdPartyCameraId=0,
-                rotation=dict(x=locs[0]["rotation"]["x"], y=locs[0]["rotation"]["y"], z=locs[0]["rotation"]["z"]),
-                position=dict(x=locs[0]["position"]["x"], y=locs[0]["position"]["y"], z=locs[0]["position"]["z"]),
+                rotation=dict(x=locs[0]["rotation"]["x"],
+                              y=locs[0]["rotation"]["y"],
+                              z=locs[0]["rotation"]["z"]),
+                position=dict(x=locs[0]["position"]["x"],
+                              y=locs[0]["position"]["y"],
+                              z=locs[0]["position"]["z"]),
             )
             if debug_print_all_sim_steps:
                 logger.info("step %s", action)
@@ -2753,7 +3137,9 @@ class SimulatorTHOR(SimulatorBase):
                 x=locs[1]["position"]["x"],
                 y=locs[1]["position"]["y"],
                 z=locs[1]["position"]["z"],
-                rotation=dict(x=locs[1]["rotation"]["x"], y=locs[1]["rotation"]["y"], z=locs[1]["rotation"]["z"]),
+                rotation=dict(x=locs[1]["rotation"]["x"],
+                              y=locs[1]["rotation"]["y"],
+                              z=locs[1]["rotation"]["z"]),
                 horizon=locs[1]["cameraHorizon"],
             )
             if debug_print_all_sim_steps:
@@ -2762,4 +3148,6 @@ class SimulatorTHOR(SimulatorBase):
             if not event.metadata["lastActionSuccess"]:
                 success = False
                 msgs.append([action["action"], event.metadata["errorMessage"]])
-        return success, "\n".join(["%s: %s" % (msgs[idx][0], msgs[idx][1]) for idx in range(len(msgs))])
+        return success, "\n".join([
+            "%s: %s" % (msgs[idx][0], msgs[idx][1]) for idx in range(len(msgs))
+        ])

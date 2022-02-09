@@ -9,6 +9,7 @@ from teach.logger import create_logger
 
 # logger = create_logger(__name__, level=logging.INFO)
 
+
 class TATCDataset(BaseDataset):
     def __init__(self, name, partition, args, ann_type):
         super().__init__(name, partition, args, ann_type)
@@ -16,7 +17,8 @@ class TATCDataset(BaseDataset):
         self._load_features = True
         self._load_frames = True
         # load the vocabulary for object classes
-        vocab_obj_file = os.path.join(constants.ET_ROOT, constants.OBJ_CLS_VOCAB)
+        vocab_obj_file = os.path.join(constants.ET_ROOT,
+                                      constants.OBJ_CLS_VOCAB)
         # logger.info("Loading object vocab from %s" % vocab_obj_file)
         self.vocab_obj = torch.load(vocab_obj_file)
 
@@ -33,7 +35,9 @@ class TATCDataset(BaseDataset):
 
         # Add a stop action and duplicate the last frame
         feat_dict["action"].append(self.vocab_out.word2index("Stop"))
-        feat_dict["frames"] = torch.cat((feat_dict["frames"], torch.unsqueeze(feat_dict["frames"][-1, :], 0)), 0)
+        feat_dict["frames"] = torch.cat(
+            (feat_dict["frames"], torch.unsqueeze(feat_dict["frames"][-1, :],
+                                                  0)), 0)
         # import ipdb; ipdb.set_trace()
         # feat_dict["obj_interaction_action"].append(0)
         # feat_dict["driver_actions_pred_mask"].append(0)
@@ -61,7 +65,8 @@ class TATCDataset(BaseDataset):
             #     a["obj_interaction_action"] for a in task_json["num"]["driver_actions_low"]
             # ]
             # feat["driver_actions_pred_mask"] = task_json["num"]["driver_actions_pred_mask"]
-            feat["object"] = self.load_object_classes(task_json, self.vocab_obj)
+            feat["object"] = self.load_object_classes(task_json,
+                                                      self.vocab_obj)
 
         return feat
 
@@ -80,20 +85,29 @@ class TATCDataset(BaseDataset):
         """
         if action_type == "action_low":
             # load low actions
-            lang_action = [[vocab_orig.word2index(a["action_name"]) for a in task_json["num"]["driver_actions_low"]]]
+            lang_action = [[
+                vocab_orig.word2index(a["action_name"])
+                for a in task_json["num"]["driver_actions_low"]
+            ]]
             # lang_action = [a['action_id'] for a in task_json["tasks"][0]["episodes"][0]["interactions"]]
             lang_action = sum(lang_action, [])
         elif action_type == "action_high_future":
             if "future_subgoals" in task_json:
-                lang_action = [vocab_orig.word2index(w) for w in task_json["future_subgoals"]]
+                lang_action = [
+                    vocab_orig.word2index(w)
+                    for w in task_json["future_subgoals"]
+                ]
             else:
                 lang_action = [0]
         elif action_type == "action_high_all":
             lang_action = [
-                vocab_orig.word2index(w) for w in task_json["history_subgoals"] + task_json["future_subgoals"]
+                vocab_orig.word2index(w)
+                for w in task_json["history_subgoals"] +
+                task_json["future_subgoals"]
             ]
         else:
-            raise NotImplementedError("Unknown action_type {}".format(action_type))
+            raise NotImplementedError(
+                "Unknown action_type {}".format(action_type))
         return lang_action
 
     def load_object_classes(self, task_json, vocab=None):
@@ -102,10 +116,12 @@ class TATCDataset(BaseDataset):
         """
         object_classes = []
         # import ipdb; ipdb.set_trace()
-        for idx, action in enumerate(task_json["tasks"][0]["episodes"][0]["interactions"]):
-        # for idx, action in enumerate(task_json["num"]["driver_actions_low"]):
+        for idx, action in enumerate(
+                task_json["tasks"][0]["episodes"][0]["interactions"]):
+            # for idx, action in enumerate(task_json["num"]["driver_actions_low"]):
             # if self.args.compute_train_loss_over_history or task_json["num"]["driver_actions_pred_mask"][idx] == 1:
             if "oid" in action and action["oid"] is not None:
                 object_class = action["oid"].split("|")[0]
-                object_classes.append(object_class if vocab is None else vocab.word2index(object_class))
+                object_classes.append(object_class if vocab is None else vocab.
+                                      word2index(object_class))
         return object_classes

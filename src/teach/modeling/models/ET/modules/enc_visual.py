@@ -21,20 +21,28 @@ class Resnet18(nn.Module):
     """
     pretrained Resnet18 from torchvision
     """
-
     def __init__(self, device, checkpoint_path=None, share_memory=False):
         super().__init__()
         self.device = device
         self.model = models.resnet18(pretrained=True)
         self.model = nn.Sequential(*list(self.model.children())[:-2])
         if checkpoint_path is not None:
-            logger.info("Loading ResNet checkpoint from {}".format(checkpoint_path))
+            logger.info(
+                "Loading ResNet checkpoint from {}".format(checkpoint_path))
             model_state_dict = torch.load(checkpoint_path, map_location=device)
             model_state_dict = {
-                key: value for key, value in model_state_dict.items() if "GU_" not in key and "text_pooling" not in key
+                key: value
+                for key, value in model_state_dict.items()
+                if "GU_" not in key and "text_pooling" not in key
             }
-            model_state_dict = {key: value for key, value in model_state_dict.items() if "fc." not in key}
-            model_state_dict = {key.replace("resnet.", ""): value for key, value in model_state_dict.items()}
+            model_state_dict = {
+                key: value
+                for key, value in model_state_dict.items() if "fc." not in key
+            }
+            model_state_dict = {
+                key.replace("resnet.", ""): value
+                for key, value in model_state_dict.items()
+            }
             self.model.load_state_dict(model_state_dict)
         self.model = self.model.to(torch.device(device))
         self.model = self.model.eval()
@@ -51,7 +59,6 @@ class RCNN(nn.Module):
     """
     pretrained FasterRCNN or MaskRCNN from torchvision
     """
-
     def __init__(
         self,
         archi,
@@ -87,20 +94,27 @@ class RCNN(nn.Module):
                 self.model = getattr(self.model, attr)
 
         if checkpoint_path is not None:
-            self.load_from_checkpoint(checkpoint_path, load_heads, device, archi, "backbone.body")
+            self.load_from_checkpoint(checkpoint_path, load_heads, device,
+                                      archi, "backbone.body")
         self.model = self.model.to(torch.device(device))
         self.model = self.model.eval()
         if share_memory:
             self.model.share_memory()
         if load_heads:
             # if the model is used for predictions, prepare a vocabulary
-            self.vocab_pred = {i: class_name for i, class_name in enumerate(constants.OBJECTS_ACTIONS)}
+            self.vocab_pred = {
+                i: class_name
+                for i, class_name in enumerate(constants.OBJECTS_ACTIONS)
+            }
 
     def extract(self, images):
-        if isinstance(self._transform, models.detection.transform.GeneralizedRCNNTransform):
-            images_normalized = self._transform(torch.stack([F.to_tensor(img) for img in images]))[0].tensors
+        if isinstance(self._transform,
+                      models.detection.transform.GeneralizedRCNNTransform):
+            images_normalized = self._transform(
+                torch.stack([F.to_tensor(img) for img in images]))[0].tensors
         else:
-            images_normalized = torch.stack([self._transform(img) for img in images])
+            images_normalized = torch.stack(
+                [self._transform(img) for img in images])
         images_normalized = images_normalized.to(torch.device(self.device))
         model_body = self.model
         if hasattr(self.model, "backbone"):
@@ -108,24 +122,29 @@ class RCNN(nn.Module):
         features = model_body(images_normalized)
         return features[self.feat_layer]
 
-    def load_from_checkpoint(self, checkpoint_path, load_heads, device, archi, prefix):
+    def load_from_checkpoint(self, checkpoint_path, load_heads, device, archi,
+                             prefix):
         logger.info("Loading RCNN checkpoint from {}".format(checkpoint_path))
         state_dict = torch.load(checkpoint_path, map_location=device)
         if not load_heads:
             # load only the backbone
-            state_dict = {k.replace(prefix + ".", ""): v for k, v in state_dict.items() if prefix + "." in k}
+            state_dict = {
+                k.replace(prefix + ".", ""): v
+                for k, v in state_dict.items() if prefix + "." in k
+            }
         else:
             # load a full model, replace pre-trained head(s) with (a) new one(s)
-            num_classes, in_features = state_dict["roi_heads.box_predictor.cls_score.weight"].shape
-            box_predictor = models.detection.faster_rcnn.FastRCNNPredictor(in_features, num_classes)
+            num_classes, in_features = state_dict[
+                "roi_heads.box_predictor.cls_score.weight"].shape
+            box_predictor = models.detection.faster_rcnn.FastRCNNPredictor(
+                in_features, num_classes)
             self.model.roi_heads.box_predictor = box_predictor
             if archi == "maskrcnn":
                 # and replace the mask predictor with a new one
                 in_features_mask = self.model.roi_heads.mask_predictor.conv5_mask.in_channels
                 hidden_layer = 256
                 mask_predictor = models.detection.mask_rcnn.MaskRCNNPredictor(
-                    in_features_mask, hidden_layer, num_classes
-                )
+                    in_features_mask, hidden_layer, num_classes)
                 self.model.roi_heads.mask_predictor = mask_predictor
         self.model.load_state_dict(state_dict)
 
@@ -165,17 +184,23 @@ class FeatureExtractor(nn.Module):
             assert not load_heads
             self.model = Resnet18(device, checkpoint, share_memory)
         else:
-            self.model = RCNN(archi, device, checkpoint, share_memory, load_heads=load_heads)
+            self.model = RCNN(archi,
+                              device,
+                              checkpoint,
+                              share_memory,
+                              load_heads=load_heads)
         self.compress_type = compress_type
         # load object class vocabulary
-        vocab_obj_path = os.path.join(constants.MODEL_ROOT, constants.OBJ_CLS_VOCAB)
+        vocab_obj_path = os.path.join(constants.MODEL_ROOT,
+                                      constants.OBJ_CLS_VOCAB)
         self.vocab_obj = torch.load(vocab_obj_path)
 
     def featurize(self, images, batch=32):
         feats = []
-        with (torch.set_grad_enabled(False) if not self.model.model.training else contextlib.nullcontext()):
+        with (torch.set_grad_enabled(False)
+              if not self.model.model.training else contextlib.nullcontext()):
             for i in range(0, len(images), batch):
-                images_batch = images[i : i + batch]
+                images_batch = images[i:i + batch]
                 feats.append(self.model.extract(images_batch))
         feat = torch.cat(feats, dim=0)
         if self.compress_type is not None:
@@ -199,13 +224,18 @@ class FeatureFlat(nn.Module):
     """
     a few conv layers to flatten features that come out of ResNet
     """
-
     def __init__(self, input_shape, output_size):
         super().__init__()
         if input_shape[0] == -1:
             input_shape = input_shape[1:]
-        layers, activation_shape = self.init_cnn(input_shape, channels=[256, 64], kernels=[1, 1], paddings=[0, 0])
-        layers += [Flatten(), nn.Linear(np.prod(activation_shape), output_size)]
+        layers, activation_shape = self.init_cnn(input_shape,
+                                                 channels=[256, 64],
+                                                 kernels=[1, 1],
+                                                 paddings=[0, 0])
+        layers += [
+            Flatten(),
+            nn.Linear(np.prod(activation_shape), output_size)
+        ]
         self.layers = nn.Sequential(*layers)
 
     def init_cnn(self, input_shape, channels, kernels, paddings):

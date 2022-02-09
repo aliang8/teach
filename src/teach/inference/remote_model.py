@@ -29,12 +29,15 @@ class RemoteModelException(Exception):
 def assign_api_by_process_idx(host_and_ports, process_index):
     splits = host_and_ports.split(",")
     if process_index >= len(splits):
-        raise RemoteModelException(f"process_index={process_index} can't be handled by available APIs:{splits}")
+        raise RemoteModelException(
+            f"process_index={process_index} can't be handled by available APIs:{splits}"
+        )
     return splits[process_index].strip()
 
 
 class RemoteModel(TeachModel):
-    def __init__(self, process_index: int, num_processes: int, model_args: List[str]):
+    def __init__(self, process_index: int, num_processes: int,
+                 model_args: List[str]):
 
         parser = ArgumentParser()
         parser.add_argument(
@@ -45,12 +48,19 @@ class RemoteModel(TeachModel):
         )
         args = parser.parse_args(model_args)
 
-        host_and_port = assign_api_by_process_idx(args.model_api_host_and_port, process_index)
+        host_and_port = assign_api_by_process_idx(args.model_api_host_and_port,
+                                                  process_index)
         self.test_url = TEACH_MODEL_API_URL_TEST.format(host_and_port)
         self.predict_url = TEACH_MODEL_API_URL_PREDICT.format(host_and_port)
-        self.start_edh_url = TEACH_MODEL_API_URL_START_EDH.format(host_and_port)
+        self.start_edh_url = TEACH_MODEL_API_URL_START_EDH.format(
+            host_and_port)
 
-    def get_next_action(self, img, edh_instance, prev_action, img_name=None, edh_name=None):
+    def get_next_action(self,
+                        img,
+                        edh_instance,
+                        prev_action,
+                        img_name=None,
+                        edh_name=None):
         if not img or not edh_instance:
             logger.warning("either img or edh_instance is None")
             return None, None
@@ -64,7 +74,10 @@ class RemoteModel(TeachModel):
             "edh_instance": json.dumps(edh_instance),
         }
 
-        resp = requests.post(self.predict_url, data=data, files={"img": (img_name, img_in_memory, "image/jpeg")})
+        resp = requests.post(
+            self.predict_url,
+            data=data,
+            files={"img": (img_name, img_in_memory, "image/jpeg")})
 
         if resp.status_code != 200:
             logger.debug(f"failed sending data={data}")
@@ -79,7 +92,10 @@ class RemoteModel(TeachModel):
         resp = requests.get(self.test_url)
         return resp.status_code == 200
 
-    def start_new_edh_instance(self, edh_instance, edh_history_images, edh_name=None):
+    def start_new_edh_instance(self,
+                               edh_instance,
+                               edh_history_images,
+                               edh_name=None):
         images = []
         if edh_history_images:
             idx = 0
@@ -87,7 +103,8 @@ class RemoteModel(TeachModel):
                 img_in_memory = BytesIO()
                 image.save(img_in_memory, "jpeg")
                 img_in_memory.seek(0)
-                images.append(("edh_history_images", (f"history{idx}", img_in_memory, "image/jpeg")))
+                images.append(("edh_history_images",
+                               (f"history{idx}", img_in_memory, "image/jpeg")))
                 idx += 1
 
         data = {"edh_name": edh_name, "edh_instance": json.dumps(edh_instance)}

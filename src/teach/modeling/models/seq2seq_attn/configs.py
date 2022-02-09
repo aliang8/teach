@@ -5,6 +5,7 @@ seq2seq_ingredient = Ingredient("seq2seq")
 
 SETTINGS.CONFIG.READ_ONLY_CONFIG = False
 
+
 @seq2seq_ingredient.config
 def cfg_seq2seq():
     # GENERAL TRANING SETTINGS
@@ -63,13 +64,13 @@ def cfg_seq2seq():
     # Should train loss be computed over history actions? (default False)
     compute_train_loss_over_history = False
 
-    # language embedding size    
-    demb = 768 
+    # language embedding size
+    demb = 768
     # hidden layer size
     dhid = 512
     # image feature vec size
     dframe = 2500
-    
+
     # dropout rate for attention
     attn_dropout = 0
     # dropout rate for actor fc

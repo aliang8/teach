@@ -25,7 +25,7 @@
       "primary_condition": "objectType",
       "instance_shareable": true,
       "conditions": {
-          "objectType": "Spatula"
+        "objectType": "Spatula"
       },
       "condition_failure_descs": {}
     },
@@ -34,8 +34,8 @@
       "primary_condition": "objectType",
       "instance_shareable": true,
       "conditions": {
-          "objectType": "Drawer",
-          "receptacle": 1
+        "objectType": "Drawer",
+        "receptacle": 1
       },
       "condition_failure_descs": {}
     }
@@ -43,10 +43,18 @@
   "relations": [
     {
       "property": "parentReceptacles",
-      "tail_entity_list": ["drawer"],
-      "tail_determiner_list": ["a"],
-      "head_entity_list": ["spatula"],
-      "head_determiner_list": ["a"],
+      "tail_entity_list": [
+        "drawer"
+      ],
+      "tail_determiner_list": [
+        "a"
+      ],
+      "head_entity_list": [
+        "spatula"
+      ],
+      "head_determiner_list": [
+        "a"
+      ],
       "failure_desc": "The spatula needs to be in a drawer."
     }
   ]

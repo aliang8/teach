@@ -33,16 +33,23 @@ def read_traj_images(json_path, image_folder):
     with open(json_path) as json_file:
         json_dict = json.load(json_file)
 
-    images_dir = json_path.parents[2] / image_folder / json_path.parts[-2] / json_path.parts[-1].split(".")[0]
+    images_dir = json_path.parents[2] / image_folder / json_path.parts[
+        -2] / json_path.parts[-1].split(".")[0]
 
     interactions = json_dict["tasks"][0]["episodes"][0]["interactions"]
-    commander_images = [interactions[i]["commander_obs"] for i in range(len(interactions))]
-    driver_images = [interactions[i]["driver_obs"] for i in range(len(interactions))]
+    commander_images = [
+        interactions[i]["commander_obs"] for i in range(len(interactions))
+    ]
+    driver_images = [
+        interactions[i]["driver_obs"] for i in range(len(interactions))
+    ]
 
     # fimages = [images_dir / im for im in json_dict["driver_image_history"] + json_dict["driver_images_future"]]
     logger.debug("Loading images from %s" % images_dir)
-    logger.debug("Expected commander image files: %s" % "\n\t".join([str(x) for x in commander_images]))
-    logger.debug("Expected driver image files: %s" % "\n\t".join([str(x) for x in driver_images]))
+    logger.debug("Expected commander image files: %s" %
+                 "\n\t".join([str(x) for x in commander_images]))
+    logger.debug("Expected driver image files: %s" %
+                 "\n\t".join([str(x) for x in driver_images]))
 
     if not all([os.path.exists(path) for path in commander_images]):
         return None
@@ -75,20 +82,27 @@ def process_traj(traj_orig, traj_path, r_idx, preprocessor):
     preprocessor.process_actions(traj_orig, traj)
     # numericalize language
     if "test" in partition:
-        preprocessor.process_language(traj_orig, traj, r_idx, is_test_split=True)
+        preprocessor.process_language(traj_orig,
+                                      traj,
+                                      r_idx,
+                                      is_test_split=True)
     else:
-        preprocessor.process_language(traj_orig, traj, r_idx, is_test_split=False)
+        preprocessor.process_language(traj_orig,
+                                      traj,
+                                      r_idx,
+                                      is_test_split=False)
     return traj
 
 
 def gather_feats(files, output_path):
     if output_path.is_dir():
         shutil.rmtree(output_path)
-    lmdb_feats = lmdb.open(str(output_path), 700 * 1024 ** 3, writemap=True)
+    lmdb_feats = lmdb.open(str(output_path), 700 * 1024**3, writemap=True)
     with lmdb_feats.begin(write=True) as txn_feats:
         for idx, path in tqdm(enumerate(files)):
             traj_feats = torch.load(path).numpy()
-            txn_feats.put("{:06}".format(idx).encode("ascii"), traj_feats.tobytes())
+            txn_feats.put("{:06}".format(idx).encode("ascii"),
+                          traj_feats.tobytes())
     lmdb_feats.close()
 
 
@@ -104,7 +118,11 @@ def gather_jsons(files, output_path):
         pickle.dump(jsons, f)
 
 
-def get_preprocessor(PreprocessorClass, subgoal_ann, lock, vocab_path=None, task_type="edh"):
+def get_preprocessor(PreprocessorClass,
+                     subgoal_ann,
+                     lock,
+                     vocab_path=None,
+                     task_type="edh"):
     if vocab_path is None:
         init_words = ["<<pad>>", "<<seg>>", "<<goal>>", "<<mask>>"]
     else:
@@ -159,10 +177,14 @@ def get_preprocessor(PreprocessorClass, subgoal_ann, lock, vocab_path=None, task
     if task_type == "tfd":
         actions_low_init_words.append("Text")
 
-    vocabs_with_lock["action_low"] = helper_util.VocabWithLock(actions_low_init_words, lock)
-    vocabs_with_lock["action_high"] = helper_util.VocabWithLock(actions_high_init_words, lock)
-    vocab_obj = torch.load(os.path.join(constants.ET_ROOT, constants.OBJ_CLS_VOCAB)).to_dict()
-    logger.debug("In get_preprocessor, vocab_obj = %s" % vocab_obj["index2word"])
+    vocabs_with_lock["action_low"] = helper_util.VocabWithLock(
+        actions_low_init_words, lock)
+    vocabs_with_lock["action_high"] = helper_util.VocabWithLock(
+        actions_high_init_words, lock)
+    vocab_obj = torch.load(
+        os.path.join(constants.ET_ROOT, constants.OBJ_CLS_VOCAB)).to_dict()
+    logger.debug("In get_preprocessor, vocab_obj = %s" %
+                 vocab_obj["index2word"])
     for _i, w in enumerate(vocab_obj["index2word"]):
         vocabs_with_lock["action_high"].word2index(w, train=True)
         vocabs_with_lock["action_high"].counts[w] = vocab_obj["counts"][w]
@@ -185,32 +207,44 @@ def tensorize_and_pad(batch, device, pad):
     # the rest of the keys will be assigned to gt_dict
 
     for k, v in feat_dict.items():
-        dict_assign = input_dict if any([k.startswith(s) for s in input_keys]) else gt_dict
+        dict_assign = input_dict if any([k.startswith(s)
+                                         for s in input_keys]) else gt_dict
         if k.startswith("lang"):
             # no preprocessing should be done here
-            seqs = [torch.tensor(vv if vv is not None else [pad, pad], device=device).long() for vv in v]
+            seqs = [
+                torch.tensor(vv if vv is not None else [pad, pad],
+                             device=device).long() for vv in v
+            ]
             pad_seq = pad_sequence(seqs, batch_first=True, padding_value=pad)
             dict_assign[k] = pad_seq
             dict_assign["lengths_" + k] = torch.tensor(list(map(len, seqs)))
             length_max_key = "length_" + k + "_max"
             if ":" in k:
                 # for translated length keys (e.g. lang:lmdb/1x_det) we should use different names
-                length_max_key = "length_" + k.split(":")[0] + "_max:" + ":".join(k.split(":")[1:])
+                length_max_key = "length_" + k.split(
+                    ":")[0] + "_max:" + ":".join(k.split(":")[1:])
             dict_assign[length_max_key] = max(map(len, seqs))
         elif k in {"object"}:
             # convert lists with object indices to tensors
-            seqs = [torch.tensor(vv, device=device, dtype=torch.long) for vv in v if len(vv) > 0]
+            seqs = [
+                torch.tensor(vv, device=device, dtype=torch.long) for vv in v
+                if len(vv) > 0
+            ]
             dict_assign[k] = seqs
         elif k in {"frames"}:
             # frames features were loaded from the disk as tensors
-            seqs = [vv.clone().detach().to(device).type(torch.float) for vv in v]
+            seqs = [
+                vv.clone().detach().to(device).type(torch.float) for vv in v
+            ]
             pad_seq = pad_sequence(seqs, batch_first=True, padding_value=pad)
             dict_assign[k] = pad_seq
             dict_assign["lengths_" + k] = torch.tensor(list(map(len, seqs)))
             dict_assign["length_" + k + "_max"] = max(map(len, seqs))
         else:
             # default: tensorize and pad sequence
-            seqs = [torch.tensor(vv, device=device, dtype=torch.long) for vv in v]
+            seqs = [
+                torch.tensor(vv, device=device, dtype=torch.long) for vv in v
+            ]
             pad_seq = pad_sequence(seqs, batch_first=True, padding_value=pad)
             dict_assign[k] = pad_seq
     return traj_data, input_dict, gt_dict
@@ -227,7 +261,8 @@ def sample_batches(iterators, device, pad, args):
         except StopIteration as e:
             return None
         dataset_name = dataset_id.split(":")[1]
-        traj_data, input_dict, gt_dict = tensorize_and_pad(batches, device, pad)
+        traj_data, input_dict, gt_dict = tensorize_and_pad(
+            batches, device, pad)
         batches_dict[dataset_name] = (traj_data, input_dict, gt_dict)
     return batches_dict
 
@@ -274,7 +309,8 @@ def get_feat_shape(visual_archi, compress_type=None):
 
     if compress_type is not None:
         if not re.match(r"\d+x", compress_type):
-            raise NotImplementedError("Unknown compress type {}".format(compress_type))
+            raise NotImplementedError(
+                "Unknown compress type {}".format(compress_type))
         compress_times = int(compress_type[:-1])
         feat_shape = (
             feat_shape[0],
@@ -292,7 +328,8 @@ def feat_compress(feat, compress_type):
     assert re.match(r"\d+x", compress_type) and len(feat.shape) == 4
     times = int(compress_type[:-1])
     assert feat.shape[1] % times == 0
-    feat = feat.reshape((feat.shape[0], times, feat.shape[1] // times, feat.shape[2], feat.shape[3]))
+    feat = feat.reshape((feat.shape[0], times, feat.shape[1] // times,
+                         feat.shape[2], feat.shape[3]))
     feat = feat.mean(dim=1)
     return feat
 
@@ -312,7 +349,8 @@ def read_dataset_info_for_inference(model_dir):
     Read dataset a feature shape and a feature extractor checkpoint path from file stored in model checkpoint
     """
     path = os.path.join(model_dir, "params.json")
-    logger.info("Reading dataset info from %s for model dir %s" % (path, model_dir))
+    logger.info("Reading dataset info from %s for model dir %s" %
+                (path, model_dir))
     with open(path, "r") as f_params:
         params = json.load(f_params)
     return params

@@ -26,7 +26,10 @@ def adjust_lr(args, epoch, schedulers):
         schedulers["warmup"].step()
 
 
-def create_optimizer_and_schedulers(first_epoch, args, parameters, optimizer=None):
+def create_optimizer_and_schedulers(first_epoch,
+                                    args,
+                                    parameters,
+                                    optimizer=None):
     """
     create a scheduler for the learning rate
     """
@@ -37,17 +40,21 @@ def create_optimizer_and_schedulers(first_epoch, args, parameters, optimizer=Non
     if optimizer is None:
         assert args.optimizer in ("adam", "adamw")
         OptimizerClass = torch.optim.Adam if args.optimizer == "adam" else torch.optim.AdamW
-        optimizer = OptimizerClass(parameters, lr=init_lr, weight_decay=args.weight_decay)
+        optimizer = OptimizerClass(parameters,
+                                   lr=init_lr,
+                                   weight_decay=args.weight_decay)
     else:
         for param_group in optimizer.param_groups:
             param_group["lr"] = init_lr
 
     # create a learning rate scheduler
-    assert args.lr["profile"] in ("linear", "cosine", "triangular", "triangular2")
+    assert args.lr["profile"] in ("linear", "cosine", "triangular",
+                                  "triangular2")
     if args.lr["profile"] == "linear":
         lr_scheduler = torch.optim.lr_scheduler.StepLR(
-            optimizer, gamma=args.lr["decay_scale"], step_size=args.lr["decay_epoch"]
-        )
+            optimizer,
+            gamma=args.lr["decay_scale"],
+            step_size=args.lr["decay_epoch"])
     elif args.lr["profile"] == "cosine":
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer,
@@ -71,7 +78,7 @@ def create_optimizer_and_schedulers(first_epoch, args, parameters, optimizer=Non
     if args.lr["warmup_epoch"]:
         warmup_scheduler = torch.optim.lr_scheduler.ExponentialLR(
             optimizer,
-            gamma=(1 / args.lr["warmup_scale"] ** (1 / args.lr["warmup_epoch"])),
+            gamma=(1 / args.lr["warmup_scale"]**(1 / args.lr["warmup_epoch"])),
         )
 
     # in case if we start not from the first epoch, fastforward the scheduler
@@ -90,9 +97,10 @@ def load_model(model_name, fsave, device, check_epoch=None, test_mode=False):
     logger.info("Loading from {} to {}".format(fsave, device))
     save = torch.load(fsave, map_location=device)
     save["args"]["model_dir"] = os.path.dirname(fsave)
-    
+
     if model_name == "seq2seq":
-        model_cls = import_module("modeling.models.seq2seq_attn.seq2seq_attn").Module
+        model_cls = import_module(
+            "modeling.models.seq2seq_attn.seq2seq_attn").Module
     else:
         model_cls = import_module("alfred.model.learned").LearnedModel
 
@@ -101,11 +109,15 @@ def load_model(model_name, fsave, device, check_epoch=None, test_mode=False):
     model = model_cls(save["args"], {}, save["vocab"], test_mode)
 
     model.load_state_dict(save["model"])
-    OptimizerClass = torch.optim.Adam if save["args"].optimizer == "adam" else torch.optim.AdamW
-    optimizer = OptimizerClass(model.parameters(), lr=1e-3, weight_decay=save["args"].weight_decay)
+    OptimizerClass = torch.optim.Adam if save[
+        "args"].optimizer == "adam" else torch.optim.AdamW
+    optimizer = OptimizerClass(model.parameters(),
+                               lr=1e-3,
+                               weight_decay=save["args"].weight_decay)
     optimizer.load_state_dict(save["optim"])
     if check_epoch:
-        assert save["metric"]["epoch"] == check_epoch, "Epochs in info.json and latest.pth do not match"
+        assert save["metric"][
+            "epoch"] == check_epoch, "Epochs in info.json and latest.pth do not match"
     model = model.to(torch.device(device))
     optimizer_to(optimizer, torch.device(device))
     return model, optimizer
@@ -126,7 +138,10 @@ def save_model(model, model_name, stats, optimizer=None, symlink=False):
     save_path = os.path.join(model.args.dout, model_name)
     if not symlink:
         # nn.DaraParallel related renaming
-        state_dict = {key.replace("model.module.", "model."): value for key, value in model.state_dict().items()}
+        state_dict = {
+            key.replace("model.module.", "model."): value
+            for key, value in model.state_dict().items()
+        }
         assert optimizer is not None
         torch.save(
             {
@@ -141,7 +156,8 @@ def save_model(model, model_name, stats, optimizer=None, symlink=False):
         )
     else:
         # create symlink to last saved model
-        model_path = os.path.join(model.args.dout, "model_{:02d}.pth".format(stats["epoch"]))
+        model_path = os.path.join(model.args.dout,
+                                  "model_{:02d}.pth".format(stats["epoch"]))
         if os.path.islink(save_path):
             os.unlink(save_path)
         os.symlink(model_path, save_path)
@@ -151,7 +167,8 @@ def tensorboard(writer, metrics, split, iter, frequency, batch_size):
     if (iter // batch_size) % frequency == 0:
         for metric_name, metric_value_list in metrics.items():
             metric_value = np.mean(metric_value_list[-frequency:])
-            writer.add_scalar("{}/{}".format(split, metric_name), metric_value, iter)
+            writer.add_scalar("{}/{}".format(split, metric_name), metric_value,
+                              iter)
 
 
 def save_log(dout, progress, total, stage, **kwargs):
@@ -182,9 +199,11 @@ def load_log(dout, stage):
     else:
         info_dict = {"progress": 0, "best_loss": {}, "iters": {}}
     if isinstance(info_dict["best_loss"], dict):
-        info_dict["best_loss"] = collections.defaultdict(lambda: 1e10, info_dict["best_loss"])
+        info_dict["best_loss"] = collections.defaultdict(
+            lambda: 1e10, info_dict["best_loss"])
     if isinstance(info_dict["iters"], dict):
-        info_dict["iters"] = collections.defaultdict(lambda: 0, info_dict["iters"])
+        info_dict["iters"] = collections.defaultdict(lambda: 0,
+                                                     info_dict["iters"])
     return info_dict
 
 
@@ -197,7 +216,8 @@ def update_log(dout, stage, update, **kwargs):
     assert os.path.exists(info_path)
     with open(info_path) as f:
         info_dicts = json.load(f)
-    info_dict = copy.deepcopy([el for el in info_dicts if el["stage"] == stage][-1])
+    info_dict = copy.deepcopy(
+        [el for el in info_dicts if el["stage"] == stage][-1])
     # update the values
     for key, value in kwargs.items():
         assert key in info_dict
@@ -219,7 +239,8 @@ def triangular_mask(size, device, diagonal_shift=1):
     """
     generate upper triangular matrix filled with ones
     """
-    square = torch.triu(torch.ones(size, size, device=device), diagonal=diagonal_shift)
+    square = torch.triu(torch.ones(size, size, device=device),
+                        diagonal=diagonal_shift)
     square = square.masked_fill(square == 1.0, float("-inf"))
     return square
 
@@ -229,14 +250,16 @@ def generate_attention_mask(len_lang, len_frames, device, num_input_actions=0):
     generate mask for attention (a timestep at t does not attend to timesteps after t)"""
     # 1. language should attend only to language
     lang_to_lang = torch.zeros((len_lang, len_lang), device=device).float()
-    lang_to_rest = torch.ones((len_lang, len_frames * 2), device=device).float() * float("-inf")
+    lang_to_rest = torch.ones(
+        (len_lang, len_frames * 2), device=device).float() * float("-inf")
     lang_to_all = torch.cat((lang_to_lang, lang_to_rest), dim=1)
     # 2.1 frames should attend to all language tokens
     frames_to_lang = torch.zeros((len_frames, len_lang), device=device).float()
     # 2.2 frames should attend to frames with timestep <= t
     frames_to_frames = triangular_mask(len_frames, device)
     # 2.3 frames should attend to actions with timestep < t. first make all actions invisible
-    frames_to_actions = torch.ones((len_frames, len_frames), device=device).float() * float("-inf")
+    frames_to_actions = torch.ones(
+        (len_frames, len_frames), device=device).float() * float("-inf")
     # 2.3 then unmask `num_input_actions` previous actions for each frame (excluding index t)
     for a_idx in range(num_input_actions):
         for f_idx in range(len_frames):
@@ -244,7 +267,8 @@ def generate_attention_mask(len_lang, len_frames, device, num_input_actions=0):
                 # the index is out of bound
                 continue
             frames_to_actions[f_idx, f_idx - 1 - a_idx] = 0.0
-    frames_to_all = torch.cat((frames_to_lang, frames_to_frames, frames_to_actions), dim=1)
+    frames_to_all = torch.cat(
+        (frames_to_lang, frames_to_frames, frames_to_actions), dim=1)
     # 3. actions should attend to the same indices as frames
     actions_to_all = frames_to_all.clone()
     # 4. concatenate all the masks
@@ -281,7 +305,6 @@ def generate_attention_mask(len_lang, len_frames, device, num_input_actions=0):
 #     }
 #     return pred_processed
 
-
 # def extract_action_preds(model_out, pad, vocab_action, clean_special_tokens=True, lang_only=False):
 #     """
 #     output processing for a VLN agent
@@ -294,7 +317,9 @@ def generate_attention_mask(len_lang, len_frames, device, num_input_actions=0):
 #     ]
 #     return preds_list
 
-def process_prediction_commander(action, obj, pad, vocab_action, clean_special_tokens):
+
+def process_prediction_commander(action, obj, pad, vocab_action,
+                                 clean_special_tokens):
     """
     process a single trajectory, return it as a dict
     """
@@ -319,17 +344,26 @@ def process_prediction_commander(action, obj, pad, vocab_action, clean_special_t
     }
     return pred_processed
 
-def extract_action_preds_commander(model_out, pad, vocab_action, clean_special_tokens=True, lang_only=False):
-    zipped_data = zip(model_out["out_action_low"].max(2)[1].tolist(), model_out["out_action_obj_cls"].max(2)[1].tolist())
+
+def extract_action_preds_commander(model_out,
+                                   pad,
+                                   vocab_action,
+                                   clean_special_tokens=True,
+                                   lang_only=False):
+    zipped_data = zip(model_out["out_action_low"].max(2)[1].tolist(),
+                      model_out["out_action_obj_cls"].max(2)[1].tolist())
 
     # predict_object = not lang_only
     preds_list = [
-        process_prediction_commander(action, obj, pad, vocab_action, clean_special_tokens)
+        process_prediction_commander(action, obj, pad, vocab_action,
+                                     clean_special_tokens)
         for action, obj in zipped_data
     ]
     return preds_list
 
-def process_prediction_driver(action, coord, pad, vocab_action, clean_special_tokens):
+
+def process_prediction_driver(action, coord, pad, vocab_action,
+                              clean_special_tokens):
     """
     process a single trajectory, return it as a dict
     """
@@ -353,34 +387,46 @@ def process_prediction_driver(action, coord, pad, vocab_action, clean_special_to
     }
     return pred_processed
 
-def extract_action_preds_driver(model_out, pad, vocab_action, clean_special_tokens=True, lang_only=False):
-    zipped_data = zip(model_out["out_action_low"].max(2)[1].tolist(), model_out["out_action_coord"])
+
+def extract_action_preds_driver(model_out,
+                                pad,
+                                vocab_action,
+                                clean_special_tokens=True,
+                                lang_only=False):
+    zipped_data = zip(model_out["out_action_low"].max(2)[1].tolist(),
+                      model_out["out_action_coord"])
 
     # predict_object = not lang_only
     preds_list = [
-        process_prediction_driver(action, coord, pad, vocab_action, clean_special_tokens)
+        process_prediction_driver(action, coord, pad, vocab_action,
+                                  clean_special_tokens)
         for action, coord in zipped_data
     ]
     return preds_list
-    
+
+
 def compute_f1_and_exact(metrics, preds, labels, loss_key):
     """
     compute f1 and extract match scores for agent output
     """
     m = collections.defaultdict(list)
     for pred_str, label_str in zip(preds, labels):
-        pred_list, label_list = pred_str.lower().split(" "), label_str.lower().split(" ")
+        pred_list, label_list = pred_str.lower().split(
+            " "), label_str.lower().split(" ")
         # compute f1 score for the full sequence of actions
-        m["{}/f1".format(loss_key)].append(metric_util.compute_f1(label_str, pred_str))
+        m["{}/f1".format(loss_key)].append(
+            metric_util.compute_f1(label_str, pred_str))
         # compute exact matching for each timestep individually
         for pred_action, label_action in zip(pred_list, label_list):
-            m["{}/exact".format(loss_key)].append(metric_util.compute_exact(label_action, pred_action))
+            m["{}/exact".format(loss_key)].append(
+                metric_util.compute_exact(label_action, pred_action))
     m_averaged = {k: sum(v) / len(v) for k, v in m.items()}
     for k, v in m_averaged.items():
         metrics[k].append(v)
 
 
-def compute_obj_class_precision(metrics, gt_dict, classes_out, compute_train_loss_over_history):
+def compute_obj_class_precision(metrics, gt_dict, classes_out,
+                                compute_train_loss_over_history):
     """
     compute precision of predictions for interaction object classes
     """
@@ -388,11 +434,13 @@ def compute_obj_class_precision(metrics, gt_dict, classes_out, compute_train_los
         if compute_train_loss_over_history:
             interact_idxs = torch.nonzero(gt_dict["obj_interaction_action"])
         else:
-            interact_idxs = torch.nonzero(gt_dict["driver_actions_pred_mask"] * gt_dict["obj_interaction_action"])
+            interact_idxs = torch.nonzero(gt_dict["driver_actions_pred_mask"] *
+                                          gt_dict["obj_interaction_action"])
         obj_classes_prob = classes_out[tuple(interact_idxs.T)]
         obj_classes_pred = obj_classes_prob.max(1)[1]
         obj_classes_gt = torch.cat(gt_dict["object"], dim=0)
-        precision = torch.sum(obj_classes_pred == obj_classes_gt) / len(obj_classes_gt)
+        precision = torch.sum(
+            obj_classes_pred == obj_classes_gt) / len(obj_classes_gt)
         metrics["action/object"].append(precision.item())
     else:
         metrics["action/object"].append(0.0)
@@ -406,7 +454,9 @@ def obj_classes_loss(pred_obj_cls, gt_obj_cls, interact_idxs):
     # the interaction objects should be non zeros
     assert not (gt_obj_cls == 0).any()
     # compute the loss for interaction objects
-    obj_cls_loss = F.cross_entropy(pred_obj_cls_inter, gt_obj_cls, reduction="mean")
+    obj_cls_loss = F.cross_entropy(pred_obj_cls_inter,
+                                   gt_obj_cls,
+                                   reduction="mean")
     return obj_cls_loss
 
 

@@ -13,7 +13,9 @@
     "potato": {
       "determiner": "a",
       "task_name": "Cooked Slice Of X",
-      "task_params": ["Potato"]
+      "task_params": [
+        "Potato"
+      ]
     }
   },
   "relations": []

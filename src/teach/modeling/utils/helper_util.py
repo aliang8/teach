@@ -12,7 +12,6 @@ class DataParallel(torch.nn.DataParallel):
     """
     Allow nn.DataParallel to call model's attributes.
     """
-
     def __getattr__(self, name):
         try:
             return super().__getattr__(name)
@@ -22,7 +21,6 @@ class DataParallel(torch.nn.DataParallel):
 
 class VocabWithLock(VocabBase):
     """vocab.Vocab with a lock for parallel computations."""
-
     def __init__(self, words=(), lock=None):
         self.lock = lock
         super().__init__(words)

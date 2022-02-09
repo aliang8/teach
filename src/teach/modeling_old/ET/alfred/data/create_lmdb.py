@@ -69,7 +69,8 @@ def process_feats(traj_paths, extractor, lock, image_folder, save_path):
             if traj_paths.qsize() == 0:
                 break
             traj_path = Path(traj_paths.get())
-        filename_new = "{}:{}".format(traj_path.parts[-2], re.sub(".json", ".pt", traj_path.name))
+        filename_new = "{}:{}".format(traj_path.parts[-2],
+                                      re.sub(".json", ".pt", traj_path.name))
         # extract features with th extractor
         images = data_util.read_traj_images(traj_path, image_folder)
         if images is None or len(images) == 0:
@@ -85,7 +86,10 @@ def process_feats(traj_paths, extractor, lock, image_folder, save_path):
         with lock:
             with open(save_path.parents[0] / "processed_feats.txt", "a") as f:
                 f.write(str(traj_path) + "\n")
-            model_util.update_log(save_path.parents[0], stage="feats", update="increase", progress=1)
+            model_util.update_log(save_path.parents[0],
+                                  stage="feats",
+                                  update="increase",
+                                  progress=1)
             if str(save_path).endswith("/worker00"):
                 progressbar.update(progressbar.max_value - traj_paths.qsize())
     if str(save_path).endswith("/worker00"):
@@ -111,12 +115,16 @@ def process_jsons(traj_paths, preprocessor, lock, save_path):
         trajs = [data_util.process_traj(traj_orig, traj_path, 0, preprocessor)]
 
         # save masks and traj jsons
-        filename = "{}:{}".format(traj_path.parts[-2], re.sub(".json", ".pkl", traj_path.name))
+        filename = "{}:{}".format(traj_path.parts[-2],
+                                  re.sub(".json", ".pkl", traj_path.name))
         with (save_path / "jsons" / filename).open("wb") as f:
             pickle.dump(trajs, f)
         # report the progress
         with lock:
-            model_util.update_log(save_path.parents[0], stage="jsons", update="increase", progress=1)
+            model_util.update_log(save_path.parents[0],
+                                  stage="jsons",
+                                  update="increase",
+                                  progress=1)
             if str(save_path).endswith("/worker00"):
                 progressbar.update(progressbar.max_value - len(traj_paths))
     if str(save_path).endswith("/worker00"):
@@ -128,11 +136,15 @@ def get_traj_paths(input_path, processed_files_path, fast_epoch):
         # the dataset was generated locally
         with (input_path / "processed.txt").open() as f:
             traj_paths = [line.strip() for line in f.readlines()]
-            traj_paths = [line.split(";")[0] for line in traj_paths if line.split(";")[1] == "1"]
+            traj_paths = [
+                line.split(";")[0] for line in traj_paths
+                if line.split(";")[1] == "1"
+            ]
             traj_paths = [str(input_path / line) for line in traj_paths]
     else:
         # the dataset was downloaded from ALFRED servers
-        traj_paths_all = sorted([str(path) for path in input_path.glob("*/*.json")])
+        traj_paths_all = sorted(
+            [str(path) for path in input_path.glob("*/*.json")])
         traj_paths = traj_paths_all
     if fast_epoch:
         traj_paths = traj_paths[::20]
@@ -143,7 +155,9 @@ def get_traj_paths(input_path, processed_files_path, fast_epoch):
         else:
             with processed_files_path.open() as f:
                 processed_files = set([line.strip() for line in f.readlines()])
-            traj_paths = [traj for traj in traj_paths if traj not in processed_files]
+            traj_paths = [
+                traj for traj in traj_paths if traj not in processed_files
+            ]
     traj_paths = [Path(path) for path in traj_paths]
     return traj_paths, num_files
 
@@ -155,7 +169,9 @@ def run_in_parallel(func, num_workers, output_path, args, use_processes=False):
     else:
         threads = []
         for idx in range(num_workers):
-            args_worker = copy.copy(args) + [output_path / "worker{:02d}".format(idx)]
+            args_worker = copy.copy(args) + [
+                output_path / "worker{:02d}".format(idx)
+            ]
             if not use_processes:
                 ThreadClass = threading.Thread
             else:
@@ -190,16 +206,22 @@ def gather_data(output_path, num_workers):
             if link_file:
                 path_symlink.symlink_to(path_file)
 
-    partitions = ("train", "valid_seen", "valid_unseen", "test_seen", "test_unseen")
+    partitions = ("train", "valid_seen", "valid_unseen", "test_seen",
+                  "test_unseen")
     if not (output_path / ".deleting_worker_dirs").exists():
         for partition in partitions:
             logger.info("Processing %s trajectories" % partition)
             feats_files = output_path.glob("feats/{}:*.pt".format(partition))
             feats_files = sorted([str(path) for path in feats_files])
-            jsons_files = [p.replace("/feats/", "/jsons/").replace(".pt", ".pkl") for p in feats_files]
+            jsons_files = [
+                p.replace("/feats/", "/jsons/").replace(".pt", ".pkl")
+                for p in feats_files
+            ]
             (output_path / partition).mkdir(exist_ok=True)
-            data_util.gather_feats(feats_files, output_path / partition / "feats")
-            data_util.gather_jsons(jsons_files, output_path / partition / "jsons.pkl")
+            data_util.gather_feats(feats_files,
+                                   output_path / partition / "feats")
+            data_util.gather_jsons(jsons_files,
+                                   output_path / partition / "jsons.pkl")
 
     logger.info("Removing worker directories")
     (output_path / ".deleting_worker_dirs").touch()
@@ -222,29 +244,39 @@ def main(args):
     # set up the paths
     output_path = Path(constants.ET_DATA) / args.data_output
     input_path = Path(constants.ET_DATA) / args.data_input
-    logger.info("Creating a dataset {} using data from {}".format(args.data_output, input_path))
+    logger.info("Creating a dataset {} using data from {}".format(
+        args.data_output, input_path))
     if not input_path.is_dir():
-        raise RuntimeError("The input dataset {} does not exist".format(input_path))
+        raise RuntimeError(
+            "The input dataset {} does not exist".format(input_path))
     if output_path.is_dir() and args.overwrite:
         logger.info("Erasing the old directory")
         shutil.rmtree(output_path)
     output_path.mkdir(exist_ok=True)
 
     # read which files need to be processed
-    trajs_list, num_files = get_traj_paths(input_path, output_path / constants.VOCAB_FILENAME, args.fast_epoch)
+    trajs_list, num_files = get_traj_paths(
+        input_path, output_path / constants.VOCAB_FILENAME, args.fast_epoch)
     model_util.save_log(
         output_path,
         progress=num_files - len(trajs_list),
         total=num_files,
         stage="jsons",
     )
-    logger.info("Creating a dataset with {} trajectories using {} workers".format(num_files, args.num_workers))
-    logger.info("Processing JSONs and masks ({} were already processed)".format(num_files - len(trajs_list)))
+    logger.info(
+        "Creating a dataset with {} trajectories using {} workers".format(
+            num_files, args.num_workers))
+    logger.info(
+        "Processing JSONs and masks ({} were already processed)".format(
+            num_files - len(trajs_list)))
 
     # first process jsons and masks
     if len(trajs_list) > 0:
         lock = threading.Lock()
-        preprocessor = data_util.get_preprocessor(Preprocessor, args.subgoal_ann, lock, args.vocab_path, args.task_type)
+        preprocessor = data_util.get_preprocessor(Preprocessor,
+                                                  args.subgoal_ann, lock,
+                                                  args.vocab_path,
+                                                  args.task_type)
         run_in_parallel(
             process_jsons,
             args.num_workers,
@@ -257,7 +289,8 @@ def main(args):
         torch.save(vocab_copy, output_path / constants.VOCAB_FILENAME)
 
     # read which features need to be extracted
-    trajs_list, num_files_again = get_traj_paths(input_path, output_path / "processed_feats.txt", args.fast_epoch)
+    trajs_list, num_files_again = get_traj_paths(
+        input_path, output_path / "processed_feats.txt", args.fast_epoch)
     assert num_files == num_files_again
     model_util.save_log(
         output_path,
@@ -265,7 +298,8 @@ def main(args):
         total=num_files,
         stage="feats",
     )
-    logger.info("Extracting features ({} were already processed)".format(num_files - len(trajs_list)))
+    logger.info("Extracting features ({} were already processed)".format(
+        num_files - len(trajs_list)))
 
     # then extract features
     extractor = FeatureExtractor(

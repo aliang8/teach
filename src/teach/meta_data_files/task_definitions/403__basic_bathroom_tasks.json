@@ -10,11 +10,11 @@
       "primary_condition": "objectType",
       "instance_shareable": true,
       "conditions": {
-          "objectType": "Faucet",
-          "isToggled": 0
+        "objectType": "Faucet",
+        "isToggled": 0
       },
       "condition_failure_descs": {
-          "isToggled": "The faucet needs to be turned off."
+        "isToggled": "The faucet needs to be turned off."
       }
     },
     "candles": {
@@ -27,7 +27,7 @@
       "primary_condition": "objectType",
       "instance_shareable": true,
       "conditions": {
-          "objectType": "SoapBar"
+        "objectType": "SoapBar"
       },
       "condition_failure_descs": {}
     },
@@ -36,7 +36,7 @@
       "primary_condition": "objectType",
       "instance_shareable": true,
       "conditions": {
-          "objectType": "CounterTop"
+        "objectType": "CounterTop"
       },
       "condition_failure_descs": {}
     }
@@ -44,10 +44,18 @@
   "relations": [
     {
       "property": "parentReceptacles",
-      "tail_entity_list": ["counter"],
-      "tail_determiner_list": ["a"],
-      "head_entity_list": ["soap"],
-      "head_determiner_list": ["all"],
+      "tail_entity_list": [
+        "counter"
+      ],
+      "tail_determiner_list": [
+        "a"
+      ],
+      "head_entity_list": [
+        "soap"
+      ],
+      "head_determiner_list": [
+        "all"
+      ],
       "failure_desc": "The soap needs to be put on the counter."
     }
   ]

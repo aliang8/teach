@@ -10,8 +10,8 @@
       "primary_condition": "simbotObjectClass",
       "instance_shareable": false,
       "conditions": {
-          "simbotObjectClass": "#2",
-          "isToggled": "#1"
+        "simbotObjectClass": "#2",
+        "isToggled": "#1"
       },
       "condition_failure_descs": {
         "isToggled": "The #2 should be turned #0."

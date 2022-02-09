@@ -34,8 +34,17 @@ class Action_Basic:
 
 
 class Action_Motion(Action_Basic):
-    def __init__(self, action_id, time_start, duration, pose, pose_delta=None, success=None):
-        super().__init__(action_id=action_id, time_start=time_start, duration=duration, success=success)
+    def __init__(self,
+                 action_id,
+                 time_start,
+                 duration,
+                 pose,
+                 pose_delta=None,
+                 success=None):
+        super().__init__(action_id=action_id,
+                         time_start=time_start,
+                         duration=duration,
+                         success=success)
         self.action_type = "Motion"
         self.pose = pose
         self.pose_delta = pose_delta
@@ -67,8 +76,19 @@ class Action_Motion(Action_Basic):
 
 
 class Action_MapGoal(Action_Basic):
-    def __init__(self, action_id, time_start, duration, start_x, start_y, end_x, end_y, success=None):
-        super().__init__(action_id=action_id, time_start=time_start, duration=duration, success=success)
+    def __init__(self,
+                 action_id,
+                 time_start,
+                 duration,
+                 start_x,
+                 start_y,
+                 end_x,
+                 end_y,
+                 success=None):
+        super().__init__(action_id=action_id,
+                         time_start=time_start,
+                         duration=duration,
+                         success=success)
         self.action_type = "MapGoal"
         self.start_x = start_x
         self.start_y = start_y
@@ -100,8 +120,18 @@ class Action_MapGoal(Action_Basic):
 
 
 class Action_ObjectInteraction(Action_Basic):
-    def __init__(self, action_id, time_start, duration, x, y, success=None, oid=None):
-        super().__init__(action_id=action_id, time_start=time_start, duration=duration, success=success)
+    def __init__(self,
+                 action_id,
+                 time_start,
+                 duration,
+                 x,
+                 y,
+                 success=None,
+                 oid=None):
+        super().__init__(action_id=action_id,
+                         time_start=time_start,
+                         duration=duration,
+                         success=success)
         self.action_type = "ObjectInteraction"
         self.x = x
         self.y = y
@@ -131,7 +161,10 @@ class Action_ObjectInteraction(Action_Basic):
 
 class Action_CameraChange(Action_Basic):
     def __init__(self, action_id, time_start, duration, success=None):
-        super().__init__(action_id=action_id, time_start=time_start, duration=duration, success=success)
+        super().__init__(action_id=action_id,
+                         time_start=time_start,
+                         duration=duration,
+                         success=success)
         self.action_type = "CameraChange"
 
     def to_dict(self):
@@ -152,7 +185,10 @@ class Action_CameraChange(Action_Basic):
 
 class Action_ProgressCheck(Action_Basic):
     def __init__(self, action_id, time_start, duration, query, success=None):
-        super().__init__(action_id=action_id, time_start=time_start, duration=duration, success=success)
+        super().__init__(action_id=action_id,
+                         time_start=time_start,
+                         duration=duration,
+                         success=success)
         self.action_type = "ProgressCheck"
         self.query = query  # either an oid (for 'SelectOid') or a search query (for 'SearchObject')
 
@@ -175,8 +211,16 @@ class Action_ProgressCheck(Action_Basic):
 
 
 class Action_Keyboard(Action_Basic):
-    def __init__(self, action_id, time_start, duration, utterance, success=None):
-        super().__init__(action_id=action_id, time_start=time_start, duration=duration, success=success)
+    def __init__(self,
+                 action_id,
+                 time_start,
+                 duration,
+                 utterance,
+                 success=None):
+        super().__init__(action_id=action_id,
+                         time_start=time_start,
+                         duration=duration,
+                         success=success)
         self.action_type = "Keyboard"
         self.utterance = utterance
 
@@ -199,10 +243,18 @@ class Action_Keyboard(Action_Basic):
 
 
 class Action_Audio(Action_Keyboard):
-    def __init__(self, action_id, time_start, duration, utterance, file_name=None, success=None):
-        super().__init__(
-            action_id=action_id, time_start=time_start, duration=duration, utterance=utterance, success=success
-        )
+    def __init__(self,
+                 action_id,
+                 time_start,
+                 duration,
+                 utterance,
+                 file_name=None,
+                 success=None):
+        super().__init__(action_id=action_id,
+                         time_start=time_start,
+                         duration=duration,
+                         utterance=utterance,
+                         success=success)
         self.action_type = "Audio"
         self.file_name = file_name
 

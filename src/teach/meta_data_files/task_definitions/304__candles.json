@@ -25,17 +25,24 @@
         "objectType": "Bathtub",
         "receptacle": 1
       },
-      "condition_failure_descs": {
-      }
+      "condition_failure_descs": {}
     }
   },
   "relations": [
     {
       "property": "parentReceptacles",
-      "tail_entity_list": ["bathtub"],
-      "tail_determiner_list": ["a"],
-      "head_entity_list": ["candles"],
-      "head_determiner_list": ["all"],
+      "tail_entity_list": [
+        "bathtub"
+      ],
+      "tail_determiner_list": [
+        "a"
+      ],
+      "head_entity_list": [
+        "candles"
+      ],
+      "head_determiner_list": [
+        "all"
+      ],
       "failure_desc": "The candle needs to be put into a bathtub."
     }
   ]

@@ -39,9 +39,9 @@ class EpisodeReplayWorker(Process):
         for game_fn in self.kwargs.get("files_to_play"):
             self.replay_game(game_fn)
         logger.info(
-            "In process %d, playback failures %d"
-            % (self.idx, len(self.kwargs.get("playback_status")[PLAYBACK_FAILURES]))
-        )
+            "In process %d, playback failures %d" %
+            (self.idx,
+             len(self.kwargs.get("playback_status")[PLAYBACK_FAILURES])))
         self.write_out_status()
 
     def replay_game(self, game_fn):
@@ -54,9 +54,11 @@ class EpisodeReplayWorker(Process):
         replay_status[game_fn] = dict()
         try:
             er = EpisodeReplay("thor", ["ego", "allo", "targetobject"])
-            er.set_episode_by_fn_and_idx(game_fn, cmd_args.task_idx, cmd_args.episode_idx)
+            er.set_episode_by_fn_and_idx(game_fn, cmd_args.task_idx,
+                                         cmd_args.episode_idx)
             if cmd_args.write_frames_dir:
-                frame_dir = os.path.join(cmd_args.write_frames_dir, game_fn.split("/")[-1].split(".")[0])
+                frame_dir = os.path.join(cmd_args.write_frames_dir,
+                                         game_fn.split("/")[-1].split(".")[0])
             else:
                 frame_dir = None
             api_succ, task_succ = er.play_episode(
@@ -95,15 +97,12 @@ class EpisodeReplayWorker(Process):
             playback_status[CNT_TASK_SUCC] += 1
         if not api_succ or not task_succ:
             playback_status[PLAYBACK_FAILURES].append(game_fn)
-        logger.info(
-            "api success %d/%d; task success %d/%d"
-            % (
-                playback_status[CNT_API_SUCC],
-                playback_status[CNT_PLAYED_BACK],
-                playback_status[CNT_TASK_SUCC],
-                playback_status[CNT_PLAYED_BACK],
-            )
-        )
+        logger.info("api success %d/%d; task success %d/%d" % (
+            playback_status[CNT_API_SUCC],
+            playback_status[CNT_PLAYED_BACK],
+            playback_status[CNT_TASK_SUCC],
+            playback_status[CNT_PLAYED_BACK],
+        ))
 
     def write_out_status(self):
         """

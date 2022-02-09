@@ -7,7 +7,14 @@ from teach.dataset.episode import Episode
 
 
 class Task:
-    def __init__(self, task_id, task_name, task_nparams, task_params, subgoals, comments="", episodes=None):
+    def __init__(self,
+                 task_id,
+                 task_name,
+                 task_nparams,
+                 task_params,
+                 subgoals,
+                 comments="",
+                 episodes=None):
         self.task_id = task_id
         self.task_name = task_name
         self.task_nparams = task_nparams
@@ -31,7 +38,10 @@ class Task:
         return _dict
 
     @classmethod
-    def from_dict(cls, task_dict, definitions, process_init_state=True) -> "Task":
+    def from_dict(cls,
+                  task_dict,
+                  definitions,
+                  process_init_state=True) -> "Task":
         episodes = [
             Episode.from_dict(episode_dict, definitions, process_init_state)
             for episode_dict in task_dict.get("episodes")

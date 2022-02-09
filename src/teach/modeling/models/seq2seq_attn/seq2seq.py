@@ -15,8 +15,8 @@ from modeling.utils import data_util
 
 logger = create_logger(__name__, level=logging.DEBUG)
 
-class Module(nn.Module):
 
+class Module(nn.Module):
     def __init__(self, args, vocab):
         '''
         Base Seq2Seq agent with common train and val loops
@@ -35,15 +35,18 @@ class Module(nn.Module):
         self.emb_word = nn.Embedding(len(vocab['word']), args.demb)
 
         if args.agent == "driver":
-            self.emb_action_low = nn.Embedding(len(vocab['driver_action_low']), args.demb)
+            self.emb_action_low = nn.Embedding(len(vocab['driver_action_low']),
+                                               args.demb)
             self.vocab_out = vocab['driver_action_low']
         elif args.agent == "commander":
-            self.emb_action_low = nn.Embedding(len(vocab['commander_action_low']), args.demb)
+            self.emb_action_low = nn.Embedding(
+                len(vocab['commander_action_low']), args.demb)
             self.vocab_out = vocab['commander_action_low']
 
         # end tokens
         # TODO: word or action_low??
-        self.stop_token = self.vocab['word'].word2index("<<stop>>", train=False)
+        self.stop_token = self.vocab['word'].word2index("<<stop>>",
+                                                        train=False)
         self.seg_token = self.vocab['word'].word2index("<<seg>>", train=False)
 
         # set random seed (Note: this is not the seed used to initialize THOR object locations)
@@ -65,11 +68,15 @@ class Module(nn.Module):
         # valid_seen = splits['valid_seen']
         # valid_unseen = splits['valid_unseen']
 
-        loaders_train = dict(filter(lambda x: "train" in x[0], loaders.items()))
-        loaders_valid_seen = dict(filter(lambda x: "valid_seen" in x[0], loaders.items()))
-        loaders_valid_unseen = dict(filter(lambda x: "valid_unseen" in x[0], loaders.items()))
+        loaders_train = dict(filter(lambda x: "train" in x[0],
+                                    loaders.items()))
+        loaders_valid_seen = dict(
+            filter(lambda x: "valid_seen" in x[0], loaders.items()))
+        loaders_valid_unseen = dict(
+            filter(lambda x: "valid_unseen" in x[0], loaders.items()))
 
-        assert len(set([len(loader) for loader in loaders_train.values()])) == 1
+        assert len(set([len(loader)
+                        for loader in loaders_train.values()])) == 1
         epoch_length = len(next(iter(loaders_train.values())))
 
         logger.debug("In Seq2seq.run_train, epoch_length = %d" % epoch_length)
@@ -96,7 +103,8 @@ class Module(nn.Module):
             json.dump(vars(args), f, indent=2)
 
         # optimizer
-        optimizer = optimizer or torch.optim.Adam(self.parameters(), lr=args.lr['init'])
+        optimizer = optimizer or torch.optim.Adam(self.parameters(),
+                                                  lr=args.lr['init'])
 
         # display dout
         print("Saving to: %s" % self.args.dout)
@@ -108,31 +116,40 @@ class Module(nn.Module):
             logger.info("Epoch {}/{}".format(epoch, args.epochs))
             self.train()
 
-            train_iterators = {key: iter(loader) for key, loader in loaders_train.items()}
+            train_iterators = {
+                key: iter(loader)
+                for key, loader in loaders_train.items()
+            }
 
             for _ in tqdm(range(epoch_length), desc="train"):
                 # sample batches
-                batches = data_util.sample_batches(train_iterators, self.args.device, self.pad, self.args)
+                batches = data_util.sample_batches(train_iterators,
+                                                   self.args.device, self.pad,
+                                                   self.args)
                 # gt.stamp("data fetching", unique=False)
 
                 m_train = collections.defaultdict(list)
-                
+
                 # self.adjust_lr(optimizer, args.lr, epoch, decay_epoch=args.decay_epoch)
                 total_train_loss = list()
                 model_outs, model_preds, losses_train = {}, {}, {}
-                for batch_name, (traj_data, input_dict, gt_dict) in batches.items():
+                for batch_name, (traj_data, input_dict,
+                                 gt_dict) in batches.items():
                     feat = self.featurize(traj_data, load_frames=False)
                     feat['frames'] = input_dict['frames']
 
                     model_outs[batch_name] = self.forward(feat)
-                    model_preds[batch_name] = self.extract_preds(model_outs[batch_name], traj_data, feat)
+                    model_preds[batch_name] = self.extract_preds(
+                        model_outs[batch_name], traj_data, feat)
                     # p_train.update(preds)
-                    loss = self.compute_loss(model_outs[batch_name], traj_data, feat)
+                    loss = self.compute_loss(model_outs[batch_name], traj_data,
+                                             feat)
 
                     for k, v in loss.items():
                         ln = 'loss_' + k
                         m_train[ln].append(v.item())
-                        self.summary_writer.add_scalar('train/' + ln, v.item(), train_iter)
+                        self.summary_writer.add_scalar('train/' + ln, v.item(),
+                                                       train_iter)
 
                     # optimizer backward pass
                     optimizer.zero_grad()
@@ -140,7 +157,8 @@ class Module(nn.Module):
                     sum_loss.backward()
                     optimizer.step()
 
-                    self.summary_writer.add_scalar('train/loss', sum_loss, train_iter)
+                    self.summary_writer.add_scalar('train/loss', sum_loss,
+                                                   train_iter)
                     sum_loss = sum_loss.detach().cpu()
                     total_train_loss.append(float(sum_loss))
                     train_iter += self.args.batch
@@ -155,33 +173,48 @@ class Module(nn.Module):
             # self.summary_writer.add_scalar('train/total_loss', m_train['total_loss'], train_iter)
 
             # compute metrics for valid_seen
-            p_valid_seen, valid_seen_iter, total_valid_seen_loss, m_valid_seen = self.run_pred(loaders_valid_seen, args=args, name='valid_seen', iteration=valid_seen_iter)
+            p_valid_seen, valid_seen_iter, total_valid_seen_loss, m_valid_seen = self.run_pred(
+                loaders_valid_seen,
+                args=args,
+                name='valid_seen',
+                iteration=valid_seen_iter)
             # m_valid_seen.update(self.compute_metric(p_valid_seen, valid_seen))
             m_valid_seen['total_loss'] = float(total_valid_seen_loss)
-            self.summary_writer.add_scalar('valid_seen/total_loss', m_valid_seen['total_loss'], valid_seen_iter)
+            self.summary_writer.add_scalar('valid_seen/total_loss',
+                                           m_valid_seen['total_loss'],
+                                           valid_seen_iter)
 
             # compute metrics for valid_unseen
-            p_valid_unseen, valid_unseen_iter, total_valid_unseen_loss, m_valid_unseen = self.run_pred(loaders_valid_unseen, args=args, name='valid_unseen', iteration=valid_unseen_iter)
+            p_valid_unseen, valid_unseen_iter, total_valid_unseen_loss, m_valid_unseen = self.run_pred(
+                loaders_valid_unseen,
+                args=args,
+                name='valid_unseen',
+                iteration=valid_unseen_iter)
             # m_valid_unseen.update(self.compute_metric(p_valid_unseen, valid_unseen))
             m_valid_unseen['total_loss'] = float(total_valid_unseen_loss)
-            self.summary_writer.add_scalar('valid_unseen/total_loss', m_valid_unseen['total_loss'], valid_unseen_iter)
+            self.summary_writer.add_scalar('valid_unseen/total_loss',
+                                           m_valid_unseen['total_loss'],
+                                           valid_unseen_iter)
 
-            stats = {'epoch': epoch,
-                     'valid_seen': m_valid_seen,
-                     'valid_unseen': m_valid_unseen}
+            stats = {
+                'epoch': epoch,
+                'valid_seen': m_valid_seen,
+                'valid_unseen': m_valid_unseen
+            }
 
             # new best valid_seen loss
             if total_valid_seen_loss < best_loss['valid_seen']:
                 print('\nFound new best valid_seen!! Saving...')
                 fsave = os.path.join(args.dout, 'best_seen.pth')
-                torch.save({
-                    'metric': stats,
-                    'model': self.state_dict(),
-                    'optim': optimizer.state_dict(),
-                    'args': self.args,
-                    'embs_ann': self.embs_ann,
-                    'vocab_out': self.vocab,
-                }, fsave)
+                torch.save(
+                    {
+                        'metric': stats,
+                        'model': self.state_dict(),
+                        'optim': optimizer.state_dict(),
+                        'args': self.args,
+                        'embs_ann': self.embs_ann,
+                        'vocab_out': self.vocab,
+                    }, fsave)
                 fbest = os.path.join(args.dout, 'best_seen.json')
                 with open(fbest, 'wt') as f:
                     json.dump(stats, f, indent=2)
@@ -195,13 +228,14 @@ class Module(nn.Module):
             if total_valid_unseen_loss < best_loss['valid_unseen']:
                 print('Found new best valid_unseen!! Saving...')
                 fsave = os.path.join(args.dout, 'best_unseen.pth')
-                torch.save({
-                    'metric': stats,
-                    'model': self.state_dict(),
-                    'optim': optimizer.state_dict(),
-                    'args': self.args,
-                    'vocab': self.vocab,
-                }, fsave)
+                torch.save(
+                    {
+                        'metric': stats,
+                        'model': self.state_dict(),
+                        'optim': optimizer.state_dict(),
+                        'args': self.args,
+                        'vocab': self.vocab,
+                    }, fsave)
                 fbest = os.path.join(args.dout, 'best_unseen.json')
                 with open(fbest, 'wt') as f:
                     json.dump(stats, f, indent=2)
@@ -217,13 +251,14 @@ class Module(nn.Module):
                 fsave = os.path.join(args.dout, 'net_epoch_%d.pth' % epoch)
             else:
                 fsave = os.path.join(args.dout, 'latest.pth')
-            torch.save({
-                'metric': stats,
-                'model': self.state_dict(),
-                'optim': optimizer.state_dict(),
-                'args': self.args,
-                'vocab': self.vocab,
-            }, fsave)
+            torch.save(
+                {
+                    'metric': stats,
+                    'model': self.state_dict(),
+                    'optim': optimizer.state_dict(),
+                    'args': self.args,
+                    'vocab': self.vocab,
+                }, fsave)
 
             ## debug action output json for train
             # fpred = os.path.join(args.dout, 'train.debug.preds.json')
@@ -234,7 +269,8 @@ class Module(nn.Module):
             for split in stats.keys():
                 if isinstance(stats[split], dict):
                     for k, v in stats[split].items():
-                        self.summary_writer.add_scalar(split + '/' + k, v, train_iter)
+                        self.summary_writer.add_scalar(split + '/' + k, v,
+                                                       train_iter)
             pprint.pprint(stats)
 
     def run_pred(self, dev, args=None, name='dev', iteration=0):
@@ -251,9 +287,11 @@ class Module(nn.Module):
         data_iter = {key: iter(loader) for key, loader in dev.items()}
         for _ in tqdm(range(1), desc=name):
             # sample batches
-            batches = data_util.sample_batches(data_iter, self.args.device, self.pad, self.args)
+            batches = data_util.sample_batches(data_iter, self.args.device,
+                                               self.pad, self.args)
 
-            for batch_name, (traj_data, input_dict, gt_dict) in batches.items():
+            for batch_name, (traj_data, input_dict,
+                             gt_dict) in batches.items():
                 feat = self.featurize(traj_data, load_frames=False)
                 feat['frames'] = input_dict['frames']
 
@@ -264,9 +302,11 @@ class Module(nn.Module):
                 for k, v in loss.items():
                     ln = 'loss_' + k
                     m_dev[ln].append(v.item())
-                    self.summary_writer.add_scalar("%s/%s" % (name, ln), v.item(), dev_iter)
+                    self.summary_writer.add_scalar("%s/%s" % (name, ln),
+                                                   v.item(), dev_iter)
                 sum_loss = sum(loss.values())
-                self.summary_writer.add_scalar("%s/loss" % (name), sum_loss, dev_iter)
+                self.summary_writer.add_scalar("%s/loss" % (name), sum_loss,
+                                               dev_iter)
                 total_loss.append(float(sum_loss.detach().cpu()))
                 dev_iter += len(traj_data)
 
@@ -304,9 +344,15 @@ class Module(nn.Module):
             ex = self.load_task_json(task)
             i = self.get_task_and_ann_id(ex)
             debug[i] = {
-                'lang_goal': ex['turk_annotations']['anns'][ex['ann']['repeat_idx']]['task_desc'],
-                'action_low': [a['discrete_action']['action'] for a in ex['plan']['low_actions']],
-                'p_action_low': preds[i]['action_low'].split(),
+                'lang_goal':
+                ex['turk_annotations']['anns'][ex['ann']['repeat_idx']]
+                ['task_desc'],
+                'action_low': [
+                    a['discrete_action']['action']
+                    for a in ex['plan']['low_actions']
+                ],
+                'p_action_low':
+                preds[i]['action_low'].split(),
             }
         return debug
 
@@ -314,7 +360,9 @@ class Module(nn.Module):
         '''
         load preprocessed json from disk
         '''
-        json_path = os.path.join(self.args.data, task['task'], '%s' % self.args.pp_folder, 'ann_%d.json' % task['repeat_idx'])
+        json_path = os.path.join(self.args.data, task['task'],
+                                 '%s' % self.args.pp_folder,
+                                 'ann_%d.json' % task['repeat_idx'])
         with open(json_path) as f:
             data = json.load(f)
         return data
@@ -323,14 +371,15 @@ class Module(nn.Module):
         '''
         returns the folder path of a trajectory
         '''
-        return os.path.join(self.args.data, ex['split'], *(ex['root'].split('/')[-2:]))
+        return os.path.join(self.args.data, ex['split'],
+                            *(ex['root'].split('/')[-2:]))
 
     def iterate(self, data, batch_size):
         '''
         breaks dataset into batch_size chunks for training
         '''
         for i in trange(0, len(data), batch_size, desc='batch'):
-            tasks = data[i:i+batch_size]
+            tasks = data[i:i + batch_size]
             batch = [self.load_task_json(task) for task in tasks]
             feat = self.featurize(batch)
             yield batch, feat
@@ -355,7 +404,7 @@ class Module(nn.Module):
         '''
         decay learning rate every decay_epoch
         '''
-        lr = init_lr * (0.1 ** (epoch // decay_epoch))
+        lr = init_lr * (0.1**(epoch // decay_epoch))
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
 
@@ -376,7 +425,9 @@ class Module(nn.Module):
         '''
         check if low-level action is interactive
         '''
-        non_interact_actions = ['MoveAhead', 'Rotate', 'Look', '<<stop>>', '<<pad>>', '<<seg>>']
+        non_interact_actions = [
+            'MoveAhead', 'Rotate', 'Look', '<<stop>>', '<<pad>>', '<<seg>>'
+        ]
         if any(a in action for a in non_interact_actions):
             return False
         else:

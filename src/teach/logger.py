@@ -1,7 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
 
-
 import logging
 import sys
 
@@ -20,7 +19,8 @@ def create_logger(name: str = None, level=logging.DEBUG):
         logger = logging.getLogger(name if name else __name__)
         logger.setLevel(level)
         handler = logging.StreamHandler(sys.stdout)
-        formatter = logging.Formatter("[%(threadName)s-%(process)s-%(levelname)s] %(name)s: %(message)s")
+        formatter = logging.Formatter(
+            "[%(threadName)s-%(process)s-%(levelname)s] %(name)s: %(message)s")
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         return logger

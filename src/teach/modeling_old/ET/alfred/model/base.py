@@ -3,7 +3,13 @@ from torch import nn
 
 
 class Model(nn.Module):
-    def __init__(self, args, embs_ann, vocab_out, pad, seg, for_inference=False):
+    def __init__(self,
+                 args,
+                 embs_ann,
+                 vocab_out,
+                 pad,
+                 seg,
+                 for_inference=False):
         """
         Abstract model
         """
@@ -59,5 +65,6 @@ class Model(nn.Module):
         # compute losses for each batch
         losses = {}
         for dataset_key in model_outs.keys():
-            losses[dataset_key] = self.compute_batch_loss(model_outs[dataset_key], gt_dicts[dataset_key])
+            losses[dataset_key] = self.compute_batch_loss(
+                model_outs[dataset_key], gt_dicts[dataset_key])
         return losses

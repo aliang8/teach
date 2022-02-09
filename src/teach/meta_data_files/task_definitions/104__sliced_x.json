@@ -23,8 +23,7 @@
       "conditions": {
         "objectType": "Knife"
       },
-      "condition_failure_descs": {
-      }
+      "condition_failure_descs": {}
     }
   },
   "relations": []

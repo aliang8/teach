@@ -28,15 +28,20 @@ class EncoderLang(nn.Module):
         )
         if args.encoder_lang["shared"]:
             enc_transformer = nn.TransformerEncoder(encoder_layer, num_layers)
-            self.enc_transformers = nn.ModuleDict({data: enc_transformer for data in embs_ann.keys()})
-        else:
             self.enc_transformers = nn.ModuleDict(
-                {data: nn.TransformerEncoder(encoder_layer, num_layers) for data in embs_ann.keys()}
-            )
+                {data: enc_transformer
+                 for data in embs_ann.keys()})
+        else:
+            self.enc_transformers = nn.ModuleDict({
+                data: nn.TransformerEncoder(encoder_layer, num_layers)
+                for data in embs_ann.keys()
+            })
 
         # encodings
-        self.enc_pos = PosLangEncoding(args.demb) if args.encoder_lang["pos_enc"] else None
-        self.enc_instr = InstrLangEncoding(args.demb) if args.encoder_lang["instr_enc"] else None
+        self.enc_pos = PosLangEncoding(
+            args.demb) if args.encoder_lang["pos_enc"] else None
+        self.enc_instr = InstrLangEncoding(
+            args.demb) if args.encoder_lang["instr_enc"] else None
         self.enc_layernorm = nn.LayerNorm(args.demb)
         self.enc_dropout = nn.Dropout(args.dropout["lang"], inplace=True)
 
@@ -48,10 +53,12 @@ class EncoderLang(nn.Module):
         mask_pad = lang_pad == pad
         emb_lang = embedder(lang_pad)
         # add positional encodings
-        mask_token = EncoderLang.mask_token(lang_pad, vocab, {self.subgoal_token, self.goal_token})
+        mask_token = EncoderLang.mask_token(
+            lang_pad, vocab, {self.subgoal_token, self.goal_token})
         emb_lang = self.encode_inputs(emb_lang, mask_token, mask_pad)
         # pass the inputs through the encoder
-        hiddens = EncoderLang.encoder(self.enc_transformers, emb_lang, mask_pad, vocab)
+        hiddens = EncoderLang.encoder(self.enc_transformers, emb_lang,
+                                      mask_pad, vocab)
         lengths = (lang_pad != pad).sum(dim=1)
         return hiddens, lengths
 
@@ -73,9 +80,11 @@ class EncoderLang(nn.Module):
         # skip mask: mask padded words
         if mask_attn is None:
             # attention mask: all tokens can attend to all others
-            mask_attn = torch.zeros((mask_pad.shape[1], mask_pad.shape[1]), device=mask_pad.device).float()
+            mask_attn = torch.zeros((mask_pad.shape[1], mask_pad.shape[1]),
+                                    device=mask_pad.device).float()
         # encode the inputs
-        output = encoders[vocab.name](emb_lang.transpose(0, 1), mask_attn, mask_pad).transpose(0, 1)
+        output = encoders[vocab.name](emb_lang.transpose(0, 1), mask_attn,
+                                      mask_pad).transpose(0, 1)
         return output
 
     def encode_inputs(self, emb_lang, mask_token, mask_pad):
@@ -83,7 +92,8 @@ class EncoderLang(nn.Module):
         add positional encodings, apply layernorm and dropout
         """
         emb_lang = self.enc_pos(emb_lang) if self.enc_pos else emb_lang
-        emb_lang = self.enc_instr(emb_lang, mask_token) if self.enc_instr else emb_lang
+        emb_lang = self.enc_instr(emb_lang,
+                                  mask_token) if self.enc_instr else emb_lang
         emb_lang = self.enc_dropout(emb_lang)
         emb_lang = self.enc_layernorm(emb_lang)
         return emb_lang

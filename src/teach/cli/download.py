@@ -35,10 +35,14 @@ def download_with_progressbar(s3_resource, bucket_name, key, directory):
     total_file_size = file_object.content_length
     bucket = s3_resource.Bucket(bucket_name)
     with tqdm(total=total_file_size, unit="B", unit_scale=True, desc=key) as t:
-        bucket.download_file(Key=key, Filename=f"{directory}/{key}", Callback=update_download_progressbar(t))
+        bucket.download_file(Key=key,
+                             Filename=f"{directory}/{key}",
+                             Callback=update_download_progressbar(t))
 
 
-def download_dataset(directory, key=None, bucket_name=DEFAULT_DATASET_BUCKET_NAME):
+def download_dataset(directory,
+                     key=None,
+                     bucket_name=DEFAULT_DATASET_BUCKET_NAME):
     """
     Download file from the S3 bucket to the target directory.
     If key is not given, download all available files in the bucket.
@@ -46,14 +50,19 @@ def download_dataset(directory, key=None, bucket_name=DEFAULT_DATASET_BUCKET_NAM
     try:
         if not os.path.exists(directory):
             os.makedirs(directory)
-        s3_resource = boto3.resource("s3", region_name="us-east-1", config=Config(signature_version=UNSIGNED))
+        s3_resource = boto3.resource("s3",
+                                     region_name="us-east-1",
+                                     config=Config(signature_version=UNSIGNED))
         if key:
             print(f"Downloading s3://{bucket_name}/{key} to {directory}")
             download_with_progressbar(s3_resource, bucket_name, key, directory)
         else:
             for file_name in FILE_LIST:
-                print(f"Downloading s3://{bucket_name}/{file_name} to {directory}")
-                download_with_progressbar(s3_resource, bucket_name, file_name, directory)
+                print(
+                    f"Downloading s3://{bucket_name}/{file_name} to {directory}"
+                )
+                download_with_progressbar(s3_resource, bucket_name, file_name,
+                                          directory)
     except Exception as e:
         print(f"Exception reading from: {bucket_name}")
         print(f"Exception: {str(e)}")
@@ -107,11 +116,15 @@ def process_arguments():
         type=str,
         required=False,
         default=DEFAULT_DIRECTORY,
-        help=f"The location to store the dataset into. Default={DEFAULT_DIRECTORY}",
+        help=
+        f"The location to store the dataset into. Default={DEFAULT_DIRECTORY}",
     )
     parser.add_argument(
-        "-f", "--file", type=str, required=False, help="Specify the file name to be retrieved from S3 bucket."
-    )
+        "-f",
+        "--file",
+        type=str,
+        required=False,
+        help="Specify the file name to be retrieved from S3 bucket.")
 
     args = parser.parse_args()
     return args

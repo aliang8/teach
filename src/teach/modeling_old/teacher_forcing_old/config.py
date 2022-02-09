@@ -156,8 +156,8 @@ def cfg_train():
     # Should train loss be computed over history actions? (default False)
     compute_train_loss_over_history = False
 
-    # Seq2Seq 
-    demb = 768 
+    # Seq2Seq
+    demb = 768
     dhid = 512
     pm_aux_loss_wt = 0
     subgoal_aux_loss_wt = 0
@@ -165,16 +165,15 @@ def cfg_train():
     mask_loss_wt = 1
     dframe = 2500
     pframe = 300
-    attn_dropout=0
-    actor_dropout=0
-    hstate_dropout=0.3
-    vis_dropout=0.3
-    input_dropout=0
-    lang_dropout=0
-    dec_teacher_forcing=True
-    zero_goal=False
-    zero_instr=False
-    
+    attn_dropout = 0
+    actor_dropout = 0
+    hstate_dropout = 0.3
+    vis_dropout = 0.3
+    input_dropout = 0
+    lang_dropout = 0
+    dec_teacher_forcing = True
+    zero_goal = False
+    zero_instr = False
 
     # TRANSFORMER settings
     # size of transformer embeddings

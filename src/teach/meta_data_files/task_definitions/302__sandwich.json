@@ -17,26 +17,44 @@
     "lettuce": {
       "determiner": "#0",
       "task_name": "Sliced X",
-      "task_params": ["Lettuce"]
+      "task_params": [
+        "Lettuce"
+      ]
     },
     "tomato": {
       "determiner": "#1",
       "task_name": "Sliced X",
-      "task_params": ["Tomato"]
+      "task_params": [
+        "Tomato"
+      ]
     },
     "plate": {
       "determiner": "a",
       "task_name": "Clean X",
-      "task_params": ["Plate"]
+      "task_params": [
+        "Plate"
+      ]
     }
   },
   "relations": [
     {
       "property": "parentReceptacles",
-      "tail_entity_list": ["plate"],
-      "tail_determiner_list": ["the"],
-      "head_entity_list": ["toast", "lettuce", "tomato"],
-      "head_determiner_list": ["2", "#0", "#1"],
+      "tail_entity_list": [
+        "plate"
+      ],
+      "tail_determiner_list": [
+        "the"
+      ],
+      "head_entity_list": [
+        "toast",
+        "lettuce",
+        "tomato"
+      ],
+      "head_determiner_list": [
+        "2",
+        "#0",
+        "#1"
+      ],
       "failure_desc": "All sandwich components need to be on a plate."
     }
   ]

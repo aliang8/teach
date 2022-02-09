@@ -30,21 +30,26 @@ class LearnedModel(nn.Module):
         self.summary_writer = None
         # create the model to be trained
         ModelClass = import_module("alfred.model.{}".format(args.model)).Model
-        self.model = ModelClass(args, embs_ann, vocab_out, self.pad, self.seg, for_inference)
+        self.model = ModelClass(args, embs_ann, vocab_out, self.pad, self.seg,
+                                for_inference)
 
     def run_train(self, loaders, info, optimizer=None):
         """
         training loop
         """
         # prepare dictionaries
-        loaders_train = dict(filter(lambda x: "train" in x[0], loaders.items()))
-        assert len(set([len(loader) for loader in loaders_train.values()])) == 1
+        loaders_train = dict(filter(lambda x: "train" in x[0],
+                                    loaders.items()))
+        assert len(set([len(loader)
+                        for loader in loaders_train.values()])) == 1
         vocabs_in = {
-            "{};{}".format(loader.dataset.name, loader.dataset.ann_type): loader.dataset.vocab_in
+            "{};{}".format(loader.dataset.name, loader.dataset.ann_type):
+            loader.dataset.vocab_in
             for loader in loaders.values()
         }
         epoch_length = len(next(iter(loaders_train.values())))
-        logger.debug("In LearnedModel.run_train, epoch_length = %d" % epoch_length)
+        logger.debug("In LearnedModel.run_train, epoch_length = %d" %
+                     epoch_length)
         # initialize summary writer for tensorboardX
         self.summary_writer = SummaryWriter(log_dir=self.args.dout)
         # dump config
@@ -52,10 +57,10 @@ class LearnedModel(nn.Module):
             json.dump(vars(self.args), f, indent=2)
         # optimizer
         optimizer, schedulers = model_util.create_optimizer_and_schedulers(
-            info["progress"], self.args, self.parameters(), optimizer
-        )
+            info["progress"], self.args, self.parameters(), optimizer)
         # make sure that all train loaders have the same length
-        assert len(set([len(loader) for loader in loaders_train.values()])) == 1
+        assert len(set([len(loader)
+                        for loader in loaders_train.values()])) == 1
         model_util.save_log(
             self.args.dout,
             progress=info["progress"],
@@ -70,34 +75,49 @@ class LearnedModel(nn.Module):
         for epoch in range(info["progress"], self.args.epochs):
             logger.info("Epoch {}/{}".format(epoch, self.args.epochs))
             self.train()
-            train_iterators = {key: iter(loader) for key, loader in loaders_train.items()}
-            metrics = {key: collections.defaultdict(list) for key in loaders_train}
+            train_iterators = {
+                key: iter(loader)
+                for key, loader in loaders_train.items()
+            }
+            metrics = {
+                key: collections.defaultdict(list)
+                for key in loaders_train
+            }
             gt.reset()
 
             for _ in tqdm(range(epoch_length), desc="train"):
                 # sample batches
-                batches = data_util.sample_batches(train_iterators, self.args.device, self.pad, self.args)
+                batches = data_util.sample_batches(train_iterators,
+                                                   self.args.device, self.pad,
+                                                   self.args)
                 gt.stamp("data fetching", unique=False)
 
                 # do the forward passes
                 model_outs, losses_train = {}, {}
-                for batch_name, (traj_data, input_dict, gt_dict) in batches.items():
+                for batch_name, (traj_data, input_dict,
+                                 gt_dict) in batches.items():
                     if "lang" not in input_dict:
-                        raise RuntimeError("In learned.run_train, lang not in input_dict")
+                        raise RuntimeError(
+                            "In learned.run_train, lang not in input_dict")
                     model_outs[batch_name] = self.model.forward(
-                        vocabs_in[batch_name.split(":")[-1]], action=gt_dict["action"], **input_dict
-                    )
-                    info["iters"]["train"] += len(traj_data) if ":" not in batch_name else 0
+                        vocabs_in[batch_name.split(":")[-1]],
+                        action=gt_dict["action"],
+                        **input_dict)
+                    info["iters"]["train"] += len(
+                        traj_data) if ":" not in batch_name else 0
                 gt.stamp("forward pass", unique=False)
                 # compute losses
                 losses_train = self.model.compute_loss(
                     model_outs,
-                    {key: gt_dict for key, (_, _, gt_dict) in batches.items()},
+                    {key: gt_dict
+                     for key, (_, _, gt_dict) in batches.items()},
                 )
 
                 # do the gradient step
                 optimizer.zero_grad()
-                sum_loss = sum([sum(loss.values()) for name, loss in losses_train.items()])
+                sum_loss = sum([
+                    sum(loss.values()) for name, loss in losses_train.items()
+                ])
                 sum_loss.backward()
                 optimizer.step()
                 gt.stamp("optimizer", unique=False)
@@ -111,30 +131,45 @@ class LearnedModel(nn.Module):
                         self.args.compute_train_loss_over_history,
                     )
                     for key, value in losses_train[dataset_name].items():
-                        metrics["train:" + dataset_name]["loss/" + key].append(value.item())
-                    metrics["train:" + dataset_name]["loss/total"].append(sum_loss.detach().cpu().item())
+                        metrics["train:" + dataset_name]["loss/" + key].append(
+                            value.item())
+                    metrics["train:" + dataset_name]["loss/total"].append(
+                        sum_loss.detach().cpu().item())
                 gt.stamp("metrics", unique=False)
                 if self.args.profile:
-                    logger.info(gt.report(include_itrs=False, include_stats=False))
+                    logger.info(
+                        gt.report(include_itrs=False, include_stats=False))
 
             # save the checkpoint
             logger.info("Saving models...")
             stats = {"epoch": epoch}
-            model_util.save_model(self, "model_{:02d}.pth".format(epoch), stats, optimizer=optimizer)
+            model_util.save_model(self,
+                                  "model_{:02d}.pth".format(epoch),
+                                  stats,
+                                  optimizer=optimizer)
             model_util.save_model(self, "latest.pth", stats, symlink=True)
 
             # compute metrics for train
             logger.info("Computing train metrics...")
-            metrics = {data: {k: sum(v) / len(v) for k, v in metr.items()} for data, metr in metrics.items()}
+            metrics = {
+                data: {k: sum(v) / len(v)
+                       for k, v in metr.items()}
+                for data, metr in metrics.items()
+            }
             stats = {
                 "epoch": epoch,
-                "general": {"learning_rate": optimizer.param_groups[0]["lr"]},
+                "general": {
+                    "learning_rate": optimizer.param_groups[0]["lr"]
+                },
                 **metrics,
             }
 
             # save the checkpoint
             logger.info("Saving models...")
-            model_util.save_model(self, "model_{:02d}.pth".format(epoch), stats, optimizer=optimizer)
+            model_util.save_model(self,
+                                  "model_{:02d}.pth".format(epoch),
+                                  stats,
+                                  optimizer=optimizer)
             model_util.save_model(self, "latest.pth", stats, symlink=True)
             # write averaged stats
             for loader_id in stats.keys():
@@ -142,10 +177,13 @@ class LearnedModel(nn.Module):
                     for stat_key, stat_value in stats[loader_id].items():
                         # for comparison with old epxs, maybe remove later
                         summary_key = "{}/{}".format(
-                            loader_id.replace(":", "/").replace("lmdb/", "").replace(";lang", "").replace(";", "_"),
+                            loader_id.replace(":", "/").replace(
+                                "lmdb/", "").replace(";lang",
+                                                     "").replace(";", "_"),
                             stat_key.replace(":", "/").replace("lmdb/", ""),
                         )
-                        self.summary_writer.add_scalar(summary_key, stat_value, info["iters"]["train"])
+                        self.summary_writer.add_scalar(summary_key, stat_value,
+                                                       info["iters"]["train"])
             # dump the training info
             model_util.save_log(
                 self.args.dout,
@@ -157,5 +195,5 @@ class LearnedModel(nn.Module):
             )
             model_util.adjust_lr(self.args, epoch, schedulers)
         logger.info(
-            "{} epochs are completed, all the models were saved to: {}".format(self.args.epochs, self.args.dout)
-        )
+            "{} epochs are completed, all the models were saved to: {}".format(
+                self.args.epochs, self.args.dout))

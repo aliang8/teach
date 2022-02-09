@@ -10,7 +10,6 @@ class SelfAttn(nn.Module):
     '''
     self-attention with learnable parameters
     '''
-
     def __init__(self, dhid):
         super().__init__()
         self.scorer = nn.Linear(dhid, 1)
@@ -25,7 +24,6 @@ class DotAttn(nn.Module):
     '''
     dot-attention (or soft-attention)
     '''
-
     def forward(self, inp, h):
         score = self.softmax(inp, h)
         return score.expand_as(inp).mul(inp).sum(1), score
@@ -40,11 +38,10 @@ class ResnetVisualEncoder(nn.Module):
     '''
     visual encoder
     '''
-
     def __init__(self, dframe):
         super(ResnetVisualEncoder, self).__init__()
         self.dframe = dframe
-        self.flattened_size = 64*7*7
+        self.flattened_size = 64 * 7 * 7
 
         self.conv1 = nn.Conv2d(512, 256, kernel_size=1, stride=1, padding=0)
         self.conv2 = nn.Conv2d(256, 64, kernel_size=1, stride=1, padding=0)
@@ -69,20 +66,31 @@ class MaskDecoder(nn.Module):
     '''
     mask decoder
     '''
-
-    def __init__(self, dhid, pframe=300, hshape=(64,7,7)):
+    def __init__(self, dhid, pframe=300, hshape=(64, 7, 7)):
         super(MaskDecoder, self).__init__()
         self.dhid = dhid
         self.hshape = hshape
         self.pframe = pframe
 
-        self.d1 = nn.Linear(self.dhid, hshape[0]*hshape[1]*hshape[2])
+        self.d1 = nn.Linear(self.dhid, hshape[0] * hshape[1] * hshape[2])
         self.upsample = nn.UpsamplingNearest2d(scale_factor=2)
         self.bn2 = nn.BatchNorm2d(32)
         self.bn1 = nn.BatchNorm2d(16)
-        self.dconv3 = nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1)
-        self.dconv2 = nn.ConvTranspose2d(32, 16, kernel_size=4, stride=2, padding=1)
-        self.dconv1 = nn.ConvTranspose2d(16, 1, kernel_size=4, stride=2, padding=1)
+        self.dconv3 = nn.ConvTranspose2d(64,
+                                         32,
+                                         kernel_size=4,
+                                         stride=2,
+                                         padding=1)
+        self.dconv2 = nn.ConvTranspose2d(32,
+                                         16,
+                                         kernel_size=4,
+                                         stride=2,
+                                         padding=1)
+        self.dconv1 = nn.ConvTranspose2d(16,
+                                         1,
+                                         kernel_size=4,
+                                         stride=2,
+                                         padding=1)
 
     def forward(self, x):
         x = F.relu(self.d1(x))
@@ -106,9 +114,15 @@ class ConvFrameMaskDecoder(nn.Module):
     '''
     action decoder
     '''
-
-    def __init__(self, emb, dframe, dhid, pframe=300,
-                 attn_dropout=0., hstate_dropout=0., actor_dropout=0., input_dropout=0.,
+    def __init__(self,
+                 emb,
+                 dframe,
+                 dhid,
+                 pframe=300,
+                 attn_dropout=0.,
+                 hstate_dropout=0.,
+                 actor_dropout=0.,
+                 input_dropout=0.,
                  teacher_forcing=False):
         super().__init__()
         demb = emb.weight.size(1)
@@ -117,16 +131,17 @@ class ConvFrameMaskDecoder(nn.Module):
         self.pframe = pframe
         self.dhid = dhid
         self.vis_encoder = ResnetVisualEncoder(dframe=dframe)
-        self.cell = nn.LSTMCell(dhid+dframe+demb, dhid)
+        self.cell = nn.LSTMCell(dhid + dframe + demb, dhid)
         self.attn = DotAttn()
         self.input_dropout = nn.Dropout(input_dropout)
         self.attn_dropout = nn.Dropout(attn_dropout)
         self.hstate_dropout = nn.Dropout(hstate_dropout)
         self.actor_dropout = nn.Dropout(actor_dropout)
         self.go = nn.Parameter(torch.Tensor(demb))
-        self.actor = nn.Linear(dhid+dhid+dframe+demb, demb)
-        self.mask_dec = MaskDecoder(dhid=dhid+dhid+dframe+demb, pframe=self.pframe)
-        self.coord_pred = nn.Linear(dhid+dhid+dframe+demb, 2)
+        self.actor = nn.Linear(dhid + dhid + dframe + demb, demb)
+        self.mask_dec = MaskDecoder(dhid=dhid + dhid + dframe + demb,
+                                    pframe=self.pframe)
+        self.coord_pred = nn.Linear(dhid + dhid + dframe + demb, 2)
         self.teacher_forcing = teacher_forcing
         self.h_tm1_fc = nn.Linear(dhid, dhid)
 
@@ -138,10 +153,11 @@ class ConvFrameMaskDecoder(nn.Module):
         # import ipdb; ipdb.set_trace()
         # encode vision and lang feat
         vis_feat_t = self.vis_encoder(frame)
-        lang_feat_t = enc # language is encoded once at the start
+        lang_feat_t = enc  # language is encoded once at the start
 
         # attend over language
-        weighted_lang_t, lang_attn_t = self.attn(self.attn_dropout(lang_feat_t), self.h_tm1_fc(h_tm1))
+        weighted_lang_t, lang_attn_t = self.attn(
+            self.attn_dropout(lang_feat_t), self.h_tm1_fc(h_tm1))
 
         # concat visual feats, weight lang, and previous action embedding
         inp_t = torch.cat([vis_feat_t, weighted_lang_t, e_t], dim=1)
@@ -174,7 +190,8 @@ class ConvFrameMaskDecoder(nn.Module):
         coords = []
         for t in range(max_t):
             # enc[:, min(t, enc.shape[1])].squeeze()
-            action_t, mask_t, coord_t, state_t, attn_score_t = self.step(enc[:, min(t, enc.shape[1]-1)], frames[:, t], e_t, state_t)
+            action_t, mask_t, coord_t, state_t, attn_score_t = self.step(
+                enc[:, min(t, enc.shape[1] - 1)], frames[:, t], e_t, state_t)
             masks.append(mask_t)
             actions.append(action_t)
             attn_scores.append(attn_score_t)
@@ -199,9 +216,15 @@ class ConvFrameMaskDecoderProgressMonitor(nn.Module):
     '''
     action decoder with subgoal and progress monitoring
     '''
-
-    def __init__(self, emb, dframe, dhid, pframe=300,
-                 attn_dropout=0., hstate_dropout=0., actor_dropout=0., input_dropout=0.,
+    def __init__(self,
+                 emb,
+                 dframe,
+                 dhid,
+                 pframe=300,
+                 attn_dropout=0.,
+                 hstate_dropout=0.,
+                 actor_dropout=0.,
+                 input_dropout=0.,
                  teacher_forcing=False):
         super().__init__()
         demb = emb.weight.size(1)
@@ -210,20 +233,21 @@ class ConvFrameMaskDecoderProgressMonitor(nn.Module):
         self.pframe = pframe
         self.dhid = dhid
         self.vis_encoder = ResnetVisualEncoder(dframe=dframe)
-        self.cell = nn.LSTMCell(dhid+dframe+demb, dhid)
+        self.cell = nn.LSTMCell(dhid + dframe + demb, dhid)
         self.attn = DotAttn()
         self.input_dropout = nn.Dropout(input_dropout)
         self.attn_dropout = nn.Dropout(attn_dropout)
         self.hstate_dropout = nn.Dropout(hstate_dropout)
         self.actor_dropout = nn.Dropout(actor_dropout)
         self.go = nn.Parameter(torch.Tensor(demb))
-        self.actor = nn.Linear(dhid+dhid+dframe+demb, demb)
-        self.mask_dec = MaskDecoder(dhid=dhid+dhid+dframe+demb, pframe=self.pframe)
+        self.actor = nn.Linear(dhid + dhid + dframe + demb, demb)
+        self.mask_dec = MaskDecoder(dhid=dhid + dhid + dframe + demb,
+                                    pframe=self.pframe)
         self.teacher_forcing = teacher_forcing
         self.h_tm1_fc = nn.Linear(dhid, dhid)
 
-        self.subgoal = nn.Linear(dhid+dhid+dframe+demb, 1)
-        self.progress = nn.Linear(dhid+dhid+dframe+demb, 1)
+        self.subgoal = nn.Linear(dhid + dhid + dframe + demb, 1)
+        self.progress = nn.Linear(dhid + dhid + dframe + demb, 1)
 
         nn.init.uniform_(self.go, -0.1, 0.1)
 
@@ -233,10 +257,11 @@ class ConvFrameMaskDecoderProgressMonitor(nn.Module):
 
         # encode vision and lang feat
         vis_feat_t = self.vis_encoder(frame)
-        lang_feat_t = enc # language is encoded once at the start
+        lang_feat_t = enc  # language is encoded once at the start
 
         # attend over language
-        weighted_lang_t, lang_attn_t = self.attn(self.attn_dropout(lang_feat_t), self.h_tm1_fc(h_tm1))
+        weighted_lang_t, lang_attn_t = self.attn(
+            self.attn_dropout(lang_feat_t), self.h_tm1_fc(h_tm1))
 
         # concat visual feats, weight lang, and previous action embedding
         inp_t = torch.cat([vis_feat_t, weighted_lang_t, e_t], dim=1)
@@ -260,7 +285,8 @@ class ConvFrameMaskDecoderProgressMonitor(nn.Module):
         return action_t, mask_t, state_t, lang_attn_t, subgoal_t, progress_t
 
     def forward(self, enc, frames, gold=None, max_decode=150, state_0=None):
-        max_t = gold.size(1) if self.training else min(max_decode, frames.shape[1])
+        max_t = gold.size(1) if self.training else min(max_decode,
+                                                       frames.shape[1])
         batch = enc.size(0)
         e_t = self.go.repeat(batch, 1)
         state_t = state_0
@@ -271,7 +297,8 @@ class ConvFrameMaskDecoderProgressMonitor(nn.Module):
         subgoals = []
         progresses = []
         for t in range(max_t):
-            action_t, mask_t, state_t, attn_score_t, subgoal_t, progress_t = self.step(enc, frames[:, t], e_t, state_t)
+            action_t, mask_t, state_t, attn_score_t, subgoal_t, progress_t = self.step(
+                enc, frames[:, t], e_t, state_t)
             masks.append(mask_t)
             actions.append(action_t)
             attn_scores.append(attn_score_t)

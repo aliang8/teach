@@ -15,7 +15,9 @@ class Pose:
 
     def to_dict(self):
         _dict = OrderedDict()
-        _dict["pose"] = [self.x, self.y, self.z, self.x_rot, self.y_rot, self.z_rot]
+        _dict["pose"] = [
+            self.x, self.y, self.z, self.x_rot, self.y_rot, self.z_rot
+        ]
         return _dict
 
     @classmethod
@@ -63,7 +65,7 @@ class Pose_With_ID:
             pose = Pose.from_array(pose_with_id_dict["pose"])
         else:
             pose = Pose.from_array(
-                list(pose_with_id_dict["position"].values()) + list(pose_with_id_dict["rotation"].values())
-            )
+                list(pose_with_id_dict["position"].values()) +
+                list(pose_with_id_dict["rotation"].values()))
 
         return cls(identity=identity, pose=pose, is_object=is_object)

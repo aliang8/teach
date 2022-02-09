@@ -1,7 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
 
-
 import copy
 import json
 import os
@@ -16,7 +15,9 @@ from teach.logger import create_logger
 logger = create_logger(__name__)
 
 
-def reduce_float_precision(input_entry, num_places_to_retain=4, keys_to_exclude=None):
+def reduce_float_precision(input_entry,
+                           num_places_to_retain=4,
+                           keys_to_exclude=None):
     if keys_to_exclude is None:
         keys_to_exclude = ["time_start"]
 
@@ -27,8 +28,9 @@ def reduce_float_precision(input_entry, num_places_to_retain=4, keys_to_exclude=
                 output_dict[k] = v
             elif type(v) in [dict, list]:
                 output_dict[k] = reduce_float_precision(
-                    v, num_places_to_retain=num_places_to_retain, keys_to_exclude=keys_to_exclude
-                )
+                    v,
+                    num_places_to_retain=num_places_to_retain,
+                    keys_to_exclude=keys_to_exclude)
             elif type(v) == float:
                 output_dict[k] = round(v, num_places_to_retain)
             else:
@@ -41,16 +43,17 @@ def reduce_float_precision(input_entry, num_places_to_retain=4, keys_to_exclude=
             if type(v) in [dict, list]:
                 output_list.append(
                     reduce_float_precision(
-                        v, num_places_to_retain=num_places_to_retain, keys_to_exclude=keys_to_exclude
-                    )
-                )
+                        v,
+                        num_places_to_retain=num_places_to_retain,
+                        keys_to_exclude=keys_to_exclude))
             elif type(v) == float:
                 output_list.append(round(v, num_places_to_retain))
             else:
                 output_list.append(v)
         return output_list
 
-    raise NotImplementedError("Cannot handle input of type" + str(type(input_entry)))
+    raise NotImplementedError("Cannot handle input of type" +
+                              str(type(input_entry)))
 
 
 def are_prop_values_equal(init_value, final_value):
@@ -66,7 +69,8 @@ def are_prop_values_equal(init_value, final_value):
         if len(init_value) != len(final_value):
             return False
         for key in final_value:
-            if key not in init_value or not are_prop_values_equal(init_value[key], final_value[key]):
+            if key not in init_value or not are_prop_values_equal(
+                    init_value[key], final_value[key]):
                 return False
     elif type(init_value) == float:
         if not np.isclose(init_value, final_value):
@@ -94,7 +98,8 @@ def get_state_changes(init_state, final_state):
             continue
         agent_changes[idx] = dict()
         for prop in agent_final.keys():
-            if prop not in agent_init or not are_prop_values_equal(agent_init, agent_final):
+            if prop not in agent_init or not are_prop_values_equal(
+                    agent_init, agent_final):
                 agent_changes[idx][prop] = agent_final[prop]
         if len(agent_changes[idx]) == 0:
             del agent_changes[idx]
@@ -103,19 +108,22 @@ def get_state_changes(init_state, final_state):
     for obj in init_state["objects"]:
         init_obj_dict[obj["objectId"]] = obj
         if obj["objectId"] in init_state["custom_object_metadata"]:
-            init_obj_dict[obj["objectId"]].update(init_state["custom_object_metadata"][obj["objectId"]])
+            init_obj_dict[obj["objectId"]].update(
+                init_state["custom_object_metadata"][obj["objectId"]])
     final_obj_dict = dict()
     for obj in final_state["objects"]:
         final_obj_dict[obj["objectId"]] = obj
         if obj["objectId"] in final_state["custom_object_metadata"]:
-            final_obj_dict[obj["objectId"]].update(final_state["custom_object_metadata"][obj["objectId"]])
+            final_obj_dict[obj["objectId"]].update(
+                final_state["custom_object_metadata"][obj["objectId"]])
 
     init_obj_id_given_final_obj_id = dict()
     for obj_id in final_obj_dict.keys():
         if obj_id in init_obj_dict.keys():
             init_obj_id_given_final_obj_id[obj_id] = obj_id
         elif len(obj_id.split("|")) > 4:
-            init_obj_id_given_final_obj_id[obj_id] = "|".join(obj_id.split("|")[:4])
+            init_obj_id_given_final_obj_id[obj_id] = "|".join(
+                obj_id.split("|")[:4])
         else:
             init_obj_id_given_final_obj_id[obj_id] = obj_id
 
@@ -126,7 +134,8 @@ def get_state_changes(init_state, final_state):
             continue
         obj_changes[object_id] = dict()
         for prop in obj_final.keys():
-            if prop not in obj_init or not are_prop_values_equal(obj_init[prop], obj_final[prop]):
+            if prop not in obj_init or not are_prop_values_equal(
+                    obj_init[prop], obj_final[prop]):
                 obj_changes[object_id][prop] = obj_final[prop]
         if len(obj_changes[object_id]) == 0:
             del obj_changes[object_id]
@@ -143,7 +152,8 @@ def get_state_diff_changes(init_state_diff, final_state_diff):
             continue
         agent_changes[agent_id] = dict()
         for prop in agent_final.keys():
-            if prop not in agent_init or not are_prop_values_equal(agent_init, agent_final):
+            if prop not in agent_init or not are_prop_values_equal(
+                    agent_init, agent_final):
                 agent_changes[agent_id][prop] = agent_final[prop]
         if len(agent_changes[agent_id]) == 0:
             del agent_changes[agent_id]
@@ -182,7 +192,8 @@ def get_state_diff_changes(init_state_diff, final_state_diff):
         if obj_id in init_obj_dict and obj_id in final_obj_dict:
             init_obj_id_given_final_obj_id[obj_id] = obj_id
         elif len(obj_id.split("|")) > 4 and "Basin" not in obj_id:
-            init_obj_id_given_final_obj_id[obj_id] = "|".join(obj_id.split("|")[:4])
+            init_obj_id_given_final_obj_id[obj_id] = "|".join(
+                obj_id.split("|")[:4])
         else:
             init_obj_id_given_final_obj_id[obj_id] = obj_id
 
@@ -198,7 +209,8 @@ def get_state_diff_changes(init_state_diff, final_state_diff):
             continue
         obj_changes[object_id] = dict()
         for prop in obj_final.keys():
-            if prop not in obj_init or not are_prop_values_equal(obj_init[prop], obj_final[prop]):
+            if prop not in obj_init or not are_prop_values_equal(
+                    obj_init[prop], obj_final[prop]):
                 obj_changes[object_id][prop] = obj_final[prop]
         if len(obj_changes[object_id]) == 0:
             del obj_changes[object_id]
@@ -209,7 +221,8 @@ def get_state_diff_changes(init_state_diff, final_state_diff):
 def apply_state_diff(state, state_diff):
     for agent_id in state_diff["agents"]:
         for prop in state_diff["agents"][agent_id]:
-            state["agents"][agent_id][prop] = state_diff["agents"][agent_id][prop]
+            state["agents"][agent_id][prop] = state_diff["agents"][agent_id][
+                prop]
     obj_changes_applied = set()
     for obj in state["objects"]:
         if obj["objectId"] in state_diff["objects"]:
@@ -218,31 +231,38 @@ def apply_state_diff(state, state_diff):
     logger.debug("Applied changes to objects: " + str(obj_changes_applied))
 
     # Find objects whose changes have not been applied - these should be due to slicing or cracking
-    obj_changes_remaining = set(state_diff["objects"].keys()).difference(obj_changes_applied)
-    logger.debug("Objects to be changed that involved slicing / cracking :" + str(obj_changes_remaining))
+    obj_changes_remaining = set(
+        state_diff["objects"].keys()).difference(obj_changes_applied)
+    logger.debug("Objects to be changed that involved slicing / cracking :" +
+                 str(obj_changes_remaining))
     objs_to_delete = list()
     obj_idxs_to_delete = list()
     for obj_id in obj_changes_remaining:
         base_obj_id = "|".join(obj_id.split("|")[:4])
-        base_obj_idx, base_obj = [
-            (idx, obj) for idx, obj in enumerate(state["objects"]) if obj["objectId"] == base_obj_id
-        ][0]
+        base_obj_idx, base_obj = [(idx, obj)
+                                  for idx, obj in enumerate(state["objects"])
+                                  if obj["objectId"] == base_obj_id][0]
         new_obj = copy.deepcopy(base_obj)
         new_obj.update(state_diff["objects"][obj_id])
-        logger.debug(
-            "Created " + str(new_obj) + " from " + str(base_obj) + " with changes " + str(state_diff["objects"][obj_id])
-        )
+        logger.debug("Created " + str(new_obj) + " from " + str(base_obj) +
+                     " with changes " + str(state_diff["objects"][obj_id]))
         state["objects"].append(new_obj)
         objs_to_delete.append(base_obj)
         obj_idxs_to_delete.append(base_obj_idx)
 
     obj_idxs_to_delete = set(obj_idxs_to_delete)
     logger.debug("Indices to delete:" + str(obj_idxs_to_delete))
-    logger.debug("Cur objects :" + str([(idx, obj["objectId"]) for (idx, obj) in enumerate(state["objects"])]))
+    logger.debug("Cur objects :" +
+                 str([(idx, obj["objectId"])
+                      for (idx, obj) in enumerate(state["objects"])]))
 
     # Delete unchanged versions of sliced / cracked objects
-    state["objects"] = [obj for (idx, obj) in enumerate(state["objects"]) if idx not in obj_idxs_to_delete]
-    logger.debug("Objects after deletion :" + str([obj["objectId"] for obj in state["objects"]]))
+    state["objects"] = [
+        obj for (idx, obj) in enumerate(state["objects"])
+        if idx not in obj_idxs_to_delete
+    ]
+    logger.debug("Objects after deletion :" +
+                 str([obj["objectId"] for obj in state["objects"]]))
     return state
 
 
@@ -279,12 +299,15 @@ def create_task_thor_from_state_diff(state_diff):
     logger.debug("Creating task from state diff ...")
     for obj_id in state_diff["objects"]:
         obj_type = get_obj_type_from_oid(obj_id)
-        props_for_task = set(state_diff["objects"][obj_id].keys()).intersection(props_to_check)
+        props_for_task = set(
+            state_diff["objects"][obj_id].keys()).intersection(props_to_check)
         overridden_props = [
             prop_overrides[prop]
-            for prop in set(state_diff["objects"][obj_id].keys()).intersection(prop_overrides.keys())
+            for prop in set(state_diff["objects"][obj_id].keys()).intersection(
+                prop_overrides.keys())
         ]
-        overridden_props_flat = set([prop for prop_list in overridden_props for prop in prop_list])
+        overridden_props_flat = set(
+            [prop for prop_list in overridden_props for prop in prop_list])
         props_for_task = props_for_task.difference(overridden_props_flat)
 
         for prop in props_for_task:
@@ -293,7 +316,8 @@ def create_task_thor_from_state_diff(state_diff):
             # allow objects to be shared across components
             key = str((obj_type, prop, val))
             if key in components:
-                components[key]["determiner"] = int(components[key]["determiner"]) + 1
+                components[key]["determiner"] = int(
+                    components[key]["determiner"]) + 1
             else:
                 components[key] = dict()
                 components[key]["determiner"] = 1
@@ -303,8 +327,8 @@ def create_task_thor_from_state_diff(state_diff):
                 components[key]["conditions"]["objectType"] = obj_type
                 components[key]["condition_failure_descs"] = dict()
                 components[key]["condition_failure_descs"][prop] = (
-                    str(prop) + " needs to be " + str(val) + " for " + str(obj_type)
-                )
+                    str(prop) + " needs to be " + str(val) + " for " +
+                    str(obj_type))
                 if prop == "simbotLastParentReceptacle" and val is not None:
                     components[key]["conditions"][prop] = val.split("|")[0]
                 else:
@@ -361,7 +385,8 @@ def with_retry(fn, retries, check_first_return_value=True):
             if check_first_return_value:
                 status, *rest = output
                 if not status:
-                    raise Exception("the function's first return value indicated failure")
+                    raise Exception(
+                        "the function's first return value indicated failure")
 
             return output
         except Exception as e:

@@ -4,7 +4,10 @@ from alfred.data.zoo.guides_edh import GuidesEdhDataset
 
 class GuidesSpeakerDataset(BaseDataset):
     def load_data(self, path):
-        return super(GuidesSpeakerDataset, self).load_data(path, feats=True, masks=False, jsons=True)
+        return super(GuidesSpeakerDataset, self).load_data(path,
+                                                           feats=True,
+                                                           masks=False,
+                                                           jsons=True)
 
     def __getitem__(self, idx):
         task_json, key = self.jsons_and_keys[idx]
@@ -17,12 +20,12 @@ class GuidesSpeakerDataset(BaseDataset):
         # load output actions
         if self.args.lang_pretrain_over_history_subgoals:
             feat_dict["action"] = GuidesEdhDataset.load_action(
-                task_json, self.vocab_out, self.vocab_translate, "action_high_all"
-            )
+                task_json, self.vocab_out, self.vocab_translate,
+                "action_high_all")
         else:
             feat_dict["action"] = GuidesEdhDataset.load_action(
-                task_json, self.vocab_out, self.vocab_translate, "action_high_future"
-            )
+                task_json, self.vocab_out, self.vocab_translate,
+                "action_high_future")
 
         # remove all the lang key/value pairs if only frames are used as input
         if self.ann_type == "frames":

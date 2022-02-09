@@ -43,7 +43,9 @@ class BaseDataset(TorchDataset):
         vocab = data_util.load_vocab(name, ann_type)
         self.vocab = vocab
         self.vocab_in = vocab["word"]
-        out_type = "action_low" if args.model in ["transformer", "seq2seq", "seq2seq_im_mask"] else "action_high"
+        out_type = "action_low" if args.model in [
+            "transformer", "seq2seq", "seq2seq_im_mask"
+        ] else "action_high"
         self.vocab_out = vocab[out_type]
         # logger.debug("Loaded vocab_out: %s" % str(self.vocab_out.to_dict()["index2word"]))
         # if several datasets are used, we will translate outputs to this vocab later
@@ -55,11 +57,13 @@ class BaseDataset(TorchDataset):
         """
         # do not open the lmdb database open in the main process, do it in each thread
         if feats:
-            self.feats_lmdb_path = os.path.join(path, self.partition, "driver_feats")
+            self.feats_lmdb_path = os.path.join(path, self.partition,
+                                                "driver_feats")
 
         # load jsons with pickle and parse them
         if jsons:
-            with open(os.path.join(path, self.partition, "jsons.pkl"), "rb") as jsons_file:
+            with open(os.path.join(path, self.partition, "jsons.pkl"),
+                      "rb") as jsons_file:
                 jsons = pickle.load(jsons_file)
             self.jsons_and_keys = []
             for idx in range(len(jsons)):
@@ -71,12 +75,16 @@ class BaseDataset(TorchDataset):
                         if "task" in json and isinstance(json["task"], str):
                             pass
                         else:
-                            json["task"] = "/".join(json["root"].split("/")[-3:-1])
+                            json["task"] = "/".join(
+                                json["root"].split("/")[-3:-1])
                         # add dataset idx and partition into the json
                         json["dataset_name"] = self.name
                         self.jsons_and_keys.append((json, key))
                         # if the dataset has script annotations, do not add identical data
-                        if len(set([str(j["ann"]["instr"]) for j in task_jsons])) == 1:
+                        if len(
+                                set([
+                                    str(j["ann"]["instr"]) for j in task_jsons
+                                ])) == 1:
                             break
 
         # return the true length of the loaded data
@@ -89,7 +97,8 @@ class BaseDataset(TorchDataset):
         if not hasattr(self, "feats_lmdb"):
             self.feats_lmdb, self.feats = self.load_lmdb(self.feats_lmdb_path)
         feats_bytes = self.feats.get(key)
-        feats_numpy = np.frombuffer(feats_bytes, dtype=np.float32).reshape(self.dataset_info["feat_shape"])
+        feats_numpy = np.frombuffer(feats_bytes, dtype=np.float32).reshape(
+            self.dataset_info["feat_shape"])
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             frames = torch.tensor(feats_numpy)

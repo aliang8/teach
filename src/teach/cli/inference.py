@@ -35,7 +35,8 @@ def main():
         "--use_img_file",
         dest="use_img_file",
         action="store_true",
-        help="synchronous save images with model api use the image file instead of streaming image",
+        help=
+        "synchronous save images with model api use the image file instead of streaming image",
     )
     arg_parser.add_argument(
         "--output_dir",
@@ -47,20 +48,27 @@ def main():
         "--split",
         type=str,
         default="valid_seen",
-        choices=["train", "valid_seen", "valid_unseen", "test_seen", "test_unseen"],
+        choices=[
+            "train", "valid_seen", "valid_unseen", "test_seen", "test_unseen"
+        ],
         help="One of train, valid_seen, valid_unseen, test_seen, test_unseen",
     )
     arg_parser.add_argument(
         "--game_file",
         type=str,
-        help="Run only on this game instance. Split must be set appropriately to find corresponding game file.",
+        help=
+        "Run only on this game instance. Split must be set appropriately to find corresponding game file.",
     )
-    arg_parser.add_argument("--num_processes", type=int, default=1, help="Number of processes to use")
+    arg_parser.add_argument("--num_processes",
+                            type=int,
+                            default=1,
+                            help="Number of processes to use")
     arg_parser.add_argument(
         "--max_init_tries",
         type=int,
         default=5,
-        help="Max attempts to correctly initialize an instance before declaring it as a failure",
+        help=
+        "Max attempts to correctly initialize an instance before declaring it as a failure",
     )
     arg_parser.add_argument(
         "--max_traj_steps",
@@ -68,7 +76,10 @@ def main():
         default=1000,
         help="Max predicted trajectory steps",
     )
-    arg_parser.add_argument("--max_api_fails", type=int, default=30, help="Max allowed API failures")
+    arg_parser.add_argument("--max_api_fails",
+                            type=int,
+                            default=30,
+                            help="Max allowed API failures")
     arg_parser.add_argument(
         "--metrics_file",
         type=str,
@@ -82,11 +93,15 @@ def main():
         help="Path of the python module to load the model class from.",
     )
     arg_parser.add_argument(
-        "--model_class", type=str, default="SampleModel", help="Name of the TeachModel class to use during inference."
-    )
+        "--model_class",
+        type=str,
+        default="SampleModel",
+        help="Name of the TeachModel class to use during inference.")
     arg_parser.add_argument(
-        "--replay_timeout", type=int, default=500, help="The timeout for playing back the interactions in an episode."
-    )
+        "--replay_timeout",
+        type=int,
+        default=500,
+        help="The timeout for playing back the interactions in an episode.")
 
     start_time = datetime.now()
     args, model_args = arg_parser.parse_known_args()
@@ -94,8 +109,11 @@ def main():
     if args.game_file:
         game_files = [args.game_file]
     else:
-        inference_output_files = glob.glob(os.path.join(args.output_dir, "inference__*.json"))
-        finished_game_files = [os.path.join(fn.split("__")[1]) for fn in inference_output_files]
+        inference_output_files = glob.glob(
+            os.path.join(args.output_dir, "inference__*.json"))
+        finished_game_files = [
+            os.path.join(fn.split("__")[1]) for fn in inference_output_files
+        ]
         game_files = [
             os.path.join(args.data_dir, args.split, f)
             for f in os.listdir(os.path.join(args.data_dir, args.split))
@@ -117,7 +135,8 @@ def main():
         max_init_tries=args.max_init_tries,
         max_traj_steps=args.max_traj_steps,
         max_api_fails=args.max_api_fails,
-        model_class=dynamically_load_class(args.model_module, args.model_class),
+        model_class=dynamically_load_class(args.model_module,
+                                           args.model_class),
         replay_timeout=args.replay_timeout,
         model_args=model_args,
         use_img_file=args.use_img_file,
@@ -126,28 +145,24 @@ def main():
     runner = InferenceRunner(game_files, runner_config)
     metrics = runner.run()
     inference_end_time = datetime.now()
-    logger.info("Time for inference: %s" % str(inference_end_time - start_time))
+    logger.info("Time for inference: %s" %
+                str(inference_end_time - start_time))
 
     results = aggregate_metrics(metrics, args)
     print("-------------")
-    print(
-        "SR: %d/%d = %.3f"
-        % (
-            results["success"]["num_successes"],
-            results["success"]["num_evals"],
-            results["success"]["success_rate"],
-        )
-    )
-    print(
-        "GC: %d/%d = %.3f"
-        % (
-            results["goal_condition_success"]["completed_goal_conditions"],
-            results["goal_condition_success"]["total_goal_conditions"],
-            results["goal_condition_success"]["goal_condition_success_rate"],
-        )
-    )
+    print("SR: %d/%d = %.3f" % (
+        results["success"]["num_successes"],
+        results["success"]["num_evals"],
+        results["success"]["success_rate"],
+    ))
+    print("GC: %d/%d = %.3f" % (
+        results["goal_condition_success"]["completed_goal_conditions"],
+        results["goal_condition_success"]["total_goal_conditions"],
+        results["goal_condition_success"]["goal_condition_success_rate"],
+    ))
     print("PLW SR: %.3f" % (results["path_length_weighted_success_rate"]))
-    print("PLW GC: %.3f" % (results["path_length_weighted_goal_condition_success_rate"]))
+    print("PLW GC: %.3f" %
+          (results["path_length_weighted_goal_condition_success_rate"]))
     print("-------------")
 
     results["traj_stats"] = metrics
@@ -155,7 +170,8 @@ def main():
         json.dump(results, h)
 
     end_time = datetime.now()
-    logger.info("Total time for inference and evaluation: %s" % str(end_time - start_time))
+    logger.info("Total time for inference and evaluation: %s" %
+                str(end_time - start_time))
 
 
 if __name__ == "__main__":

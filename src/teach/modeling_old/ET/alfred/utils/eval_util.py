@@ -12,8 +12,11 @@ def load_agent(model_path, dataset_info, args, for_inference=False):
     """
     load a pretrained agent and its feature extractor
     """
-    logger.info("In load_agent, model_path = %s, dataset_info = %s" % (str(model_path), str(dataset_info)))
-    learned_model, _ = model_util.load_model(model_path, args.device, for_inference=for_inference)
+    logger.info("In load_agent, model_path = %s, dataset_info = %s" %
+                (str(model_path), str(dataset_info)))
+    learned_model, _ = model_util.load_model(model_path,
+                                             args.device,
+                                             for_inference=for_inference)
     model = learned_model.model
     model.eval()
     model.args.device = args.device

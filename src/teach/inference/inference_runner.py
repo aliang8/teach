@@ -72,8 +72,8 @@ class InferenceRunner:
     @staticmethod
     def _get_metrics_files(config):
         return [
-            InferenceRunner._get_metrics_file_name_for_process(x, config.metrics_file)
-            for x in range(config.num_processes)
+            InferenceRunner._get_metrics_file_name_for_process(
+                x, config.metrics_file) for x in range(config.num_processes)
         ]
 
     @staticmethod
@@ -84,7 +84,8 @@ class InferenceRunner:
             for process_index in range(config.num_processes):
                 er = EpisodeReplay("thor", ["ego", "allo", "targetobject"])
                 ers.append(er)
-                process = InferenceRunner._launch_process(process_index, game_files, config, er)
+                process = InferenceRunner._launch_process(
+                    process_index, game_files, config, er)
                 processes.append(process)
         finally:
             InferenceRunner._join_processes(processes)
@@ -92,11 +93,11 @@ class InferenceRunner:
                 er.simulator.shutdown_simulator()
 
     @staticmethod
-    def _launch_process(process_index, game_files, config: InferenceRunnerConfig, er: EpisodeReplay):
+    def _launch_process(process_index, game_files,
+                        config: InferenceRunnerConfig, er: EpisodeReplay):
         num_files = len(game_files)
         num_files_per_process = InferenceRunner._get_num_files_per_process(
-            num_files=num_files, num_processes=config.num_processes
-        )
+            num_files=num_files, num_processes=config.num_processes)
 
         InferenceRunner._run(process_index, game_files[0:1], config, er)
 
@@ -115,27 +116,36 @@ class InferenceRunner:
         return process
 
     @staticmethod
-    def _run(process_index, files_to_process, config: InferenceRunnerConfig, er: EpisodeReplay):
-        metrics_file = InferenceRunner._get_metrics_file_name_for_process(process_index, config.metrics_file)
+    def _run(process_index, files_to_process, config: InferenceRunnerConfig,
+             er: EpisodeReplay):
+        metrics_file = InferenceRunner._get_metrics_file_name_for_process(
+            process_index, config.metrics_file)
         metrics = dict()
 
-        model = config.model_class(process_index, config.num_processes, model_args=config.model_args)
+        model = config.model_class(process_index,
+                                   config.num_processes,
+                                   model_args=config.model_args)
 
         for file_index, instance_file in enumerate(files_to_process):
             try:
-                instance_id, instance_metrics = InferenceRunner._run_game(instance_file, config, model, er)
+                instance_id, instance_metrics = InferenceRunner._run_game(
+                    instance_file, config, model, er)
                 metrics[instance_id] = instance_metrics
                 save_dict_as_json(metrics, metrics_file)
 
-                logger.info(f"Instance {instance_id}, metrics: {instance_metrics}")
-                logger.info(f"Process {process_index} completed {file_index + 1} / {len(files_to_process)} instances")
+                logger.info(
+                    f"Instance {instance_id}, metrics: {instance_metrics}")
+                logger.info(
+                    f"Process {process_index} completed {file_index + 1} / {len(files_to_process)} instances"
+                )
             except Exception:
                 err_msg = f"exception happened for instance={instance_file}, continue with the rest"
                 logger.error(err_msg, exc_info=True)
                 continue
-                
+
     @staticmethod
-    def _run_game(instance_file, config: InferenceRunnerConfig, model: TeachModel, er: EpisodeReplay):
+    def _run_game(instance_file, config: InferenceRunnerConfig,
+                  model: TeachModel, er: EpisodeReplay):
         import copy
         instance_id = copy.deepcopy(instance_file)
         instance_id = instance_id.replace(config.data_dir + '/', "")
@@ -163,7 +173,9 @@ class InferenceRunner:
         logger.debug(f"Processing instance {instance_id}")
 
         er.set_episode_by_fn_and_idx(game_file, 0, 0)
-        api_success, init_state = er._set_up_new_episode(None, turn_on_lights=False, task=game_check_task)
+        api_success, init_state = er._set_up_new_episode(None,
+                                                         turn_on_lights=False,
+                                                         task=game_check_task)
         # try:
         # init_success, er = with_retry(
         #     fn=lambda: InferenceRunner._initialize_episode_replay(
@@ -182,11 +194,14 @@ class InferenceRunner:
 
         model_started_success = False
         try:
-            model_started_success = model.start_new_tatc_instance(game, instance_file)
+            model_started_success = model.start_new_tatc_instance(
+                game, instance_file)
         except Exception:
             model_started_success = False
             metrics["error"] = 1
-            logger.error(f"Failed to start_new_tatc_instance for {instance_id}", exc_info=True)
+            logger.error(
+                f"Failed to start_new_tatc_instance for {instance_id}",
+                exc_info=True)
 
         if model_started_success:
             prev_action = None
@@ -198,24 +213,34 @@ class InferenceRunner:
                 traj_steps_taken += 1
                 try:
                     img = InferenceRunner._get_latest_ego_image(er)
-                    image_name = InferenceRunner._save_image(config, game, img, traj_steps_taken)
+                    image_name = InferenceRunner._save_image(
+                        config, game, img, traj_steps_taken)
 
                     # Get next commander action
                     commander_action, obj_cls = model.get_next_action_commander(
-                        img, game, prev_action, image_name, instance_file
-                    )
+                        img, game, prev_action, image_name, instance_file)
 
                     # Get next driver action
                     driver_action, obj_relative_coord = model.get_next_action_driver(
-                        img, game, prev_action, image_name, instance_file
-                    )
+                        img, game, prev_action, image_name, instance_file)
 
                     # Execute actions in simulator
-                    commander_step_success = InferenceRunner._execute_commander_action(er.simulator, commander_action, obj_cls)
-                    driver_step_success = InferenceRunner._execute_driver_action(er.simulator, driver_action, obj_relative_coord)
+                    commander_step_success = InferenceRunner._execute_commander_action(
+                        er.simulator, commander_action, obj_cls)
+                    driver_step_success = InferenceRunner._execute_driver_action(
+                        er.simulator, driver_action, obj_relative_coord)
                     # import ipdb; ipdb.set_trace()
-                    InferenceRunner._update_metrics(metrics, commander_action, obj_cls, driver_action, obj_relative_coord, commander_step_success, driver_step_success)
-                    prev_action = {"commander_action": commander_action, "driver_action": driver_action, "obj_cls": str(obj_cls), "obj_relative_coord": str(obj_relative_coord)}
+                    InferenceRunner._update_metrics(metrics, commander_action,
+                                                    obj_cls, driver_action,
+                                                    obj_relative_coord,
+                                                    commander_step_success,
+                                                    driver_step_success)
+                    prev_action = {
+                        "commander_action": commander_action,
+                        "driver_action": driver_action,
+                        "obj_cls": str(obj_cls),
+                        "obj_relative_coord": str(obj_relative_coord)
+                    }
                     pred_actions.append(prev_action)
                 except Exception as e:
                     logger.error(
@@ -225,14 +250,16 @@ class InferenceRunner:
                     )
                     metrics["error"] = 1
                     break
-                if InferenceRunner._should_end_inference(driver_action, metrics, config.max_api_fails):
+                if InferenceRunner._should_end_inference(
+                        driver_action, metrics, config.max_api_fails):
                     break
 
         (
             success,
             final_goal_conditions_total,
             final_goal_conditions_satisfied,
-        ) = InferenceRunner._check_episode_progress(er, er.simulator.current_task)
+        ) = InferenceRunner._check_episode_progress(er,
+                                                    er.simulator.current_task)
 
         metrics_diff = evaluate_traj(
             success,
@@ -244,12 +271,14 @@ class InferenceRunner:
         metrics.update(metrics_diff)
 
         os.makedirs(config.output_dir, exist_ok=True)
-        pred_actions_file = os.path.join(config.output_dir, "pred_actions__" + instance_id + ".json")
+        pred_actions_file = os.path.join(
+            config.output_dir, "pred_actions__" + instance_id + ".json")
         with open(pred_actions_file, "w") as handle:
             json.dump(pred_actions, handle)
 
         er.simulator.dir_out = config.output_dir
-        output_file = os.path.join(config.output_dir, "inference__" + instance_id + ".json")
+        output_file = os.path.join(config.output_dir,
+                                   "inference__" + instance_id + ".json")
         er.simulator.save(file_name=output_file)
 
         return instance_id, metrics
@@ -266,20 +295,26 @@ class InferenceRunner:
         return success, final_goal_conditions_total, final_goal_conditions_satisfied
 
     @staticmethod
-    def _initialize_episode_replay(game, game_file, task, replay_timeout, er: EpisodeReplay):
+    def _initialize_episode_replay(game, game_file, task, replay_timeout,
+                                   er: EpisodeReplay):
         start_time = time.perf_counter()
         er.set_episode_by_fn_and_idx(game_file, 0, 0)
         interactions = list()
-        ep_interactions = game["tasks"][0]["episodes"][0]["interactions"] #[: game["pred_start_idx"]]
+        ep_interactions = game["tasks"][0]["episodes"][0][
+            "interactions"]  #[: game["pred_start_idx"]]
         for interaction in ep_interactions:
             action = action_id_to_info[interaction["action_id"]]
-            interactions.append(Interaction.from_dict(interaction, action["action_type"]))
+            interactions.append(
+                Interaction.from_dict(interaction, action["action_type"]))
         er.episode.interactions = interactions
 
         init_success = False
         with ThreadPoolExecutor() as tp:
-            future = tp.submit(er.play_episode, task=task, shutdown_on_finish=False)
-            logger.info(f"Started episode replay with timeout: {replay_timeout} sec")
+            future = tp.submit(er.play_episode,
+                               task=task,
+                               shutdown_on_finish=False)
+            logger.info(
+                f"Started episode replay with timeout: {replay_timeout} sec")
             init_success, _ = future.result(timeout=replay_timeout)
 
         elapsed_time = time.perf_counter() - start_time
@@ -296,7 +331,9 @@ class InferenceRunner:
         step_success = True
 
         if action in ["OpenProgressCheck", "SearchObject", "SelectOid"]:
-            r = simulator.apply_progress_check(action, agent_id=0, query=obj_cls)
+            r = simulator.apply_progress_check(action,
+                                               agent_id=0,
+                                               query=obj_cls)
 
         else:
             pass
@@ -308,9 +345,10 @@ class InferenceRunner:
             return True
 
         if action in obj_interaction_actions:
-            y = obj_relative_coord[0,0]
-            x = obj_relative_coord[0,1]
-            step_success, _, _ = simulator.apply_object_interaction(action, 1, x.cpu(), y.cpu())
+            y = obj_relative_coord[0, 0]
+            x = obj_relative_coord[0, 1]
+            step_success, _, _ = simulator.apply_object_interaction(
+                action, 1, x.cpu(), y.cpu())
             return step_success
 
         step_success, _, _ = simulator.apply_motion(action, 1)
@@ -329,8 +367,11 @@ class InferenceRunner:
         return f"{metrics_file}.json.{process_index}"
 
     @staticmethod
-    def _update_metrics(metrics, commander_action, obj_cls, driver_action, obj_relative_coord, commander_step_success, driver_step_success):
-        metrics["pred_actions"].append((commander_action, obj_cls, driver_action, obj_relative_coord))
+    def _update_metrics(metrics, commander_action, obj_cls, driver_action,
+                        obj_relative_coord, commander_step_success,
+                        driver_step_success):
+        metrics["pred_actions"].append(
+            (commander_action, obj_cls, driver_action, obj_relative_coord))
 
         if driver_action == "Stop":
             metrics["predicted_stop"] = 1
@@ -374,7 +415,8 @@ class InferenceRunner:
 
     @staticmethod
     def _save_image_async(img, image_name, config: InferenceRunnerConfig):
-        process = mp.Process(target=InferenceRunner._save_image_sync, args=(img, image_name, config))
+        process = mp.Process(target=InferenceRunner._save_image_sync,
+                             args=(img, image_name, config))
         process.start()
         return image_name
 

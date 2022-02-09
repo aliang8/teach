@@ -6,6 +6,7 @@ SETTINGS.CONFIG.READ_ONLY_CONFIG = False
 exp_ingredient = Ingredient("exp")
 eval_ingredient = Ingredient("eval")
 
+
 @exp_ingredient.config
 def cfg_exp():
     # HIGH-LEVEL MODEL SETTINGS
@@ -43,6 +44,7 @@ def cfg_exp():
     }
 
     lang_pretrain_over_history_subgoals = False
+
 
 @eval_ingredient.config
 def cfg_eval():

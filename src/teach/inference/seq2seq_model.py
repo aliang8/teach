@@ -137,68 +137,78 @@ class Seq2SeqModel(TeachModel):
                                   driver_img,
                                   tatc_instance,
                                   prev_action,
-                                  img_name=None,
+                                  commander_img_name=None,
+                                  driver_img_name=None,
                                   tatc_name=None):
         """
         Returns a commander action
         :param commander_img: PIL Image containing commander's egocentric image
         :param driver_img: PIL Image containing driver's egocentric image
         :param tatc_instance: tatc instance
-        :param prev_action: One of None or a dict with keys 'action' and 'obj_relative_coord' containing returned values
-        from a previous call of get_next_action
-        :param img_name: image file name
+        :param prev_action: One of None or a dict with keys 'commander_action', 'obj_cls', 'driver_action', and 'obj_relative_coord' 
+        containing returned values from a previous call of get_next_action
+        :param commander_img_name: commander image file name
+        :param driver_img_name: driver image file name
         :param tatc_name: tatc instance file name
-        :return action: An action name from all_agent_actions
-        :return obj_relative_coord: A relative (x, y) coordinate (values between 0 and 1) indicating an object in the image;
-        The TEACh wrapper on AI2-THOR examines the ground truth segmentation mask of the agent's egocentric image, selects
-        an object in a 10x10 pixel patch around the pixel indicated by the coordinate if the desired action can be
-        performed on it, and executes the action in AI2-THOR.
+        :return action: An action name from commander actions
+        :return obj_cls: Object class for search object or select oid action
         """
-        img_feat = self.extractor.featurize([img], batch=1)
+        # Featurize images
+        commander_img_feat = self.extractor.featurize([commander_img], batch=1)
+        driver_img_feat = self.extractor.featurize([driver_img], batch=1)
 
-        # Input dict to model should have `lang_goal_instr` and `frames`
-        self.input_dict["frames"] = img_feat.unsqueeze(0)
+        self.input_dict["commander_frames"] = commander_img_feat.unsqueeze(0)
+        self.input_dict["driver_frames"] = driver_img_feat.unsqueeze(0)
 
         with torch.no_grad():
             prev_api_action = None
             if prev_action is not None and "commander_action" in prev_action:
-                prev_api_action = prev_action["commander_action"]
+                prev_api_action = [
+                    prev_action["commander_action"],
+                    prev_action["driver_action"]
+                ]
 
-            m_out = self.commander_model.step(self.input_dict,
-                                              self.vocab,
-                                              prev_action=prev_api_action)
+            m_out = self.commander_model.step(
+                self.input_dict,
+                self.vocab,  #TODO: fix this
+                prev_action=prev_api_action)
 
-        # Predicts action and obj cls
-        m_pred = model_util.extract_action_preds_commander(
+        # Predicts commander action and object class
+        m_pred = model_util.extract_action_preds(
             m_out,
             self.commander_model.pad,
             self.commander_model.vocab["commander_action_low"],
-            clean_special_tokens=False)[0]
+            clean_special_tokens=False,
+            agent="commander")[0]
+
+        action, obj_cls = m_pred["action"], m_pred["obj_cls"]
 
         # Assume previous action succeeded if no better info available
         prev_success = True
         if prev_action is not None and "success" in prev_action:
             prev_success = prev_action["success"]
 
-        action, obj_cls = m_pred["action"], m_pred["obj_cls"]
-
         logger.debug("Predicted action: %s, obj = %s" %
                      (str(action), str(obj_cls)))
         return action, obj_cls
 
     def get_next_action_driver(self,
-                               img,
+                               commander_img,
+                               driver_img,
                                tatc_instance,
                                prev_action,
-                               img_name=None,
+                               commander_img_name=None,
+                               driver_img_name=None,
                                tatc_name=None):
         """
         Returns a driver action
-        :param img: PIL Image containing agent's egocentric image
+        :param commander_img: PIL Image containing commander's egocentric image
+        :param driver_img: PIL Image containing driver's egocentric image
         :param tatc_instance: tatc instance
-        :param prev_action: One of None or a dict with keys 'action' and 'obj_relative_coord' containing returned values
-        from a previous call of get_next_action
-        :param img_name: image file name
+        :param prev_action: One of None or a dict with keys 'commander_action', 'obj_cls', 'driver_action', and 'obj_relative_coord' 
+        containing returned values from a previous call of get_next_action
+        :param commander_img_name: commander image file name
+        :param driver_img_name: driver image file name
         :param tatc_name: tatc instance file name
         :return action: An action name from all_agent_actions
         :return obj_relative_coord: A relative (x, y) coordinate (values between 0 and 1) indicating an object in the image;
@@ -206,32 +216,33 @@ class Seq2SeqModel(TeachModel):
         an object in a 10x10 pixel patch around the pixel indicated by the coordinate if the desired action can be
         performed on it, and executes the action in AI2-THOR.
         """
-        # import ipdb; ipdb.set_trace()
-        img_feat = self.extractor.featurize([img], batch=1)
-        self.input_dict["frames"] = img_feat.unsqueeze(0)
+        commander_img_feat = self.extractor.featurize([commander_img], batch=1)
+        driver_img_feat = self.extractor.featurize([driver_img], batch=1)
+        self.input_dict["commander_frames"] = commander_img_feat.unsqueeze(0)
+        self.input_dict["driver_frames"] = driver_img_feat.unsqueeze(0)
 
         with torch.no_grad():
             prev_api_action = None
             if prev_action is not None and "driver_action" in prev_action:
-                prev_api_action = prev_action["driver_action"]
+                prev_api_action = [
+                    prev_action["commander_action"],
+                    prev_action["driver_action"]
+                ]
+
             m_out = self.driver_model.step(self.input_dict,
                                            self.vocab,
                                            prev_action=prev_api_action)
 
-        m_pred = model_util.extract_action_preds_driver(
+        m_pred = model_util.extract_action_preds(
             m_out,
             self.driver_model.pad,
             self.driver_model.vocab["driver_action_low"],
-            clean_special_tokens=False)[0]
+            clean_special_tokens=False,
+            agent="driver")[0]
 
         action, predicted_click = m_pred["action"], m_pred['coord']
 
-        # obj = None
-        # if action in obj_interaction_actions and len(m_pred["object"]) > 0 and len(m_pred["object"][0]) > 0:
-        if action in obj_interaction_actions:
-            # obj = m_pred["object"][0][0]
-            pass
-        else:
+        if not action in obj_interaction_actions:
             predicted_click = None
 
         logger.debug("Predicted action: %s, click = %s" %

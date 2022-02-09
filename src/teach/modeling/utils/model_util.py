@@ -276,50 +276,8 @@ def generate_attention_mask(len_lang, len_frames, device, num_input_actions=0):
     return all_to_all
 
 
-# def process_prediction(action, objects, pad, vocab_action, clean_special_tokens, predict_object=True):
-#     """
-#     process a single trajectory, return it as a dict
-#     """
-#     # remove padding tokens
-#     if pad in action:
-#         pad_start_idx = action.index(pad)
-#         action = action[:pad_start_idx]
-#         objects = objects[:pad_start_idx]
-#     if clean_special_tokens:
-#         # remove <<stop>> tokens
-#         stop_token = vocab_action.word2index("Stop")
-#         if stop_token in action:
-#             stop_start_idx = action.index(stop_token)
-#             action = action[:stop_start_idx]
-#             objects = objects[:stop_start_idx]
-#     # index to API actions
-#     words = vocab_action.index2word(action)
-
-#     if predict_object:
-#         pred_object = objects[None].max(2)[1].cpu().numpy()
-#     else:
-#         pred_object = None
-#     pred_processed = {
-#         "action": " ".join(words),
-#         "object": pred_object,
-#     }
-#     return pred_processed
-
-# def extract_action_preds(model_out, pad, vocab_action, clean_special_tokens=True, lang_only=False):
-#     """
-#     output processing for a VLN agent
-#     """
-#     zipped_data = zip(model_out["action"].max(2)[1].tolist(), model_out["object"])
-#     predict_object = not lang_only
-#     preds_list = [
-#         process_prediction(action, objects, pad, vocab_action, clean_special_tokens, predict_object)
-#         for action, objects in zipped_data
-#     ]
-#     return preds_list
-
-
-def process_prediction_commander(action, obj, pad, vocab_action,
-                                 clean_special_tokens):
+def process_prediction(action, aux_action_output, pad, vocab_action,
+                       clean_special_tokens, aux_action_output_key):
     """
     process a single trajectory, return it as a dict
     """
@@ -327,80 +285,45 @@ def process_prediction_commander(action, obj, pad, vocab_action,
     if pad in action:
         pad_start_idx = action.index(pad)
         action = action[:pad_start_idx]
-        obj = obj[:pad_start_idx]
+        aux_action_output = aux_action_output[:pad_start_idx]
     if clean_special_tokens:
         # remove <<stop>> tokens
         stop_token = vocab_action.word2index("Stop")
         if stop_token in action:
             stop_start_idx = action.index(stop_token)
             action = action[:stop_start_idx]
-            obj = obj[:stop_start_idx]
-    # index to API actions
-    words = vocab_action.index2word(action)
-
-    pred_processed = {
-        "action": " ".join(words),
-        "obj_cls": obj,
-    }
-    return pred_processed
-
-
-def extract_action_preds_commander(model_out,
-                                   pad,
-                                   vocab_action,
-                                   clean_special_tokens=True,
-                                   lang_only=False):
-    zipped_data = zip(model_out["out_action_low"].max(2)[1].tolist(),
-                      model_out["out_action_obj_cls"].max(2)[1].tolist())
-
-    # predict_object = not lang_only
-    preds_list = [
-        process_prediction_commander(action, obj, pad, vocab_action,
-                                     clean_special_tokens)
-        for action, obj in zipped_data
-    ]
-    return preds_list
-
-
-def process_prediction_driver(action, coord, pad, vocab_action,
-                              clean_special_tokens):
-    """
-    process a single trajectory, return it as a dict
-    """
-    # remove padding tokens
-    if pad in action:
-        pad_start_idx = action.index(pad)
-        action = action[:pad_start_idx]
-    if clean_special_tokens:
-        # remove <<stop>> tokens
-        stop_token = vocab_action.word2index("Stop")
-        if stop_token in action:
-            stop_start_idx = action.index(stop_token)
-            action = action[:stop_start_idx]
+            aux_action_output = aux_action_output[:stop_start_idx]
 
     # index to API actions
     words = vocab_action.index2word(action)
 
     pred_processed = {
         "action": " ".join(words),
-        "coord": coord,
+        aux_action_output_key: aux_action_output,
     }
     return pred_processed
 
 
-def extract_action_preds_driver(model_out,
-                                pad,
-                                vocab_action,
-                                clean_special_tokens=True,
-                                lang_only=False):
+def extract_action_preds(model_out,
+                         pad,
+                         vocab_action,
+                         clean_special_tokens=True,
+                         lang_only=False,
+                         agent="driver"):
+
+    out_key = "obj_cls" if agent == "commander" else "coord"
     zipped_data = zip(model_out["out_action_low"].max(2)[1].tolist(),
-                      model_out["out_action_coord"])
+                      model_out[f"out_action_{out_key}"].max(2)[1].tolist())
 
     # predict_object = not lang_only
     preds_list = [
-        process_prediction_driver(action, coord, pad, vocab_action,
-                                  clean_special_tokens)
-        for action, coord in zipped_data
+        process_prediction(action,
+                           aux_action_output,
+                           pad,
+                           vocab_action,
+                           clean_special_tokens,
+                           aux_action_output_key=out_key)
+        for action, aux_action_output in zipped_data
     ]
     return preds_list
 

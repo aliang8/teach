@@ -182,13 +182,6 @@ class Seq2SeqModel(TeachModel):
         self.input_dict["driver_frames"] = driver_img_feat.unsqueeze(0)
 
         with torch.no_grad():
-            # prev_api_action = None
-            # if prev_action is not None and "commander_action" in prev_action:
-            #     prev_api_action = [
-            #         prev_action["commander_action"],
-            #         prev_action["driver_action"]
-            #     ]
-
             m_out = self.commander_model.step(
                 self.input_dict,
                 self.vocab,  #TODO: fix this
@@ -256,13 +249,6 @@ class Seq2SeqModel(TeachModel):
         self.input_dict["driver_frames"] = driver_img_feat.unsqueeze(0)
 
         with torch.no_grad():
-            # prev_api_action = None
-            # if prev_action is not None and "driver_action" in prev_action:
-            #     prev_api_action = [
-            #         prev_action["commander_action"],
-            #         prev_action["driver_action"]
-            #     ]
-
             m_out = self.driver_model.step(self.input_dict,
                                            self.vocab,
                                            prev_action=prev_action,

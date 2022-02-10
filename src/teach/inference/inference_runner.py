@@ -1,6 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
 
+import copy
 import json
 import multiprocessing as mp
 import os
@@ -147,7 +148,6 @@ class InferenceRunner:
     @staticmethod
     def _run_game(instance_file, config: InferenceRunnerConfig,
                   model: TeachModel, er: EpisodeReplay):
-        import copy
         instance_id = copy.deepcopy(instance_file)
         instance_id = instance_id.replace(config.data_dir + '/', "")
         instance_id = instance_id.replace(config.split + '/', "")
@@ -161,28 +161,12 @@ class InferenceRunner:
         game_file = InferenceRunner._get_game_file(game, config)
 
         metrics = create_new_traj_metrics(game)
-        # instance_id = game["instance_id"]
         logger.debug(f"Processing instance {instance_id}")
 
         er.set_episode_by_fn_and_idx(game_file, 0, 0)
         api_success, init_state = er._set_up_new_episode(None,
                                                          turn_on_lights=False,
                                                          task=game_check_task)
-        # try:
-        # init_success, er = with_retry(
-        #     fn=lambda: InferenceRunner._initialize_episode_replay(
-        #         game, game_file, game_check_task, config.replay_timeout, er
-        #     ),
-        #     retries=config.max_init_tries - 1,
-        #     check_first_return_value=True,
-        # )
-        # except Exception:
-        #     init_success = False
-        #     logger.error(f"Failed to initialize episode replay for instance={instance_id}", exc_info=True)
-
-        # metrics["init_success"] = init_success
-        # if not init_success:
-        #     return game["instance_id"], metrics
 
         model_started_success = False
         try:
@@ -203,15 +187,12 @@ class InferenceRunner:
             for _ in range(config.max_traj_steps):
                 traj_steps_taken += 1
                 try:
-                    # TODO: fix get commander anddd driver images
                     commander_img, driver_img = InferenceRunner._get_latest_image(er)
 
                     commander_img_name = InferenceRunner._save_image(
                         config, game, commander_img, traj_steps_taken)
                     driver_img_name = InferenceRunner._save_image(
                         config, game, driver_img, traj_steps_taken)
-
-                    # import ipdb; ipdb.set_trace()
 
                     # Get next commander action
                     commander_action, obj_cls = model.get_next_action_commander(
@@ -230,7 +211,7 @@ class InferenceRunner:
 
                     driver_step_success = InferenceRunner._execute_driver_action(
                         er.simulator, driver_action, obj_relative_coord)
-                    # import ipdb; ipdb.set_trace()
+
                     InferenceRunner._update_metrics(metrics, commander_action,
                                                     obj_cls, driver_action,
                                                     obj_relative_coord,

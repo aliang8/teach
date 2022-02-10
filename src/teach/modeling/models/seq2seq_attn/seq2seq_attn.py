@@ -289,25 +289,23 @@ class Module(Base):
                 'cont_lang'], torch.zeros_like(self.r_state['cont_lang'])
 
         # previous action embedding
-        # e_t = self.embed_action(
-        #     prev_action) if prev_action is not None else self.r_state['e_t']
-        
         e_t = {}
+
         if prev_action is not None:
-            e_t["commander"] = self.embed_action([prev_action["commander_action"]]).squeeze(0)
-            e_t["driver"] = self.embed_action([prev_action["driver_action"]]).squeeze(0)
+            e_t["commander"] = self.embed_action([prev_action["commander_action"]], agent="commander").squeeze(0)
+            e_t["driver"] = self.embed_action([prev_action["driver_action"]], agent="driver").squeeze(0)
         else:
             e_t["commander"] = e_t["driver"] = self.r_state['e_t']
 
          # decode and save embedding and hidden states
         
-        if agent=="commander":
+        if agent == "commander":
             out_action_low, out_action_low_aux, state_t, *_ = self.dec.step(
                 self.r_state['enc_lang'],
                 feat['commander_frames'][:, 0],
                 e_t=e_t["commander"],
                 state_tm1=self.r_state['state_t'])
-        elif agent=="driver":
+        elif agent == "driver":
             out_action_low, out_action_low_aux, state_t, *_ = self.dec.step(
                 self.r_state['enc_lang'],
                 feat['driver_frames'][:, 0],
@@ -369,13 +367,12 @@ class Module(Base):
             *frames_pad.shape[:2], -1)
         return frames_pad_emb, frames_pad_emb_skip
 
-    def embed_action(self, action):
+    def embed_action(self, action, agent="driver"):
         '''
         embed low-level action
         '''
-        # import ipdb; ipdb.set_trace()
         action_num = torch.tensor(
-            self.vocab[f'{self.args.agent}_action_low'].word2index(action),
+            self.vocab[f'{agent}_action_low'].word2index(action),
             device=self.args.device)
         action_emb = self.dec.emb(action_num).unsqueeze(0)
         return action_emb

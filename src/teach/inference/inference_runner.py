@@ -185,8 +185,7 @@ class InferenceRunner:
 
         model_started_success = False
         try:
-            model_started_success = model.start_new_tatc_instance(
-                game, instance_file)
+            model_started_success = model.start_new_tatc_instance(game)
         except Exception:
             model_started_success = False
             metrics["error"] = 1
@@ -203,17 +202,24 @@ class InferenceRunner:
             for _ in range(config.max_traj_steps):
                 traj_steps_taken += 1
                 try:
-                    img = InferenceRunner._get_latest_ego_image(er)
-                    image_name = InferenceRunner._save_image(
+                    # TODO: fix get commander anddd driver images
+                    commander_img = InferenceRunner._get_latest_ego_image(er)
+                    driver_img = InferenceRunner._get_latest_ego_image(er)
+
+                    commander_image_name = InferenceRunner._save_image(
                         config, game, img, traj_steps_taken)
+                    driver_image_name = InferenceRunner._save_image(
+                        config, game, img, traj_steps_taken)
+
+                    import ipdb; ipdb.set_trace()
 
                     # Get next commander action
                     commander_action, obj_cls = model.get_next_action_commander(
-                        img, game, prev_action, image_name, instance_file)
+                        commander_img, driver_img, game, prev_action, commander_img_name, driver_img_name, instance_file)
 
                     # Get next driver action
                     driver_action, obj_relative_coord = model.get_next_action_driver(
-                        img, game, prev_action, image_name, instance_file)
+                        commander_img, driver_img, game, prev_action, commander_img_name, driver_img_name, instance_file)
 
                     # Execute actions in simulator
                     commander_step_success, result = InferenceRunner._execute_commander_action(

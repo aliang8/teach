@@ -91,11 +91,11 @@ class Seq2SeqModel(TeachModel):
         # TODO: fix this
         # TODO: fix params.json file path
         # dataset_info = data_util.read_dataset_info_for_inference(self.args.model_dir)
-        dataset_info = data_util.read_dataset_info("tatc_dataset")
+        dataset_info = data_util.read_dataset_info("tatc_preproc_testing_2")
 
         train_data_name = model_args.data["train"][0]
         # train_vocab = data_util.load_vocab_for_inference(self.args.model_dir, train_data_name)
-        train_vocab = data_util.load_vocab("tatc_dataset")
+        train_vocab = data_util.load_vocab("tatc_preproc_testing_2")
 
         # Load model from checkpoint
         if model_path is not None:
@@ -131,6 +131,27 @@ class Seq2SeqModel(TeachModel):
         lang_goal = self.commander_model.emb_word(lang_goal)
         self.input_dict["lang_goal_instr"] = lang_goal
         return True
+
+    def extract_progress_check_subtask_string():
+        if self.pc_result["success"]:
+            return ""
+        
+        for subgoal in self.pc_results["subgoals"]:
+            if subgoal["success"] == 1:
+                continue 
+            
+            if subgoal["steps"][0]["success"] == 0:
+                return subgoal["description"]
+
+            for step in subgoal["steps"]:
+                if step["success"] == 1: 
+                    continue 
+
+                return steps["desc"]
+    
+        return ""
+
+            
 
     def get_next_action_commander(self,
                                   commander_img,
@@ -185,8 +206,15 @@ class Seq2SeqModel(TeachModel):
 
         # Dumb commander model
         if action == "Text" and hasattr(self, "pc_result"):
+            latest_instr = self.extract_progress_check_subtask_string()
+            latest_instr = self.preprocessor.process_sentences([latest_instr], is_test_split=True)[0]
+
+            latest_instr = torch.tensor(latest_instr, dtype=torch.long).to(self.args.device)
+            latest_instr = self.commander_model.emb_word(latest_instr)
             import ipdb; ipdb.set_trace()
-            # self.input_dict["lang_goal_instr"] += self.pc_result[]
+            self.input_dict["lang_goal_instr"] = latest_instr
+
+        # TODO: handle target frame + mask
 
         # Assume previous action succeeded if no better info available
         prev_success = True

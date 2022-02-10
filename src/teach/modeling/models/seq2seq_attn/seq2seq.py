@@ -284,7 +284,7 @@ class Module(nn.Module):
         
         num_batches = len(next(iter(data_iter.values())))
         
-        for _ in tqdm(range(2), desc=name):
+        for _ in tqdm(range(1), desc=name):
             # sample batches
             batches = data_util.sample_batches(data_iter, self.args.device,
                                                self.pad, self.args)

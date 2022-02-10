@@ -4,6 +4,7 @@
 import json
 import multiprocessing as mp
 import os
+import pdb
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -203,15 +204,14 @@ class InferenceRunner:
                 traj_steps_taken += 1
                 try:
                     # TODO: fix get commander anddd driver images
-                    commander_img = InferenceRunner._get_latest_ego_image(er)
-                    driver_img = InferenceRunner._get_latest_ego_image(er)
+                    commander_img, driver_img = InferenceRunner._get_latest_image(er)
 
-                    commander_image_name = InferenceRunner._save_image(
-                        config, game, img, traj_steps_taken)
-                    driver_image_name = InferenceRunner._save_image(
-                        config, game, img, traj_steps_taken)
+                    commander_img_name = InferenceRunner._save_image(
+                        config, game, commander_img, traj_steps_taken)
+                    driver_img_name = InferenceRunner._save_image(
+                        config, game, driver_img, traj_steps_taken)
 
-                    import ipdb; ipdb.set_trace()
+                    # import ipdb; ipdb.set_trace()
 
                     # Get next commander action
                     commander_action, obj_cls = model.get_next_action_commander(
@@ -324,8 +324,9 @@ class InferenceRunner:
         return init_success, er if init_success else None
 
     @staticmethod
-    def _get_latest_ego_image(er):
-        return Image.fromarray(er.simulator.get_latest_images()["ego"])
+    def _get_latest_image(er):
+        images = er.simulator.get_latest_images()
+        return Image.fromarray(images["allo"]), Image.fromarray(images["ego"])
 
     @staticmethod
     def _execute_commander_action(simulator, action, obj_cls):
@@ -346,6 +347,7 @@ class InferenceRunner:
             return True
 
         if action in obj_interaction_actions:
+            import ipdb; ipdb.set_trace()
             y = obj_relative_coord[0, 0]
             x = obj_relative_coord[0, 1]
             step_success, _, _ = simulator.apply_object_interaction(

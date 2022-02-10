@@ -78,6 +78,7 @@ class BaseDataset(TorchDataset):
             with open(os.path.join(path, self.partition, "jsons.pkl"),
                       "rb") as jsons_file:
                 jsons = pickle.load(jsons_file)
+
             self.jsons_and_keys = []
             for idx in range(len(jsons)):
                 key = "{:06}".format(idx).encode("ascii")

@@ -116,12 +116,20 @@ class Preprocessor(object):
                                           ["<<sent>>"])
                 combined_utts_tok.append(["<<commander>>"] + commander_utt +
                                          ["<<sent>>"])
+            else:
+                commander_utts_tok.append([])
 
             if driver_utt:
                 driver_utts_tok.append(["<<driver>>"] + driver_utt +
                                        ["<<sent>>"])
                 combined_utts_tok.append(["<<driver>>"] + driver_utt +
                                          ["<<sent>>"])
+            else:
+                driver_utts_tok.append([])
+
+            if not commander_utt and not driver_utt:
+                combined_utts_tok.append([])
+
 
         commander_utts_tok.append(["<<stop>>"])
         driver_utts_tok.append(["<<stop>>"])
@@ -153,8 +161,8 @@ class Preprocessor(object):
             if commander_action["action_name"] == "OpenProgressCheck":
                 if not "pc_json" in commander_action:
                     print('Progress check not found...')
-                    import ipdb
-                    ipdb.set_trace()
+                    # import ipdb
+                    # ipdb.set_trace()
                     continue
 
                 pc_json_f = commander_action["pc_json"]
@@ -213,7 +221,7 @@ class Preprocessor(object):
 
         no_op_driver = no_op_commander.copy()
         no_op_driver["action"] = self.vocab["driver_action_low"].word2index(
-            "NoOp", train=not is_test_split),
+            "NoOp", train=not is_test_split)
         no_op_driver['agent_id'] = 1
 
         # For each interaction, add the action id and action name

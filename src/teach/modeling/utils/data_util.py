@@ -61,7 +61,7 @@ def read_traj_images(json_path, image_folder):
         return None
     if not all([os.path.exists(path) for path in driver_images]):
         return None
-
+        
     commander_images = read_images(commander_images)
     driver_images = read_images(driver_images)
     target_images = read_images(target_images)

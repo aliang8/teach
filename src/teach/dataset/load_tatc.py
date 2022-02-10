@@ -48,19 +48,19 @@ def add_images_path(base_dir, phase):
 
             time_start = ".".join(img_file.split(".")[2:4])
             if img_file.split(".")[0] == "commander":
-                commander_obs[time_start] = img_f
+                commander_obs[time_start] = img_file
             elif img_file.split(".")[0] == "driver":
-                driver_obs[time_start] = img_f
+                driver_obs[time_start] = img_file
             elif img_file.split(".")[0] == "targetobject":
                 if img_file.split(".")[1] == "frame":
                     targetobjectFrame[time_start] = img_f
                 if img_file.split(".")[1] == "mask":
                     targetobjectMask[time_start] = img_f
             elif img_file.split(".")[1] == "status":
-                pc_status[time_start] = img_f
+                pc_status[time_start] = img_file
             else:  ### add other frames if needed
                 pass
-        # import ipdb; ipdb.set_trace()
+
         for idx in range(len(interactions)):
             time_start = str(interactions[idx]["time_start"])
             # interactions[idx]["commander_obs"] = commander_obs[time_start]

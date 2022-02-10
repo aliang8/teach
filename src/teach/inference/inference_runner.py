@@ -155,17 +155,8 @@ class InferenceRunner:
         game = InferenceRunner._load_game(instance_file)
         game['instance_id'] = instance_id
 
-        # game["state_changes"] = get_state_changes(game["tasks"][0]["episodes"][0]['initial_state'], game["tasks"][0]["episodes"][0]["final_state"])
-        game_check_task = Task_THOR(
-            task_id=0,
-            task_name=game["tasks"][0]["task_name"],
-            task_nparams=0,
-            task_params=[],
-            task_anchor_object=None,
-            desc=game["tasks"][0]["desc"],
-            components=game["tasks"][0]["components"],
-            relations=[],
-        )
+        game["state_changes"] = get_state_changes(game["tasks"][0]["episodes"][0]['initial_state'], game["tasks"][0]["episodes"][0]["final_state"])
+        game_check_task = create_task_thor_from_state_diff(game["state_changes"])
         game_file = InferenceRunner._get_game_file(game, config)
 
         metrics = create_new_traj_metrics(game)
@@ -225,8 +216,12 @@ class InferenceRunner:
                         img, game, prev_action, image_name, instance_file)
 
                     # Execute actions in simulator
-                    commander_step_success = InferenceRunner._execute_commander_action(
+                    commander_step_success, result = InferenceRunner._execute_commander_action(
                         er.simulator, commander_action, obj_cls)
+
+                    if commander_action == "OpenProgressCheck":
+                        model.pc_result = result
+
                     driver_step_success = InferenceRunner._execute_driver_action(
                         er.simulator, driver_action, obj_relative_coord)
                     # import ipdb; ipdb.set_trace()
@@ -329,15 +324,15 @@ class InferenceRunner:
     @staticmethod
     def _execute_commander_action(simulator, action, obj_cls):
         step_success = True
+        r = None
 
         if action in ["OpenProgressCheck", "SearchObject", "SelectOid"]:
             r = simulator.apply_progress_check(action,
                                                agent_id=0,
                                                query=obj_cls)
-
         else:
             pass
-        return step_success
+        return step_success, r
 
     @staticmethod
     def _execute_driver_action(simulator, action, obj_relative_coord):

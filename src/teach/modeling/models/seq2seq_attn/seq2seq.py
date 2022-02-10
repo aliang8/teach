@@ -153,6 +153,9 @@ class Module(nn.Module):
                     del feat, m_out, loss, m_preds
                     torch.cuda.empty_cache()
 
+                del batches 
+                torch.cuda.empty_cache()
+
             # compute metrics for valid_seen
             p_valid_seen, valid_seen_iter, total_valid_seen_loss, m_valid_seen = self.run_pred(
                 loaders_valid_seen,
@@ -161,7 +164,7 @@ class Module(nn.Module):
                 iteration=valid_seen_iter)
 
             m_valid_seen.update(self.compute_metric(p_valid_seen,
-                                                    m_valid_seen))
+                                                    loaders_valid_seen))
             m_valid_seen['total_loss'] = float(total_valid_seen_loss)
             self.summary_writer.add_scalar('valid_seen/total_loss',
                                            m_valid_seen['total_loss'],
@@ -175,7 +178,7 @@ class Module(nn.Module):
                 iteration=valid_unseen_iter)
 
             m_valid_unseen.update(
-                self.compute_metric(p_valid_unseen, m_valid_unseen))
+                self.compute_metric(p_valid_unseen, loaders_valid_unseen))
             m_valid_unseen['total_loss'] = float(total_valid_unseen_loss)
             self.summary_writer.add_scalar('valid_unseen/total_loss',
                                            m_valid_unseen['total_loss'],
@@ -206,7 +209,7 @@ class Module(nn.Module):
 
                 fpred = os.path.join(args.dout, 'valid_seen.debug.preds.json')
                 with open(fpred, 'wt') as f:
-                    json.dump(self.make_debug(p_valid_seen, m_valid_seen),
+                    json.dump(self.make_debug(p_valid_seen, loaders_valid_seen),
                               f,
                               indent=2)
                 best_loss['valid_seen'] = total_valid_seen_loss
@@ -231,7 +234,7 @@ class Module(nn.Module):
                 fpred = os.path.join(args.dout,
                                      'valid_unseen.debug.preds.json')
                 with open(fpred, 'wt') as f:
-                    json.dump(self.make_debug(p_valid_unseen, m_valid_unseen),
+                    json.dump(self.make_debug(p_valid_unseen, loaders_valid_unseen),
                               f,
                               indent=2)
 
@@ -255,7 +258,7 @@ class Module(nn.Module):
             # debug action output json for train
             fpred = os.path.join(args.dout, 'train.debug.preds.json')
             with open(fpred, 'wt') as f:
-                json.dump(self.make_debug(p_train, m_train), f, indent=2)
+                json.dump(self.make_debug(p_train, loaders_train), f, indent=2)
 
             # write stats
             for split in stats.keys():
@@ -280,10 +283,8 @@ class Module(nn.Module):
         data_iter = {key: iter(loader) for key, loader in dev.items()}
         
         num_batches = len(next(iter(data_iter.values())))
-
-        import ipdb; ipdb.set_trace()
         
-        for _ in tqdm(range(num_batches), desc=name):
+        for _ in tqdm(range(2), desc=name):
             # sample batches
             batches = data_util.sample_batches(data_iter, self.args.device,
                                                self.pad, self.args)
@@ -334,25 +335,35 @@ class Module(nn.Module):
         '''
         return "%s_%s" % (ex['tasks'][0]['task_id'], str(ex['repeat_idx']))
 
-    def make_debug(self, preds, data):
+    def make_debug(self, preds, loader):
         '''
         readable output generator for debugging
         '''
         debug = {}
-        for task in data:
-            ex = self.load_task_json(task)
-            i = self.get_task_and_ann_id(ex)
-            debug[i] = {
-                'lang_goal':
-                ex['turk_annotations']['anns'][ex['ann']['repeat_idx']]
-                ['task_desc'],
-                'action_low': [
-                    a['discrete_action']['action']
-                    for a in ex['plan']['low_actions']
-                ],
-                'p_action_low':
-                preds[i]['action_low'].split(),
-            }
+        data_iter = {key: iter(l) for key, l in loader.items()}
+
+        num_batches = len(next(iter(data_iter.values())))
+
+        for _ in range(num_batches):
+            batch = data_util.sample_batches(data_iter, self.args.device,
+                                               self.pad, self.args)
+            for batch_name, (traj_data, input_dict,
+                             gt_dict) in batch.items():
+
+                for task in traj_data:
+                    i = self.get_task_and_ann_id(task)
+                    if not i in preds: continue 
+
+                    idx = 0 if self.args.agent == "commander" else 1
+                    debug[i] = {
+                        'lang_goal': task['tasks'][0]['task_name'],
+                        'action_low': [
+                            a[idx]['action_name']
+                            for a in task['actions_low']
+                        ],
+                        'p_action_low':
+                        preds[i]['action_low'].split(),
+                    }
         return debug
 
     def load_task_json(self, task):

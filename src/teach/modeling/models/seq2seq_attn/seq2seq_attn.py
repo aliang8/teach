@@ -8,6 +8,7 @@ from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence, pad_packed_se
 import modeling.models.seq2seq_attn.modules.vnn as vnn
 from modeling.models.seq2seq_attn.seq2seq import Module as Base
 from modeling.utils import data_util
+from modeling.utils.metric_util import compute_f1, compute_exact
 
 
 class Module(Base):
@@ -332,7 +333,6 @@ class Module(Base):
             words = self.vocab[f'{self.args.agent}_action_low'].index2word(
                 alow)
 
-            # TODO: is this right, is r_idx correct?
             task_id_ann = self.get_task_and_ann_id(ex)
 
             pred[task_id_ann] = {
@@ -427,20 +427,35 @@ class Module(Base):
 
         return losses
 
-    def compute_metric(self, preds, data):
+    def compute_metric(self, preds, loader):
         '''
         compute f1 and extract match scores for output
         '''
         m = collections.defaultdict(list)
-        for task in data:
-            ex = self.load_task_json(task)
-            i = self.get_task_and_ann_id(ex)
-            label = ' '.join([
-                a['discrete_action']['action']
-                for a in ex['plan']['low_actions']
-            ])
-            m['action_low_f1'].append(
-                compute_f1(label.lower(), preds[i]['action_low'].lower()))
-            m['action_low_em'].append(
-                compute_exact(label.lower(), preds[i]['action_low'].lower()))
+        data_iter = {key: iter(l) for key, l in loader.items()}
+
+        num_batches = len(next(iter(data_iter.values())))
+
+        for _ in range(num_batches):
+            batch = data_util.sample_batches(data_iter, self.args.device,
+                                               self.pad, self.args)
+
+            for batch_name, (traj_data, input_dict,
+                             gt_dict) in batch.items():
+
+                for task in traj_data:
+                    i = self.get_task_and_ann_id(task)
+
+                    if not i in preds: continue 
+
+                    idx = 0 if self.args.agent == "commander" else 1
+                    label = ' '.join([
+                        a[idx]['action_name']
+                        for a in task['actions_low']
+                    ])
+                    m['action_low_f1'].append(
+                        compute_f1(label.lower(), preds[i]['action_low'].lower()))
+                    m['action_low_em'].append(
+                        compute_exact(label.lower(), preds[i]['action_low'].lower()))
+
         return {k: sum(v) / len(v) for k, v in m.items()}

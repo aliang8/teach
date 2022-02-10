@@ -183,6 +183,11 @@ class Seq2SeqModel(TeachModel):
 
         action, obj_cls = m_pred["action"], m_pred["obj_cls"]
 
+        # Dumb commander model
+        if action == "Text" and hasattr(self, "pc_result"):
+            import ipdb; ipdb.set_trace()
+            # self.input_dict["lang_goal_instr"] += self.pc_result[]
+
         # Assume previous action succeeded if no better info available
         prev_success = True
         if prev_action is not None and "success" in prev_action:

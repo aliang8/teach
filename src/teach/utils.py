@@ -200,8 +200,6 @@ def get_state_diff_changes(init_state_diff, final_state_diff):
     obj_changes = dict()
     for object_id, obj_final in final_obj_dict.items():
         if init_obj_id_given_final_obj_id[object_id] not in init_obj_dict:
-            # This object was not modified at start of EDH instance but was modified at the end => all changes are from
-            # the instance
             obj_changes[object_id] = obj_final
             continue
         obj_init = init_obj_dict[init_obj_id_given_final_obj_id[object_id]]

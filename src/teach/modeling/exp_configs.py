@@ -83,8 +83,7 @@ def cfg_eval():
     # object predictor path
     object_predictor = None
 
-    # Is this evaluation for EDH instances or TFD instances?
-    eval_type = "edh"
+    eval_type = "tatc"
 
     # Set this to 1 if running on a Mac and to large numbers like 250 if running on EC2
     # lmdb_max_readers = 1

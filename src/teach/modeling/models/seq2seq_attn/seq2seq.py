@@ -69,10 +69,6 @@ class Module(nn.Module):
         assert len(set([len(loader)
                         for loader in loaders_train.values()])) == 1
 
-        epoch_length = len(next(iter(loaders_train.values())))
-
-        logger.debug("In Seq2seq.run_train, epoch_length = %d" % epoch_length)
-
         # initialize summary writer for tensorboardX
         self.summary_writer = SummaryWriter(log_dir=args.dout)
 
@@ -95,66 +91,7 @@ class Module(nn.Module):
 
         # training loop
         for epoch in range(info["progress"], args.epochs):
-            logger.info("Epoch {}/{}".format(epoch, args.epochs))
-            self.train()
-
-            train_iterators = {
-                key: iter(loader)
-                for key, loader in loaders_train.items()
-            }
-
-            p_train = {}
-
-            # for _ in tqdm(range(epoch_length), desc="train"):
-            for _ in tqdm(range(2), desc="train"):
-                # sample batches
-                batches = data_util.sample_batches(train_iterators,
-                                                   self.args.device, self.pad,
-                                                   self.args)
-
-                m_train = collections.defaultdict(list)
-
-                total_train_loss = list()
-
-                # iterate over batches
-                for batch_name, (traj_data, input_dict,
-                                 gt_dict) in batches.items():
-                    feat = self.featurize(traj_data)
-                    feat['frames'] = input_dict['frames']
-
-                    # Compute forward pass of model
-                    m_out = self.forward(feat)
-
-                    # Given the model output, convert into executable action
-                    m_preds = self.extract_preds(m_out, traj_data)
-                    p_train.update(m_preds)
-
-                    loss = self.compute_loss(m_out, traj_data, feat)
-
-                    for k, v in loss.items():
-                        ln = 'loss_' + k
-                        m_train[ln].append(v.item())
-                        self.summary_writer.add_scalar('train/' + ln, v.item(),
-                                                       train_iter)
-
-                    # optimizer backward pass
-                    optimizer.zero_grad()
-                    sum_loss = sum(loss.values())
-                    sum_loss.backward()
-                    optimizer.step()
-
-                    self.summary_writer.add_scalar('train/loss', sum_loss,
-                                                   train_iter)
-
-                    sum_loss = sum_loss.detach().cpu()
-                    total_train_loss.append(float(sum_loss))
-                    train_iter += self.args.batch
-
-                    del feat, m_out, loss, m_preds
-                    torch.cuda.empty_cache()
-
-                del batches 
-                torch.cuda.empty_cache()
+            p_train, train_iter, total_train_loss, m_train = self.train_one_epoch(loaders_train, epoch, optimizer, args=args, name='train', iteration=train_iter)
 
             # compute metrics for valid_seen
             p_valid_seen, valid_seen_iter, total_valid_seen_loss, m_valid_seen = self.run_pred(
@@ -268,6 +205,72 @@ class Module(nn.Module):
                                                        train_iter)
             pprint.pprint(stats)
 
+    def train_one_epoch(self, loaders_train, epoch, optimizer, args=None, name='train', iteration=0):
+        logger.info("Epoch {}/{}".format(epoch, args.epochs))
+        self.train()
+
+        train_iterators = {
+            key: iter(loader)
+            for key, loader in loaders_train.items()
+        }
+
+        p_train = {}
+        m_train = collections.defaultdict(list)
+        total_train_loss = list()
+        train_iter = iteration
+
+        epoch_length = len(next(iter(loaders_train.values())))
+
+        for _ in tqdm(range(epoch_length), desc="train"):
+        # for _ in tqdm(range(2), desc="train"):
+            # sample batches
+            batches = data_util.sample_batches(train_iterators,
+                                                self.args.device, self.pad,
+                                                self.args)
+
+            # iterate over batches
+            for batch_name, (traj_data, input_dict,
+                                gt_dict) in batches.items():
+                feat = self.featurize(traj_data)
+                feat['frames'] = input_dict['frames']
+
+                # Compute forward pass of model
+                m_out = self.forward(feat)
+
+                # Given the model output, convert into executable action
+                m_preds = self.extract_preds(m_out, traj_data)
+                p_train.update(m_preds)
+
+                loss = self.compute_loss(m_out, traj_data, feat)
+
+                for k, v in loss.items():
+                    ln = 'loss_' + k
+                    m_train[ln].append(v.item())
+                    self.summary_writer.add_scalar('train/' + ln, v.item(),
+                                                    train_iter)
+
+                # optimizer backward pass
+                optimizer.zero_grad()
+                sum_loss = sum(loss.values())
+                sum_loss.backward()
+                optimizer.step()
+
+                self.summary_writer.add_scalar('train/loss', sum_loss,
+                                                train_iter)
+
+                sum_loss = sum_loss.detach().cpu()
+                total_train_loss.append(float(sum_loss))
+                train_iter += self.args.batch
+
+                del feat, m_out, loss, m_preds
+                torch.cuda.empty_cache()
+
+            del batches 
+            torch.cuda.empty_cache()
+        
+        return p_train, train_iter, total_train_loss, m_train
+
+
     def run_pred(self, dev, args=None, name='dev', iteration=0):
         '''
         validation loop
@@ -284,31 +287,39 @@ class Module(nn.Module):
         
         num_batches = len(next(iter(data_iter.values())))
         
-        for _ in tqdm(range(1), desc=name):
-            # sample batches
-            batches = data_util.sample_batches(data_iter, self.args.device,
-                                               self.pad, self.args)
+        with torch.no_grad():
+            for _ in tqdm(range(num_batches), desc=name):
+            # for _ in tqdm(range(1), desc=name):
+                # sample batches
+                batches = data_util.sample_batches(data_iter, self.args.device,
+                                                self.pad, self.args)
 
-            for batch_name, (traj_data, input_dict,
-                             gt_dict) in batches.items():
-                feat = self.featurize(traj_data, load_frames=False)
-                feat['frames'] = input_dict['frames']
+                for batch_name, (traj_data, input_dict,
+                                gt_dict) in batches.items():
+                    feat = self.featurize(traj_data, load_frames=False)
+                    feat['frames'] = input_dict['frames']
 
-                m_out = self.forward(feat)
-                m_preds = self.extract_preds(m_out, traj_data)
-                p_dev.update(m_preds)
-                loss = self.compute_loss(m_out, traj_data, feat)
+                    m_out = self.forward(feat)
+                    m_preds = self.extract_preds(m_out, traj_data)
+                    p_dev.update(m_preds)
+                    loss = self.compute_loss(m_out, traj_data, feat)
 
-                for k, v in loss.items():
-                    ln = 'loss_' + k
-                    m_dev[ln].append(v.item())
-                    self.summary_writer.add_scalar("%s/%s" % (name, ln),
-                                                   v.item(), dev_iter)
-                sum_loss = sum(loss.values())
-                self.summary_writer.add_scalar("%s/loss" % (name), sum_loss,
-                                               dev_iter)
-                total_loss.append(float(sum_loss.detach().cpu()))
-                dev_iter += len(traj_data)
+                    for k, v in loss.items():
+                        ln = 'loss_' + k
+                        m_dev[ln].append(v.item())
+                        self.summary_writer.add_scalar("%s/%s" % (name, ln),
+                                                    v.item(), dev_iter)
+                    sum_loss = sum(loss.values())
+                    self.summary_writer.add_scalar("%s/loss" % (name), sum_loss,
+                                                dev_iter)
+                    total_loss.append(float(sum_loss.detach().cpu()))
+                    dev_iter += len(traj_data)
+
+                    del feat, m_out, loss, m_preds
+                    torch.cuda.empty_cache()
+
+                del batches 
+                torch.cuda.empty_cache()
 
         m_dev = {k: sum(v) / len(v) for k, v in m_dev.items()}
         total_loss = sum(total_loss) / len(total_loss)

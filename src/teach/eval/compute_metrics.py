@@ -17,7 +17,7 @@ def evaluate_traj(success, tatc_instance, traj_len, final_gc_total,
     final_gc_satisfied = min(final_gc_total, final_gc_satisfied)
 
     total_goal_conditions = final_gc_total  # tatc_instance["expected_init_goal_conditions_total"] - init_gc_satisfied
-    # TODO: Remove this after testing and recheck EDH instances to remove any where there is nothing to do
+    # TODO: Remove this after testing and recheck game instances to remove any where there is nothing to do
     if total_goal_conditions != 0:
         unsatisfied_goal_conditions = final_gc_total - final_gc_satisfied
         goal_condition_success_rate = 1.0 - (unsatisfied_goal_conditions /
@@ -147,7 +147,7 @@ def load_traj_metrics(output_file, pred_actions_file, args):
     with open(pred_actions_file) as h:
         pred_actions = json.load(h)
 
-    edh_check_task = create_task_thor_from_state_diff(
+    game_check_task = create_task_thor_from_state_diff(
         tatc_instance["state_changes"])
     final_state_objects = game_json["tasks"][0]["episodes"][0]["final_state"][
         "objects"]
@@ -156,7 +156,7 @@ def load_traj_metrics(output_file, pred_actions_file, args):
     for obj in final_state_objects:
         if obj["objectId"] in final_state_custom_metadata:
             obj.update(final_state_custom_metadata[obj["objectId"]])
-    progress_check_output = edh_check_task.check_episode_progress(
+    progress_check_output = game_check_task.check_episode_progress(
         final_state_objects)
     success = progress_check_output["success"]
     final_goal_conditions_total = progress_check_output[

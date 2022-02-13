@@ -31,7 +31,7 @@ def main():
         type=str,
         required=True,
         help=
-        "Directory containing output files from running inference on EDH instances",
+        "Directory containing output files from running inference on game instances",
     )
     arg_parser.add_argument(
         "--split",
@@ -88,7 +88,7 @@ def main():
         pred_actions_file = pred_action_files[idx]
         if not os.path.isfile(pred_actions_file):
             logger.warning(
-                "Skipping EDH instance %s with output file %s due to missing predicted actions file %s"
+                "Skipping game instance %s with output file %s due to missing predicted actions file %s"
                 % (os.path.basename(output_file).split("__")[1], output_file,
                    pred_actions_file))
             game_files_missing_output.append(

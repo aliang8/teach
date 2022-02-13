@@ -74,10 +74,10 @@ Note: If running on laptop on a small subset of the data, add `exp.device=cpu` a
 
 Copy certain necessary files to the model folder so that we do not have to access training info at inference time.
 ```buildoutcfg
-cp $TEACH_DATA/lmdb_edh/data.vocab $TEACH_LOGS/seq2seq_attn_commander
-cp $TEACH_DATA/lmdb_edh/params.json $TEACH_LOGS/seq2seq_attn_commander
-cp $TEACH_DATA/lmdb_edh/data.vocab $TEACH_LOGS/seq2seq_attn_driver
-cp $TEACH_DATA/lmdb_edh/params.json $TEACH_LOGS/seq2seq_attn_driver
+cp $TEACH_DATA/tatc_dataset/data.vocab $TEACH_LOGS/seq2seq_attn_commander
+cp $TEACH_DATA/tatc_dataset/params.json $TEACH_LOGS/seq2seq_attn_commander
+cp $TEACH_DATA/tatc_dataset/data.vocab $TEACH_LOGS/seq2seq_attn_driver
+cp $TEACH_DATA/tatc_dataset/params.json $TEACH_LOGS/seq2seq_attn_driver
 ```
 
 Evaluate the trained model

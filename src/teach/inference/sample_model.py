@@ -35,18 +35,18 @@ class SampleModel(TeachModel):
 
     def get_next_action(self,
                         img,
-                        edh_instance,
+                        game_instance,
                         prev_action,
                         img_name=None,
-                        edh_name=None):
+                        game_name=None):
         """
         This method will be called at each timestep during inference to get the next predicted action from the model.
         :param img: PIL Image containing agent's egocentric image
-        :param edh_instance: EDH instance
+        :param game_instance: game instance
         :param prev_action: One of None or a dict with keys 'action' and 'obj_relative_coord' containing returned values
         from a previous call of get_next_action
         :param img_name: image file name
-        :param edh_name: EDH instance file name
+        :param game_name: game instance file name
         :return action: An action name from all_agent_actions
         :return obj_relative_coord: A relative (x, y) coordinate (values between 0 and 1) indicating an object in the image;
         The TEACh wrapper on AI2-THOR examines the ground truth segmentation mask of the agent's egocentric image, selects
@@ -62,16 +62,16 @@ class SampleModel(TeachModel):
             ]
         return action, obj_relative_coord
 
-    def start_new_edh_instance(self,
-                               edh_instance,
-                               edh_history_images,
-                               edh_name=None):
+    def start_new_game_instance(self,
+                               game_instance,
+                               game_history_images,
+                               game_name=None):
         """
         Since this class produces random actions at every time step, no particular setup is needed. When running model
         inference, this would be a suitable place to preprocess the dialog, action and image history
-        :param edh_instance: EDH instance
-        :param edh_history_images: List of images as PIL Image objects (loaded from files in
-                                   edh_instance['driver_image_history'])
-        :param edh_name: EDH instance file name
+        :param game_instance: game instance
+        :param game_history_images: List of images as PIL Image objects (loaded from files in
+                                   game_instance['driver_image_history'])
+        :param game_name: game instance file name
         """
         pass

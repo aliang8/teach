@@ -17,7 +17,7 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
 TEACH_MODEL_API_URL_PREDICT = "http://{}/get_next_action"
-TEACH_MODEL_API_URL_START_EDH = "http://{}/start_new_edh_instance"
+TEACH_MODEL_API_URL_START_GAME = "http://{}/start_new_game_instance"
 TEACH_MODEL_API_URL_TEST = "http://{}/test"
 
 
@@ -52,26 +52,26 @@ class RemoteModel(TeachModel):
                                                   process_index)
         self.test_url = TEACH_MODEL_API_URL_TEST.format(host_and_port)
         self.predict_url = TEACH_MODEL_API_URL_PREDICT.format(host_and_port)
-        self.start_edh_url = TEACH_MODEL_API_URL_START_EDH.format(
+        self.start_game_url = TEACH_MODEL_API_URL_START_GAME.format(
             host_and_port)
 
     def get_next_action(self,
                         img,
-                        edh_instance,
+                        game_instance,
                         prev_action,
                         img_name=None,
-                        edh_name=None):
-        if not img or not edh_instance:
-            logger.warning("either img or edh_instance is None")
+                        game_name=None):
+        if not img or not game_instance:
+            logger.warning("either img or game_instance is None")
             return None, None
         img_in_memory = BytesIO()
         img.save(img_in_memory, "jpeg")
         img_in_memory.seek(0)
         data = {
             "img_name": img_name,
-            "edh_name": edh_name,
+            "game_name": game_name,
             "prev_action": json.dumps(prev_action) if prev_action else None,
-            "edh_instance": json.dumps(edh_instance),
+            "game_instance": json.dumps(game_instance),
         }
 
         resp = requests.post(
@@ -92,23 +92,12 @@ class RemoteModel(TeachModel):
         resp = requests.get(self.test_url)
         return resp.status_code == 200
 
-    def start_new_edh_instance(self,
-                               edh_instance,
-                               edh_history_images,
-                               edh_name=None):
+    def start_new_game_instance(self,
+                               game_instance,
+                               game_name=None):
         images = []
-        if edh_history_images:
-            idx = 0
-            for image in edh_history_images:
-                img_in_memory = BytesIO()
-                image.save(img_in_memory, "jpeg")
-                img_in_memory.seek(0)
-                images.append(("edh_history_images",
-                               (f"history{idx}", img_in_memory, "image/jpeg")))
-                idx += 1
-
-        data = {"edh_name": edh_name, "edh_instance": json.dumps(edh_instance)}
-        resp = requests.post(self.start_edh_url, data=data, files=images)
+        data = {"game_name": game_name, "game_instance": json.dumps(game_instance)}
+        resp = requests.post(self.start_game_url, data=data, files=images)
 
         if resp.status_code != 200:
             logger.debug(f"failed sending data={data}")

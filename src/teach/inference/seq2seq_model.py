@@ -151,8 +151,6 @@ class Seq2SeqModel(TeachModel):
     
         return ""
 
-            
-
     def get_next_action_commander(self,
                                   commander_img,
                                   driver_img,

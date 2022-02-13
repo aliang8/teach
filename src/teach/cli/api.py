@@ -99,37 +99,6 @@ def _get_img(req_args):
         img = Image.open(img_file)
     return img, None
 
-
-# def _get_edh_history_images(game_name, game_instance):
-#     edh_history_images = []
-#     history_file_names = game_instance["driver_image_history"]
-#     if not history_file_names:
-#         return edh_history_images, None
-
-#     try:
-#         if not teach_args.use_img_file:
-#             images = request.files.getlist("edh_history_images")
-#             if images:
-#                 for img in images:
-#                     edh_history_images.append(Image.open(img))
-
-#         if not edh_history_images:
-#             image_dir = os.path.join(teach_args.data_dir, "images", teach_args.split, game_instance["game_id"])
-#             edh_history_images = load_images(image_dir, history_file_names)
-
-#     except Exception:
-#         err_msg = f"failed to load history images game_name={game_name}"
-#         app.logger.error(err_msg, exc_info=True)
-#         return None, err_msg
-
-#     if not edh_history_images:
-#         err_msg = f"history images are empty for game_name={game_name} for history_file_names={history_file_names}"
-#         app.logger.error(err_msg)
-#         return None, err_msg
-
-#     return edh_history_images, None
-
-
 @app.route("/get_next_action", methods=["POST"])
 def get_next_action():
     req_args = get_next_action_parse_args()
@@ -163,12 +132,8 @@ def start_new_game_instance():
     game_instance, err_msg = _get_game_instance(req_args)
     if err_msg:
         return err_msg, 500
-    edh_history_images, err_msg = _get_edh_history_images(
-        req_args.game_name, game_instance)
-    if err_msg:
-        return err_msg, 500
     try:
-        model.start_new_game_instance(game_instance, edh_history_images)
+        model.start_new_game_instance(game_instance)
     except Exception as e:
         err_msg = f"failed to start_new_game_instance with game_name={req_args.game_name}"
         app.logger.error(err_msg, exc_info=True)
@@ -194,7 +159,7 @@ def get_next_action_parse_args():
     parser.add_argument(
         "game_name",
         type=str,
-        help="EDH instance file name.",
+        help="game instance file name.",
     )
     parser.add_argument(
         "prev_action",
@@ -217,7 +182,7 @@ def start_new_game_instance_parse_args():
     parser.add_argument(
         "game_name",
         type=str,
-        help="EDH instance file name.",
+        help="game instance file name.",
     )
     parser.add_argument(
         "game_instance",

@@ -175,7 +175,7 @@ class Module(Base):
                     commander_action_low_valid_interact)
                 feat["driver_action_low_valid_interact"].append(
                     driver_action_low_valid_interact)
-
+        import ipdb; ipdb.set_trace()
         # tensorization and padding
         for k, v in feat.items():
             if k in {'lang_goal_instr'}:
@@ -238,6 +238,7 @@ class Module(Base):
         '''
         encode goal+instr language
         '''
+        import ipdb; ipdb.set_trace()
         emb_lang_goal_instr = feat['lang_goal_instr']
         self.lang_dropout(emb_lang_goal_instr.data)
 
@@ -309,7 +310,7 @@ class Module(Base):
             out_action_low, out_action_low_aux, state_t, *_ = self.dec.step(
                 self.r_state['enc_lang'],
                 feat['driver_frames'][:, 0],
-                e_t=e_t["commander"],
+                e_t=e_t["driver"],
                 state_tm1=self.r_state['state_t'])
 
         # save states

@@ -52,6 +52,14 @@ class Seq2SeqModel(TeachModel):
                             type=str,
                             required=True,
                             help="Path to FasterRCNN model checkpoint")
+        parser.add_argument("--preprocessed_data_dir",
+                            type=str,
+                            required=True,
+                            help="preprocessed_data_dir for vocab")
+        parser.add_argument("--model_name",
+                            type=str,
+                            default="seq2seq_attn",
+                            help="Name of the agent model.")
 
         args = parser.parse_args(model_args)
         args.dout_commander = args.commander_model_dir
@@ -91,11 +99,11 @@ class Seq2SeqModel(TeachModel):
         # TODO: fix this
         # TODO: fix params.json file path
         # dataset_info = data_util.read_dataset_info_for_inference(self.args.model_dir)
-        dataset_info = data_util.read_dataset_info("tatc_preproc_testing_2")
+        dataset_info = data_util.read_dataset_info(self.args.preprocessed_data_dir)
 
         train_data_name = model_args.data["train"][0]
         # train_vocab = data_util.load_vocab_for_inference(self.args.model_dir, train_data_name)
-        train_vocab = data_util.load_vocab("tatc_preproc_testing_2")
+        train_vocab = data_util.load_vocab(self.args.preprocessed_data_dir)
 
         # Load model from checkpoint
         if model_path is not None:
@@ -105,7 +113,7 @@ class Seq2SeqModel(TeachModel):
             device = f"cuda:{process_index % gpu_count}" if self.args.device == "cuda" else self.args.device
             self.args.device = device
             logger.info(f"Loading {agent} model agent using device: {device}")
-            model, self.extractor = eval_util.load_agent("seq2seq",
+            model, self.extractor = eval_util.load_agent(self.args.model_name,
                                                          model_path,
                                                          dataset_info,
                                                          self.args,

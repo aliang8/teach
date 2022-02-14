@@ -215,7 +215,7 @@ class Seq2SeqModel(TeachModel):
             latest_instr = self.extract_progress_check_subtask_string()
             text = latest_instr
             import ipdb; ipdb.set_trace()
-            latest_instr = self.preprocessor.process_sentences([latest_instr])[0]
+            latest_instr = ["<<commander>>"] + self.preprocessor.process_sentences([latest_instr])[0] + ["<<sent>>"]
             latest_instr = [self.preprocessor.numericalize(self.vocab["word"],
                               latest_instr,
                               train=False)
@@ -223,7 +223,7 @@ class Seq2SeqModel(TeachModel):
             latest_instr = torch.tensor(latest_instr, dtype=torch.long).to(self.args.device)
             latest_instr = self.commander_model.emb_word(latest_instr)
             
-            self.input_dict["lang_goal_instr"] = latest_instr
+            self.input_dict["lang_goal_instr"] = torch.cat([self.input_dict["lang_goal_instr"], latest_instr], dim=1)
             
 
         # TODO: handle target frame + mask
@@ -290,18 +290,18 @@ class Seq2SeqModel(TeachModel):
         text = None
         action = "Text" ### debug
         if action == "Text":
-            utterance = "What should I do next" 
-            text = utterance
-            utterance = self.preprocessor.process_sentences([utterance])[0]
+            text = "What should I do next" 
+            utterance = text
+            utterance = ["<<driver>>"] + self.preprocessor.process_sentences([utterance])[0] + ["<<sent>>"]
             utterance = [self.preprocessor.numericalize(self.vocab["word"],
                               utterance,
                               train=False)
                         ]
             import ipdb; ipdb.set_trace()
             utterance = torch.tensor(utterance, dtype=torch.long).to(self.args.device)
-            utterance = self.commander_model.emb_word(utterance)
+            utterance = self.driver_model.emb_word(utterance)
             
-            self.input_dict["lang_goal_instr"] = utterance
+            self.input_dict["lang_goal_instr"] = torch.cat([self.input_dict["lang_goal_instr"], utterance], dim=1)
 
         # Assume previous action succeeded if no better info available
         prev_success = True

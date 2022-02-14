@@ -140,7 +140,7 @@ class Seq2SeqModel(TeachModel):
         self.input_dict["lang_goal_instr"] = lang_goal
         return True
 
-    def extract_progress_check_subtask_string():
+    def extract_progress_check_subtask_string(self):
         if self.pc_result["success"]:
             return ""
         
@@ -155,7 +155,7 @@ class Seq2SeqModel(TeachModel):
                 if step["success"] == 1: 
                     continue 
 
-                return steps["desc"]
+                return step["desc"]
     
         return ""
 

@@ -195,17 +195,19 @@ class InferenceRunner:
                         config, game, driver_img, traj_steps_taken)
 
                     # Get next commander action
-                    commander_action, obj_cls = model.get_next_action_commander(
+                    commander_action, obj_cls, text = model.get_next_action_commander(
                         commander_img, driver_img, game, prev_action, commander_img_name, driver_img_name, instance_file)
 
                     # Get next driver action
-                    driver_action, obj_relative_coord = model.get_next_action_driver(
+                    driver_action, obj_relative_coord, text = model.get_next_action_driver(
                         commander_img, driver_img, game, prev_action, commander_img_name, driver_img_name, instance_file)
 
                     # Execute actions in simulator
                     commander_step_success, result = InferenceRunner._execute_commander_action(
                         er.simulator, commander_action, obj_cls)
 
+                    
+                    commander_action == "OpenProgressCheck" if prev_action==None else "Text"
                     if commander_action == "OpenProgressCheck":
                         model.pc_result = result
 
@@ -313,6 +315,15 @@ class InferenceRunner:
     def _execute_commander_action(simulator, action, obj_cls):
         step_success = True
         r = None
+        
+        ## debug
+        action = "OpenProgressCheck"
+        r = simulator.apply_progress_check(action,
+                                               agent_id=0,
+                                               query=obj_cls)
+
+        return step_success, r
+        ##debug
 
         if action in ["OpenProgressCheck", "SearchObject", "SelectOid"]:
             r = simulator.apply_progress_check(action,
@@ -324,7 +335,10 @@ class InferenceRunner:
 
     @staticmethod
     def _execute_driver_action(simulator, action, obj_relative_coord):
-        if action == "Stop":
+        if action in ["Stop", "NoOp"] :
+            return True
+
+        if action in ["Text", "Speech"]:
             return True
 
         if action in obj_interaction_actions:

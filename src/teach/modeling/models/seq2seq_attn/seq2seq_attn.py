@@ -300,27 +300,26 @@ class Module(Base):
          # decode and save embedding and hidden states
         
         if agent == "commander":
-            out_action_low, out_action_low_aux, state_t, *_ = self.dec.step(
-                self.r_state['enc_lang'],
-                feat['commander_frames'][:, 0],
-                e_t=e_t["commander"],
-                state_tm1=self.r_state['state_t'])
+            with torch.no_grad():    
+                out_action_low, out_action_low_aux, state_t, *_ = self.dec.step(
+                    self.r_state['enc_lang'],
+                    feat['commander_frames'][:, 0],
+                    e_t=e_t["commander"],
+                    state_tm1=self.r_state['state_t'])
         elif agent == "driver":
-            out_action_low, out_action_low_aux, state_t, *_ = self.dec.step(
-                self.r_state['enc_lang'],
-                feat['driver_frames'][:, 0],
-                e_t=e_t["driver"],
-                state_tm1=self.r_state['state_t'])
+            with torch.no_grad(): 
+                out_action_low, out_action_low_aux, state_t, *_ = self.dec.step(
+                    self.r_state['enc_lang'],
+                    feat['driver_frames'][:, 0],
+                    e_t=e_t["driver"],
+                    state_tm1=self.r_state['state_t'])
         
         # save states
         self.r_state['state_t'] = state_t
         self.r_state['e_t'] = self.dec.emb(out_action_low.max(1)[1])
-
         # output formatting
         feat['out_action_low'] = out_action_low.unsqueeze(0)
-        feat[
-            f'out_action_{self.aux_pred_type}'] = out_action_low_aux.unsqueeze(
-                0)
+        feat[f'out_action_{self.aux_pred_type}'] = out_action_low_aux.unsqueeze(0)
         return feat
 
     def extract_preds(self, out, batch, clean_special_tokens=True):

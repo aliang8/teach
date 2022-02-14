@@ -282,9 +282,10 @@ class Seq2SeqModel(TeachModel):
         if not action in obj_interaction_actions:
             predicted_click = None
 
-
         # Dumb driver speaker
         ##this can also generated from a text generation language model
+
+        
         text = None
         if action == "Text":
             text = "What should I do next" 
@@ -304,12 +305,14 @@ class Seq2SeqModel(TeachModel):
         if prev_action is not None and "success" in prev_action:
             prev_success = prev_action["success"]
 
+        logger.debug("Predicted Driver action: %s, click = %s, utterance = %s" %
+                     (str(action), str(predicted_click), text))
+
         # remove blocking actions
         action = self.obstruction_detection(action, prev_success, m_out,
                                             self.driver_model.vocab_out)
 
-        logger.debug("Predicted Driver action: %s, click = %s, utterance = %s" %
-                     (str(action), str(predicted_click), text))
+        
 
         return action, predicted_click, text
 

@@ -209,13 +209,10 @@ class Seq2SeqModel(TeachModel):
         text = None
         # Dumb commander speaker
         ##this can also generated from a text generation language model
-        action = "Text" ##debug
         if action == "Text" and self.pc_result!=None:
-
             latest_instr = self.extract_progress_check_subtask_string()
             if len(latest_instr)>0:
                 text = latest_instr
-                import ipdb; ipdb.set_trace()
                 latest_instr = ["<<commander>>"] + self.preprocessor.process_sentences([latest_instr])[0] + ["<<sent>>"]
                 latest_instr = [self.preprocessor.numericalize(self.vocab["word"],
                                 latest_instr,

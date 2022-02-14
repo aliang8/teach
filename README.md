@@ -25,7 +25,7 @@ pip install -e .
 ## Downloading the dataset
 Run the following script:
 ```
-teach_download 
+sh download_data.sh
 ```
 
 This will download and extract the archive files (`games.tar.gz`, `meta_data.tar.gz`) in the default 

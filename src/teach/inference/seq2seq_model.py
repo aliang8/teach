@@ -213,17 +213,18 @@ class Seq2SeqModel(TeachModel):
         if action == "Text" and self.pc_result!=None:
 
             latest_instr = self.extract_progress_check_subtask_string()
-            text = latest_instr
-            import ipdb; ipdb.set_trace()
-            latest_instr = ["<<commander>>"] + self.preprocessor.process_sentences([latest_instr])[0] + ["<<sent>>"]
-            latest_instr = [self.preprocessor.numericalize(self.vocab["word"],
-                              latest_instr,
-                              train=False)
-                        ]
-            latest_instr = torch.tensor(latest_instr, dtype=torch.long).to(self.args.device)
-            latest_instr = self.commander_model.emb_word(latest_instr)
-            
-            self.input_dict["lang_goal_instr"] = torch.cat([self.input_dict["lang_goal_instr"], latest_instr], dim=1)
+            if len(latest_instr)>0:
+                text = latest_instr
+                import ipdb; ipdb.set_trace()
+                latest_instr = ["<<commander>>"] + self.preprocessor.process_sentences([latest_instr])[0] + ["<<sent>>"]
+                latest_instr = [self.preprocessor.numericalize(self.vocab["word"],
+                                latest_instr,
+                                train=False)
+                            ]
+                latest_instr = torch.tensor(latest_instr, dtype=torch.long).to(self.args.device)
+                latest_instr = self.commander_model.emb_word(latest_instr)
+                
+                self.input_dict["lang_goal_instr"] = torch.cat([self.input_dict["lang_goal_instr"], latest_instr], dim=1)
             
 
         # TODO: handle target frame + mask
@@ -288,7 +289,6 @@ class Seq2SeqModel(TeachModel):
         # Dumb driver speaker
         ##this can also generated from a text generation language model
         text = None
-        action = "Text" ### debug
         if action == "Text":
             text = "What should I do next" 
             utterance = text
@@ -297,7 +297,6 @@ class Seq2SeqModel(TeachModel):
                               utterance,
                               train=False)
                         ]
-            import ipdb; ipdb.set_trace()
             utterance = torch.tensor(utterance, dtype=torch.long).to(self.args.device)
             utterance = self.driver_model.emb_word(utterance)
             

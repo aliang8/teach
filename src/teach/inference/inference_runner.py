@@ -202,13 +202,13 @@ class InferenceRunner:
                     driver_action, obj_relative_coord, driver_utterance = model.get_next_action_driver(
                         commander_img, driver_img, game, prev_action, commander_img_name, driver_img_name, instance_file)
 
-                    commander_action == "OpenProgressCheck" ### debug
+                    commander_action = "OpenProgressCheck" ### debug
                     # Execute actions in simulator
                     commander_step_success, result = InferenceRunner._execute_commander_action(
                         er.simulator, commander_action, obj_cls)
 
                     if commander_action == "OpenProgressCheck":
-                        
+
                         model.pc_result = result
 
                     driver_step_success = InferenceRunner._execute_driver_action(
@@ -317,15 +317,6 @@ class InferenceRunner:
     def _execute_commander_action(simulator, action, obj_cls):
         step_success = True
         r = None
-        
-        ## debug
-        action = "OpenProgressCheck"
-        r = simulator.apply_progress_check(action,
-                                               agent_id=0,
-                                               query=obj_cls)
-
-        return step_success, r
-        ##debug
 
         if action in ["OpenProgressCheck", "SearchObject", "SelectOid"]:
             r = simulator.apply_progress_check(action,

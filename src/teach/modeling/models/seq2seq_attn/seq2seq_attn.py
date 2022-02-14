@@ -289,7 +289,6 @@ class Module(Base):
 
         # previous action embedding
         e_t = {}
-        import ipdb; ipdb.set_trace()
         if prev_action is not None:
             if agent == "commander":
                 e_t["commander"] = self.embed_action([prev_action["commander_action"]], agent="commander").squeeze(0)

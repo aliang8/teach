@@ -31,7 +31,7 @@ Run the following script:
 sh download_data.sh
 ```
 
-This will download and extract the archive files (`games.tar.gz`, `meta_data.tar.gz`) in the default 
+Download and extract the archive files (`games.tar.gz`, `meta_data.tar.gz`) in the default 
 directory (`/tmp/teach-dataset`). To download the data used for the EDH challenge please refer to the README at https://github.com/alexa/teach.
 
 ## Remote Server Setup
@@ -133,11 +133,10 @@ Also see `modeling/exp_configs.py` and `modeling/models/seq2seq_attn/configs.py`
 
 ```buildoutcfg
 agent=driver or commander
-preprocessed_path=/path/to/preprocessed/features
 CUDA_VISIBLE_DEVICES=0 python -m modeling.train \
     with exp.model=seq2seq_attn \
     exp.name=seq2seq_attn_${agent} \
-    exp.data.train=${preprocessed_path} \
+    exp.data.train=tatc_dataset \
     exp.agent=${agent} \
     seq2seq.epochs=20 \
     seq2seq.batch=8 \
@@ -171,8 +170,12 @@ python src/teach/cli/inference.py \
     --device cpu
 ```
 
-## Evaluation
 
+
+## Submission
+Coming soon!
+
+<!---
 We include sample scripts for inference and calculation of metrics. `teach_inference` and `teach_eval`. 
 `teach_inference` is a wrapper that implements loading a game instance, interacting with the simulator as well as writing the game
 file and predicted action sequence as JSON files after each inference run. It dynamically loads the model based on the `--model_module`
@@ -202,6 +205,7 @@ teach_eval \
     --split valid_seen \
     --metrics_file $METRICS_FILE
 ```    
+-->
 
 ## Security
 

@@ -128,7 +128,7 @@ class TATCDataset(BaseDataset):
         for idx, (commander_action,
                   driver_action) in enumerate(task_json["actions_low"]):
             if self.args.compute_train_loss_over_history:
-                if driver_action["oid"] is not None:
+                if "oid" in driver_action and driver_action["oid"] is not None:
                     object_class = driver_action["oid"].split("|")[0]
                     object_classes.append(object_class if vocab is None else
                                           vocab.word2index(object_class))

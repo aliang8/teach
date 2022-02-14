@@ -1,14 +1,17 @@
-# TEACh
+# TEACh Two-Agent Task Completion (TATC) Challenge
 [Task-driven Embodied Agents that Chat](https://arxiv.org/abs/2110.00534)
 
 Aishwarya Padmakumar*, Jesse Thomason*, Ayush Shrivastava, Patrick Lange, Anjali Narayan-Chen, Spandana Gella, Robinson Piramuthu, Gokhan Tur, Dilek Hakkani-Tur
 
-TEACh is a dataset of human-human interactive dialogues to complete tasks in a simulated household environment. 
+TEACH (Task-drive Embodied Agents that Chat) is a set of episodes in which a human Commander who knows what task needs to be accomplished and where objects in a scene are located works with a human Follower who controls a virtual agent in the scene to accomplish household chores. The Commander and Follower communicate via natural language text. TEACh enables researchers to study strategies for natural language cooperation, instruction following from egocentric vision, question and answer generation, and partner modeling. We believe these skills will be necessary for real-world language-driven robotics applications.
+
 The code and model weights are licensed under the MIT License (see SOFTWARELICENSE), images are licensed under Apache 2.0 
 (see IMAGESLICENSE) and other data files are licensed under CDLA-Sharing 1.0 (see DATALICENSE).
 Please include appropriate licensing and attribution when using our data and code, and please cite our paper.
 
 Note: The TEACh repository at https://github.com/alexa/teach is centered around the EDH and TFD challenges in which the agent must learn to produce actions from only dialogue history. This repository is adapted for the TATC challenge. In TATC, two agents *Commander* and *Follower* collaborate via natural language dialogue to solve the tasks. 
+
+![video](boil_potato.mp4)
 
 ## Prerequisites
 - python3 `>=3.7,<=3.8`
@@ -199,12 +202,6 @@ teach_eval \
     --split valid_seen \
     --metrics_file $METRICS_FILE
 ```    
-
-## TODO for future updates
-- [ ] Adapt E.T. code from EDH for the TATC challenge
-- [ ] Implement utterance generation using some neural language model 
-- [ ] Leaderboard! 
-
 
 ## Security
 

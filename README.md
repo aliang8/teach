@@ -11,7 +11,7 @@ Please include appropriate licensing and attribution when using our data and cod
 
 Note: The TEACh repository at https://github.com/alexa/teach is centered around the EDH and TFD challenges in which the agent must learn to produce actions from only dialogue history. This repository is adapted for the TATC challenge. In TATC, two agents *Commander* and *Follower* collaborate via natural language dialogue to solve the tasks. 
 
-![video](boil_potato.mp4)
+https://user-images.githubusercontent.com/16139634/153944446-0942c84e-8252-4a2f-9670-a57ca2ed9d65.mp4
 
 ## Prerequisites
 - python3 `>=3.7,<=3.8`

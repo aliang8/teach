@@ -195,20 +195,20 @@ class InferenceRunner:
                         config, game, driver_img, traj_steps_taken)
 
                     # Get next commander action
-                    commander_action, obj_cls, text = model.get_next_action_commander(
+                    commander_action, obj_cls, commander_utterance = model.get_next_action_commander(
                         commander_img, driver_img, game, prev_action, commander_img_name, driver_img_name, instance_file)
 
                     # Get next driver action
-                    driver_action, obj_relative_coord, text = model.get_next_action_driver(
+                    driver_action, obj_relative_coord, driver_utterance = model.get_next_action_driver(
                         commander_img, driver_img, game, prev_action, commander_img_name, driver_img_name, instance_file)
 
+                    commander_action == "OpenProgressCheck" ### debug
                     # Execute actions in simulator
                     commander_step_success, result = InferenceRunner._execute_commander_action(
                         er.simulator, commander_action, obj_cls)
 
-                    
-                    commander_action == "OpenProgressCheck" if prev_action==None else "Text"
                     if commander_action == "OpenProgressCheck":
+                        
                         model.pc_result = result
 
                     driver_step_success = InferenceRunner._execute_driver_action(
@@ -223,7 +223,9 @@ class InferenceRunner:
                         "commander_action": commander_action,
                         "driver_action": driver_action,
                         "obj_cls": str(obj_cls),
-                        "obj_relative_coord": str(obj_relative_coord)
+                        "obj_relative_coord": str(obj_relative_coord),
+                        "commander_utterance": commander_utterance,
+                        "driver_utterance": driver_utterance,
                     }
                     pred_actions.append(prev_action)
                 except Exception as e:

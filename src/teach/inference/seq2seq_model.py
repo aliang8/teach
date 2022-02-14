@@ -78,6 +78,7 @@ class Seq2SeqModel(TeachModel):
         self.commander_model = self.set_up_model(process_index,
                                                  agent="commander")
         self.driver_model = self.set_up_model(process_index, agent="driver")
+        self.vocab = self.commander_model.vocab
         self.preprocessor = Preprocessor(vocab=self.driver_model.vocab)
 
         self.input_dict = None
@@ -208,13 +209,17 @@ class Seq2SeqModel(TeachModel):
         text = None
         # Dumb commander speaker
         ##this can also generated from a text generation language model
+        action = "Text" ##debug
         if action == "Text" and self.pc_result!=None:
 
             latest_instr = self.extract_progress_check_subtask_string()
             text = latest_instr
             import ipdb; ipdb.set_trace()
-            latest_instr = self.preprocessor.process_sentences([latest_instr], is_test_split=True)[0]
-
+            latest_instr = self.preprocessor.process_sentences([latest_instr])[0]
+            latest_instr = [self.preprocessor.numericalize(self.vocab["word"],
+                              latest_instr,
+                              train=False)
+                        ]
             latest_instr = torch.tensor(latest_instr, dtype=torch.long).to(self.args.device)
             latest_instr = self.commander_model.emb_word(latest_instr)
             
@@ -283,8 +288,20 @@ class Seq2SeqModel(TeachModel):
         # Dumb driver speaker
         ##this can also generated from a text generation language model
         text = None
-        if action == "Text" and self.pc_result!=None:
-            text = "What should I do next" 
+        action = "Text" ### debug
+        if action == "Text":
+            utterance = "What should I do next" 
+            text = utterance
+            utterance = self.preprocessor.process_sentences([utterance])[0]
+            utterance = [self.preprocessor.numericalize(self.vocab["word"],
+                              utterance,
+                              train=False)
+                        ]
+            import ipdb; ipdb.set_trace()
+            utterance = torch.tensor(utterance, dtype=torch.long).to(self.args.device)
+            utterance = self.commander_model.emb_word(utterance)
+            
+            self.input_dict["lang_goal_instr"] = utterance
 
         # Assume previous action succeeded if no better info available
         prev_success = True

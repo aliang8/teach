@@ -185,6 +185,7 @@ class InferenceRunner:
 
             traj_steps_taken = 0
             for _ in range(config.max_traj_steps):
+                import ipdb; ipdb.set_trace()
                 traj_steps_taken += 1
                 try:
                     commander_img, driver_img = InferenceRunner._get_latest_image(er)
@@ -207,7 +208,7 @@ class InferenceRunner:
                         er.simulator, commander_action, obj_cls)
 
                     
-                    commander_action == "OpenProgressCheck" if prev_action==None else "Text"
+                    commander_action == "OpenProgressCheck" if prev_action == None else "Text"
                     if commander_action == "OpenProgressCheck":
                         model.pc_result = result
 
@@ -284,8 +285,7 @@ class InferenceRunner:
         start_time = time.perf_counter()
         er.set_episode_by_fn_and_idx(game_file, 0, 0)
         interactions = list()
-        ep_interactions = game["tasks"][0]["episodes"][0][
-            "interactions"]  #[: game["pred_start_idx"]]
+        ep_interactions = game["tasks"][0]["episodes"][0]["interactions"] 
         for interaction in ep_interactions:
             action = action_id_to_info[interaction["action_id"]]
             interactions.append(

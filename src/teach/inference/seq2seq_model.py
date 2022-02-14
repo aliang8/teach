@@ -206,10 +206,9 @@ class Seq2SeqModel(TeachModel):
         action, obj_cls = m_pred["action"], m_pred["obj_cls"]
 
         text = None
-        # Dumb commander speaker
-        ##this can also generated from a text generation language model
-        if action == "Text" and self.pc_result!=None:
-
+        # Simple commander speaker
+        # This can also generated from a text generation language model
+        if action == "Text" and self.pc_result != None:
             latest_instr = self.extract_progress_check_subtask_string()
             text = latest_instr
             import ipdb; ipdb.set_trace()
@@ -280,10 +279,10 @@ class Seq2SeqModel(TeachModel):
             predicted_click = None
 
 
-        # Dumb driver speaker
-        ##this can also generated from a text generation language model
+        # Simple driver speaker
+        # This can also generated from a text generation language model
         text = None
-        if action == "Text" and self.pc_result!=None:
+        if action == "Text" and self.pc_result != None:
             text = "What should I do next" 
 
         # Assume previous action succeeded if no better info available

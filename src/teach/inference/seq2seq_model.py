@@ -82,6 +82,7 @@ class Seq2SeqModel(TeachModel):
 
         self.input_dict = None
         self.cur_tatc_instance = None
+        self.pc_result = None
 
     def set_up_model(self, process_index, agent="driver"):
         if agent == "commander":
@@ -144,7 +145,7 @@ class Seq2SeqModel(TeachModel):
         if self.pc_result["success"]:
             return ""
         
-        for subgoal in self.pc_results["subgoals"]:
+        for subgoal in self.pc_result["subgoals"]:
             if subgoal["success"] == 1:
                 continue 
             
@@ -204,15 +205,21 @@ class Seq2SeqModel(TeachModel):
 
         action, obj_cls = m_pred["action"], m_pred["obj_cls"]
 
-        # Dumb commander model
-        if action == "Text" and hasattr(self, "pc_result"):
+        text = None
+        # Dumb commander speaker
+        ##this can also generated from a text generation language model
+        if action == "Text" and self.pc_result!=None:
+
             latest_instr = self.extract_progress_check_subtask_string()
+            text = latest_instr
+            import ipdb; ipdb.set_trace()
             latest_instr = self.preprocessor.process_sentences([latest_instr], is_test_split=True)[0]
 
             latest_instr = torch.tensor(latest_instr, dtype=torch.long).to(self.args.device)
             latest_instr = self.commander_model.emb_word(latest_instr)
-            import ipdb; ipdb.set_trace()
+            
             self.input_dict["lang_goal_instr"] = latest_instr
+            
 
         # TODO: handle target frame + mask
 
@@ -221,9 +228,9 @@ class Seq2SeqModel(TeachModel):
         if prev_action is not None and "success" in prev_action:
             prev_success = prev_action["success"]
 
-        logger.debug("Predicted action: %s, obj = %s" %
-                     (str(action), str(obj_cls)))
-        return action, obj_cls
+        logger.debug("Predicted Commander action: %s, obj = %s, utterance = %s" %
+                     (str(action), str(obj_cls), text))
+        return action, obj_cls, text
 
     def get_next_action_driver(self,
                                commander_img,
@@ -272,8 +279,12 @@ class Seq2SeqModel(TeachModel):
         if not action in obj_interaction_actions:
             predicted_click = None
 
-        logger.debug("Predicted action: %s, click = %s" %
-                     (str(action), str(predicted_click)))
+
+        # Dumb driver speaker
+        ##this can also generated from a text generation language model
+        text = None
+        if action == "Text" and self.pc_result!=None:
+            text = "What should I do next" 
 
         # Assume previous action succeeded if no better info available
         prev_success = True
@@ -283,7 +294,11 @@ class Seq2SeqModel(TeachModel):
         # remove blocking actions
         action = self.obstruction_detection(action, prev_success, m_out,
                                             self.driver_model.vocab_out)
-        return action, predicted_click
+
+        logger.debug("Predicted Driver action: %s, click = %s, utterance = %s" %
+                     (str(action), str(predicted_click), text))
+
+        return action, predicted_click, text
 
     def get_obj_click(self, obj_class_idx, img):
         rcnn_pred = self.object_predictor.predict_objects(img)

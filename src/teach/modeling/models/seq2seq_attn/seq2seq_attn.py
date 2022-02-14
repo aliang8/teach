@@ -289,13 +289,13 @@ class Module(Base):
 
         # previous action embedding
         e_t = {}
-
+        
         if prev_action is not None:
             e_t["commander"] = self.embed_action([prev_action["commander_action"]], agent="commander").squeeze(0)
             e_t["driver"] = self.embed_action([prev_action["driver_action"]], agent="driver").squeeze(0)
         else:
             e_t["commander"] = e_t["driver"] = self.r_state['e_t']
-
+        
          # decode and save embedding and hidden states
         
         if agent == "commander":
@@ -310,7 +310,8 @@ class Module(Base):
                 feat['driver_frames'][:, 0],
                 e_t=e_t["driver"],
                 state_tm1=self.r_state['state_t'])
-
+        
+        print(agent, out_action_low, out_action_low_aux)
         # save states
         self.r_state['state_t'] = state_t
         self.r_state['e_t'] = self.dec.emb(out_action_low.max(1)[1])

@@ -101,20 +101,20 @@ class InferenceRunner:
         num_files_per_process = InferenceRunner._get_num_files_per_process(
             num_files=num_files, num_processes=config.num_processes)
 
-        InferenceRunner._run(process_index, game_files[0:1], config, er)
+        # InferenceRunner._run(process_index, game_files[0:1], config, er)
 
-        # start_index, end_index = InferenceRunner._get_range_to_process(
-        #     process_index=process_index,
-        #     num_files_per_process=num_files_per_process,
-        #     num_files=num_files,
-        # )
+        start_index, end_index = InferenceRunner._get_range_to_process(
+            process_index=process_index,
+            num_files_per_process=num_files_per_process,
+            num_files=num_files,
+        )
 
-        # files_to_process = game_files[start_index:end_index]
+        files_to_process = game_files[start_index:end_index]
 
-        # process = mp.Process(target=InferenceRunner._run, args=(process_index, files_to_process, config, er))
+        process = mp.Process(target=InferenceRunner._run, args=(process_index, files_to_process, config, er))
 
-        # process.start()
-        # time.sleep(0.1)
+        process.start()
+        time.sleep(0.1)
         return process
 
     @staticmethod
@@ -185,7 +185,6 @@ class InferenceRunner:
 
             traj_steps_taken = 0
             for _ in range(config.max_traj_steps):
-                import ipdb; ipdb.set_trace()
                 traj_steps_taken += 1
                 try:
                     commander_img, driver_img = InferenceRunner._get_latest_image(er)
@@ -203,7 +202,7 @@ class InferenceRunner:
                     driver_action, obj_relative_coord, driver_utterance = model.get_next_action_driver(
                         commander_img, driver_img, game, prev_action, commander_img_name, driver_img_name, instance_file)
 
-                    commander_action = "OpenProgressCheck" ### debug
+                    # commander_action = "OpenProgressCheck" ### debug
                     # Execute actions in simulator
                     commander_step_success, result = InferenceRunner._execute_commander_action(
                         er.simulator, commander_action, obj_cls)
@@ -334,11 +333,10 @@ class InferenceRunner:
             return True
 
         if action in obj_interaction_actions:
-            import ipdb; ipdb.set_trace()
-            y = obj_relative_coord[0, 0]
-            x = obj_relative_coord[0, 1]
+            y = obj_relative_coord[0]
+            x = obj_relative_coord[1]
             step_success, _, _ = simulator.apply_object_interaction(
-                action, 1, x.cpu(), y.cpu())
+                action, 1, x, y)
             return step_success
 
         step_success, _, _ = simulator.apply_motion(action, 1)

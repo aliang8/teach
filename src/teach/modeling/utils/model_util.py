@@ -281,6 +281,7 @@ def process_prediction(action, aux_action_output, pad, vocab_action,
     """
     process a single trajectory, return it as a dict
     """
+
     # remove padding tokens
     if pad in action:
         pad_start_idx = action.index(pad)
@@ -318,7 +319,7 @@ def extract_action_preds(model_out,
     else:
         out_key = "coord"
         zipped_data = zip(model_out["out_action_low"].max(2)[1].tolist(),
-                      model_out[f"out_action_{out_key}"][0][0].tolist())
+                      model_out[f"out_action_{out_key}"][0].tolist())
 
     # predict_object = not lang_only
     preds_list = [

@@ -40,15 +40,14 @@ def read_traj_images(json_path, image_folder):
 
     commander_images, driver_images, target_images, mask_images, target_idx = [], [], [], [], []
 
-    # TODO : FIX
     for interaction in interactions:
-        commander_images.append(os.path.join(constants.TEACH_DATA, interaction["commander_obs"][1:]))
-        driver_images.append(os.path.join(constants.TEACH_DATA, interaction["driver_obs"][1:]))
+        commander_images.append(os.path.join(constants.TEACH_DATA, interaction["commander_obs"]))
+        driver_images.append(os.path.join(constants.TEACH_DATA, interaction["driver_obs"]))
 
         # If successful commander action
         if interaction["agent_id"] > 500 and interaction["success"]:
-            target_images.append(os.path.join(constants.TEACH_DATA, interaction["targetobject_frame"][1:]))
-            mask_images.append(os.path.join(constants.TEACH_DATA, interaction["targetobject_mask"][1:]))
+            target_images.append(os.path.join(constants.TEACH_DATA, interaction["targetobject_frame"]))
+            mask_images.append(os.path.join(constants.TEACH_DATA, interaction["targetobject_mask"]))
             target_idx.append(interactions.index(i))
 
     logger.debug("Loading images from %s" % images_dir)
@@ -168,7 +167,7 @@ def get_preprocessor(PreprocessorClass, subgoal_ann, lock, vocab_path=None):
         "OpenProgressCheck", "SelectOid", "SearchObject", "Text", "NoOp"
     ]
 
-    # TODO: maybe add high level commander actions?
+    # TODO: could add high level commander actions here
 
     vocabs_with_lock["driver_action_low"] = helper_util.VocabWithLock(
         driver_actions_low_init_words, lock)

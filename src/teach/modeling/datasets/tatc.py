@@ -97,7 +97,7 @@ class TATCDataset(BaseDataset):
             ]]
             lang_action = sum(lang_action, [])
         elif action_type == "action_high_future":
-            # TODO: figure out where this is being used
+            # TODO: do we use this?
             import ipdb
             ipdb.set_trace()
             if "future_subgoals" in task_json:

@@ -170,8 +170,7 @@ class Preprocessor(object):
                 # Concatenate all the high-level and low-level instructions into a single string
                 all_words = ""
 
-                # TODO: fix abs path
-                with open(os.path.join(constants.TEACH_DATA, pc_json_f[1:])) as f:
+                with open(os.path.join(constants.TEACH_DATA, pc_json_f)) as f:
                     pc_output = json.load(f)
 
                     all_words += pc_output["task_desc"] + " "

@@ -98,13 +98,9 @@ class Seq2SeqModel(TeachModel):
         logger.info(f"Loading {agent} model from {model_path}")
 
         model_args = model_util.load_model_args(model_path)
-        # TODO: fix this
-        # TODO: fix params.json file path
-        # dataset_info = data_util.read_dataset_info_for_inference(self.args.model_dir)
         dataset_info = data_util.read_dataset_info(self.args.preprocessed_data_dir)
 
         train_data_name = model_args.data["train"][0]
-        # train_vocab = data_util.load_vocab_for_inference(self.args.model_dir, train_data_name)
         train_vocab = data_util.load_vocab(self.args.preprocessed_data_dir)
 
         # Load model from checkpoint
@@ -120,9 +116,6 @@ class Seq2SeqModel(TeachModel):
                                                          dataset_info,
                                                          self.args,
                                                          test_mode=True)
-
-        # self.vocab = {"word": train_vocab["word"], "action_low": self.model.vocab_out}
-
         return model
 
     def start_new_tatc_instance(self, tatc_instance):
@@ -135,7 +128,6 @@ class Seq2SeqModel(TeachModel):
             tatc_instance, is_test_split=True)
         lang_goal = torch.tensor(tatc_instance["lang_goal"],
                                  dtype=torch.long).to(self.args.device)
-        # TODO: does it matter which emb_word i use?
 
         # Embed the language goal
         lang_goal = self.commander_model.emb_word(lang_goal)
@@ -182,6 +174,9 @@ class Seq2SeqModel(TeachModel):
         :return action: An action name from commander actions
         :return obj_cls: Object class for search object or select oid action
         """
+        # Note: this model doesn't use the targetframe for object and mask,
+        # but this data can be accessible through tatc_instance
+
         # Featurize images
         commander_img_feat = self.extractor.featurize([commander_img], batch=1)
         driver_img_feat = self.extractor.featurize([driver_img], batch=1)
@@ -192,7 +187,7 @@ class Seq2SeqModel(TeachModel):
         with torch.no_grad():
             m_out = self.commander_model.step(
                 self.input_dict,
-                self.vocab,  #TODO: fix this
+                self.vocab,
                 prev_action=prev_action, 
                 agent="commander")
 
@@ -207,13 +202,13 @@ class Seq2SeqModel(TeachModel):
         action, obj_cls = m_pred["action"], m_pred["obj_cls"]
 
         text = None
+
         # Simple commander speaker
         # This can also generated from a text generation language model
         if action == "Text" and self.pc_result != None:
             latest_instr = self.extract_progress_check_subtask_string()
             if len(latest_instr)>0:
                 text = latest_instr
-                import ipdb; ipdb.set_trace()
                 latest_instr = ["<<commander>>"] + self.preprocessor.process_sentences([latest_instr])[0] + ["<<sent>>"]
                 latest_instr = [self.preprocessor.numericalize(self.vocab["word"],
                                 latest_instr,
@@ -224,9 +219,6 @@ class Seq2SeqModel(TeachModel):
                 
                 self.input_dict["lang_goal_instr"] = torch.cat([self.input_dict["lang_goal_instr"], latest_instr], dim=1)
             
-
-        # TODO: handle target frame + mask
-
         # Assume previous action succeeded if no better info available
         prev_success = True
         if prev_action is not None and "success" in prev_action:
@@ -305,12 +297,14 @@ class Seq2SeqModel(TeachModel):
         if prev_action is not None and "success" in prev_action:
             prev_success = prev_action["success"]
 
+        logger.debug("Predicted Driver action: %s, click = %s, utterance = %s" %
+                     (str(action), str(predicted_click), text))
+
         # remove blocking actions
         action = self.obstruction_detection(action, prev_success, m_out,
                                             self.driver_model.vocab_out)
 
-        logger.debug("Predicted Driver action: %s, click = %s, utterance = %s" %
-                     (str(action), str(predicted_click), text))
+        
 
         return action, predicted_click, text
 

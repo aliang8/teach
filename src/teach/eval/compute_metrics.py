@@ -11,12 +11,9 @@ from teach.utils import create_task_thor_from_state_diff
 
 def evaluate_traj(success, tatc_instance, traj_len, final_gc_total,
                   final_gc_satisfied):
-    # init_gc_satisfied = min(
-    #     tatc_instance["expected_init_goal_conditions_total"], tatc_instance["expected_init_goal_conditions_satisfied"]
-    # )
     final_gc_satisfied = min(final_gc_total, final_gc_satisfied)
 
-    total_goal_conditions = final_gc_total  # tatc_instance["expected_init_goal_conditions_total"] - init_gc_satisfied
+    total_goal_conditions = final_gc_total
     # TODO: Remove this after testing and recheck game instances to remove any where there is nothing to do
     if total_goal_conditions != 0:
         unsatisfied_goal_conditions = final_gc_total - final_gc_satisfied

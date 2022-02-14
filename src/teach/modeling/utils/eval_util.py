@@ -18,7 +18,7 @@ def load_agent(model_name, model_path, dataset_info, args, test_mode=False):
                                              model_path,
                                              args.device,
                                              test_mode=test_mode)
-    # TODO: fix
+
     if model_name != "seq2seq_attn":
         model = learned_model.model
     else:

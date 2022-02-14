@@ -334,10 +334,11 @@ class EpisodeReplay:
                 if action_definition["action_type"] == "Keyboard":
                     self._write_keyboard_frame(idx, obs_dir)
 
-            if obs_dir is not None and write_frames:
-                if action_definition["action_type"] == "ProgressCheck":
-                    target_object_active = self._write_progress_check(
-                        idx, obs_dir, action_definition, target_object_active)
+        if obs_dir is not None and write_frames:
+            if action_definition["action_type"] == "ProgressCheck":
+                target_object_active = self._write_progress_check(
+                    idx, obs_dir, action_definition, target_object_active)
+                    
         if obs_dir is not None and write_episode_progress:
             self.write_progress(frame_idx, obs_dir)
         return api_success, target_object_active

@@ -98,7 +98,7 @@ def load_model(model_name, fsave, device, check_epoch=None, test_mode=False):
     save = torch.load(fsave, map_location=device)
     save["args"]["model_dir"] = os.path.dirname(fsave)
 
-    if model_name == "seq2seq":
+    if model_name == "seq2seq_attn":
         model_cls = import_module(
             "modeling.models.seq2seq_attn.seq2seq_attn").Module
     else:

@@ -15,6 +15,7 @@ from modeling.utils import data_util, helper_util, model_util
 from sacred import Experiment
 
 from teach.logger import create_logger
+from torch.nn import DataParallel
 
 ex = Experiment("train", ingredients=[exp_ingredient, seq2seq_ingredient])
 
@@ -85,12 +86,15 @@ def create_model(args, embs_ann, vocab):
     load a model and its optimizer
     """
     prev_train_info = model_util.load_log(args.dout, stage="train")
+    # 
     if args.resume and os.path.exists(os.path.join(args.dout, "latest.pth")):
         # load a saved model
+        logger.info("loading from %s", str(args.dout))
         loadpath = os.path.join(args.dout, "latest.pth")
         model, optimizer = model_util.load_model(
-            loadpath, args.device, prev_train_info["progress"] - 1)
-        assert model.vocab_out.contains_same_content(vocab_out)
+            args.model, loadpath, args.device) # prev_train_info["progress"] - 1)
+        for k in vocab.keys():
+            assert model.vocab[k].contains_same_content(vocab[k])
         model.args = args
     else:
         # create a new model
@@ -130,7 +134,8 @@ def create_model(args, embs_ann, vocab):
     # put encoder on several GPUs if asked
     if torch.cuda.device_count() > 1:
         logger.info("Parallelizing the model")
-        model.model = helper_util.DataParallel(model.model)
+        print(model)
+        model = helper_util.DataParallel(model)
     return model, optimizer, prev_train_info
 
 

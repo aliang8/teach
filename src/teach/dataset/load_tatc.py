@@ -20,12 +20,11 @@ def add_images_path(base_dir, phase):
     print(f"Processing {base_dir}/{phase}")
     games = []
 
-    data_dir = os.path.join(base_dir, "games_final", phase)
-    images_dir = os.path.join(base_dir, "prog_check_files", phase, "PC")
-    # images_dir = os.path.join(base_dir, "images", phase)
-    new_data_dir = os.path.join(base_dir, "games_final", phase)
+    data_dir = os.path.join(base_dir, "games", phase)
+    images_dir = os.path.join(base_dir, "meta_data", phase)
+    new_data_dir = os.path.join(base_dir, "games_final_final", phase)
 
-    # os.makedirs(new_data_dir, exist_ok=True)
+    os.makedirs(new_data_dir, exist_ok=True)
 
     game_files = os.listdir(data_dir)
 
@@ -44,35 +43,34 @@ def add_images_path(base_dir, phase):
 
         for img_file in os.listdir(game_image_dir):
             img_f = os.path.join(game_image_dir, img_file)
-            img_f = img_f.replace(base_dir, "")
-
+            img_f = img_f.replace(base_dir, "")[1:]
             time_start = ".".join(img_file.split(".")[2:4])
             if img_file.split(".")[0] == "commander":
-                commander_obs[time_start] = img_file
+                commander_obs[time_start] = img_f
             elif img_file.split(".")[0] == "driver":
-                driver_obs[time_start] = img_file
+                driver_obs[time_start] = img_f
             elif img_file.split(".")[0] == "targetobject":
                 if img_file.split(".")[1] == "frame":
                     targetobjectFrame[time_start] = img_f
                 if img_file.split(".")[1] == "mask":
                     targetobjectMask[time_start] = img_f
             elif img_file.split(".")[1] == "status":
-                pc_status[time_start] = img_file
+                pc_status[time_start] = img_f
             else:  ### add other frames if needed
                 pass
 
         for idx in range(len(interactions)):
             time_start = str(interactions[idx]["time_start"])
-            # interactions[idx]["commander_obs"] = commander_obs[time_start]
-            # interactions[idx]["driver_obs"] = driver_obs[time_start]
+            interactions[idx]["commander_obs"] = commander_obs[time_start]
+            interactions[idx]["driver_obs"] = driver_obs[time_start]
             try:
                 if interactions[idx]["action_id"] == 500:
                     interactions[idx]["pc_json"] = pc_status[time_start]
             except:
                 print(f)
-            # if interactions[idx]["action_id"] > 500 and interactions[idx]["success"]:
-            #     interactions[idx]["targetobject_frame"] = targetobjectFrame[time_start]
-            #     interactions[idx]["targetobject_mask"] = targetobjectMask[time_start]
+            if interactions[idx]["action_id"] > 500 and interactions[idx]["success"]:
+                interactions[idx]["targetobject_frame"] = targetobjectFrame[time_start]
+                interactions[idx]["targetobject_mask"] = targetobjectMask[time_start]
 
         game["tasks"][0]["episodes"][0]["interactions"] = interactions
         new_f = os.path.join(new_data_dir, os.path.basename(f))

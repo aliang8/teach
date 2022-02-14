@@ -54,21 +54,17 @@ Train commander and driver models (adjust the `train.epochs` value in this comma
 Also see `modeling/exp_configs.py` and `modeling/models/seq2seq_attn/configs.py` for additional training parameters. You can also run `python -m modeling.train -h` to list out the parameters and their usage. 
 
 ```buildoutcfg
-python -m modeling.train \
+agent=driver or commander
+preprocessed_path=/path/to/preprocessed/features
+CUDA_VISIBLE_DEVICES=0 python -m modeling.train \
     with exp.model=seq2seq_attn \
-    exp.name=seq2seq_attn_commander \
-    exp.data.train=tatc_dataset \
-    train.epochs=20  \
-    train.seed=0
-```
-
-```buildoutcfg
-python -m modeling.train \
-    with exp.model=seq2seq_attn \
-    exp.name=seq2seq_attn_driver \
-    exp.data.train=tatc_dataset \
-    train.epochs=20  \
-    train.seed=0
+    exp.name=seq2seq_attn_${agent} \
+    exp.data.train=${preprocessed_path} \
+    exp.agent=${agent} \
+    seq2seq.epochs=20 \
+    seq2seq.batch=8 \
+    seq2seq.seed=2 \
+    seq2seq.resume=False
 ```
 Note: If running on laptop on a small subset of the data, add `exp.device=cpu` and `exp.num_workers=1`
 
